@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  version:
+    name: Version packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: changesets/action@v1
+        with:
+          # opens a "Version Packages" PR when changesets exist on main
+          # merging that PR triggers the publish job below
+          version: pnpm version-packages
+          commit: "chore: version packages"
+          title: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    # only runs when the Version Packages PR is merged
+    if: |
+      github.event_name == 'push' &&
+      contains(github.event.head_commit.message, 'chore: version packages')
+    permissions:
+      contents: write
+      id-token: write # needed once OIDC is configured per-package
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      # ensure npm >=11.5.1 for OIDC support
+      - run: npm install -g npm@latest
+
+      - run: pnpm build
+
+      - run: pnpm publish-packages --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true

@@ -1,0 +1,12 @@
+{
+	"name": "readtime",
+	"tagline": "Word count and reading time for EmDash content",
+	"wordpressEquivalent": "Reading Time WP",
+	"npmPackage": "@plugdash/readtime",
+	"capabilities": "read:content, write:content",
+	"hooks": "content:afterSave",
+	"status": "beta",
+	"installCommand": "npm install @plugdash/readtime",
+	"configExample": "import { defineConfig } from \"astro/config\";\nimport emdash from \"emdash\";\nimport { readtimePlugin } from \"@plugdash/readtime\";\n\nexport default defineConfig({\n\tintegrations: [\n\t\temdash({\n\t\t\tplugins: [readtimePlugin()],\n\t\t}),\n\t],\n});",
+	"pairs": "tocgen"
+}
