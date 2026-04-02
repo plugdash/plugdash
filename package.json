@@ -1,0 +1,20 @@
+{
+  "name": "plugdash",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint .",
+    "format": "oxfmt .",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "publish-packages": "changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "oxlint": "^0.13.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  }
+}
