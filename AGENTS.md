@@ -431,6 +431,13 @@ Requires testbed running on localhost:4321
 **Functional tests run before release (automated):**
 Playwright against live testbed
 
+## playwright / e2e tests
+
+e2e specs live in e2e/. Playwright is not yet installed.
+These tests require the testbed running on localhost:4321.
+Do not attempt to install or run Playwright until the testbed
+infrastructure exists. Write the specs, leave them ready.
+
 ---
 
 ## every plugin ships a UI component

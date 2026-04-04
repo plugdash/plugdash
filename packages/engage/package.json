@@ -1,0 +1,22 @@
+{
+	"name": "@plugdash/engage",
+	"version": "0.1.0",
+	"description": "Heart + share + copy - the engagement bundle for EmDash",
+	"type": "module",
+	"exports": {
+		"./EngagementBar.astro": "./src/EngagementBar.astro"
+	},
+	"scripts": {
+		"test": "vitest run"
+	},
+	"keywords": ["emdash", "emdash-plugin", "engage", "engagement"],
+	"license": "MIT",
+	"dependencies": {
+		"@plugdash/heartpost": "workspace:*",
+		"@plugdash/sharepost": "workspace:*",
+		"@plugdash/shortlink": "workspace:*"
+	},
+	"devDependencies": {
+		"vitest": "*"
+	}
+}

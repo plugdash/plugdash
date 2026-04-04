@@ -1,0 +1,42 @@
+---
+import HeartButton from "@plugdash/heartpost/HeartButton.astro"
+import ShareButtons from "@plugdash/sharepost/ShareButtons.astro"
+import CopyLink from "@plugdash/shortlink/CopyLink.astro"
+
+interface Props {
+	post: Record<string, unknown>
+	platforms?: Array<"twitter" | "linkedin" | "whatsapp" | "bluesky" | "email">
+	variant?: "circle" | "pill" | "ghost"
+	size?: "sm" | "md" | "lg"
+	theme?: "auto" | "dark" | "light"
+	showHeart?: boolean
+	showShare?: boolean
+	showCopy?: boolean
+	attribution?: boolean
+	class?: string
+}
+const {
+	post,
+	platforms = ["twitter", "linkedin", "bluesky"],
+	variant = "circle",
+	size = "md",
+	theme = "auto",
+	showHeart = true,
+	showShare = true,
+	showCopy = true,
+	attribution = false,
+	class: className = "",
+} = Astro.props
+---
+<div class={`plugdash-engage-bar ${className}`} data-theme={theme}>
+	{showHeart && <HeartButton {post} {variant} {size} {theme} />}
+	{showShare && <ShareButtons {post} {platforms} {variant} {size} {theme} {attribution} />}
+	{showCopy && <CopyLink {post} {variant} {size} {theme} />}
+</div>
+<style>
+	.plugdash-engage-bar {
+		display: flex;
+		align-items: center;
+		gap: var(--plugdash-engage-gap, 0.375rem);
+	}
+</style>

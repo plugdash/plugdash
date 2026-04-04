@@ -1,0 +1,34 @@
+{
+	"name": "engage",
+	"tagline": "Heart + share + copy - the engagement bundle for EmDash",
+	"wordpressEquivalent": null,
+	"npmPackage": "@plugdash/engage",
+	"capabilities": "none (convenience package)",
+	"hooks": "none",
+	"status": "beta",
+	"installCommand": "npm install @plugdash/engage",
+	"configExample": "import { defineConfig } from \"astro/config\";\nimport emdash from \"emdash\";\nimport { heartpostPlugin } from \"@plugdash/heartpost\";\nimport { sharepostPlugin } from \"@plugdash/sharepost\";\nimport { shortlinkPlugin } from \"@plugdash/shortlink\";\n\nexport default defineConfig({\n\tintegrations: [\n\t\temdash({\n\t\t\tplugins: [\n\t\t\t\theartpostPlugin(),\n\t\t\t\tsharepostPlugin({ via: \"yourhandle\" }),\n\t\t\t\tshortlinkPlugin(),\n\t\t\t],\n\t\t}),\n\t],\n});",
+	"pairs": "heartpost, sharepost, shortlink",
+	"highlights": [
+		"One import for the full engagement bar - heart, share, and copy link",
+		"Uniform variant, size, and theme props applied to all three children",
+		"Show/hide individual components with showHeart, showShare, showCopy props",
+		"Circle, pill, and ghost variants for consistent visual treatment"
+	],
+	"lead": "Heart. Share. Copy. One import. Three plugins.",
+	"variants": [
+		{
+			"name": "circle",
+			"description": "Icon buttons in circular containers - the default"
+		},
+		{
+			"name": "pill",
+			"description": "Icon + label in rounded pill shapes"
+		},
+		{
+			"name": "ghost",
+			"description": "Text and icons only, no border or background"
+		}
+	],
+	"themes": ["auto", "dark", "light"]
+}
