@@ -1,0 +1,257 @@
+---
+/**
+ * @plugdash/heartpost - HeartButton.astro
+ *
+ * Interactive heart/like button that fetches and updates a per-post heart count
+ * via the heartpost plugin API routes. Renders nothing if the post has no id.
+ *
+ * Usage:
+ *   import HeartButton from "@plugdash/heartpost/HeartButton.astro"
+ *   <HeartButton post={post} />
+ *
+ * Props:
+ *   post    - EmDash content item (required, must have an id)
+ *   variant - "circle" | "pill" | "ghost", default "circle"
+ *   size    - "sm" | "md" | "lg", default "md"
+ *   theme   - "auto" | "dark" | "light", default "auto"
+ *   class   - additional CSS class
+ *
+ * Customisation via CSS custom properties:
+ *   --plugdash-heart-color          fill colour (default: --plugdash-accent)
+ *   --plugdash-heart-fill-duration  fill animation speed (default: 200ms)
+ *   --plugdash-engage-size          button size (circle variant)
+ *   --plugdash-engage-radius        border radius
+ *   --plugdash-engage-border        border colour
+ *   --plugdash-engage-bg            background colour
+ *   --plugdash-engage-bg-hover      hover background colour
+ *   --plugdash-engage-transition    transition timing
+ */
+
+interface Props {
+	post: Record<string, unknown>
+	variant?: "circle" | "pill" | "ghost"
+	size?: "sm" | "md" | "lg"
+	theme?: "auto" | "dark" | "light"
+	class?: string
+}
+
+const {
+	post,
+	variant = "circle",
+	size = "md",
+	theme = "auto",
+	class: className = "",
+} = Astro.props
+
+const id = (post as Record<string, unknown>)?.id as string | undefined
+---
+
+{id && (
+	<button
+		class:list={[
+			"plugdash-heart",
+			`plugdash-heart--${variant}`,
+			`plugdash-heart--${size}`,
+			`plugdash-theme--${theme}`,
+			className,
+		]}
+		data-post-id={id}
+		data-theme={theme}
+		aria-label="Heart this post"
+		type="button"
+	>
+		<svg class="plugdash-heart-svg" viewBox="0 0 24 24" aria-hidden="true">
+			<path class="plugdash-heart-outline"
+				fill="none" stroke="currentColor" stroke-width="2"
+				d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+			<path class="plugdash-heart-fill"
+				d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+		</svg>
+		<span class="plugdash-heart-count" aria-live="polite">0</span>
+	</button>
+)}
+
+<script>
+	document.querySelectorAll(".plugdash-heart").forEach(async (btn) => {
+		const id = btn.getAttribute("data-post-id");
+		if (!id) return;
+
+		const countEl = btn.querySelector(".plugdash-heart-count");
+		if (!countEl) return;
+
+		// Fetch current state
+		try {
+			const res = await fetch(`/_emdash/api/plugins/heartpost/heart-status?id=${encodeURIComponent(id)}`);
+			if (res.ok) {
+				const data = await res.json();
+				countEl.textContent = String(data.count ?? 0);
+				if (data.hearted) btn.setAttribute("data-hearted", "true");
+			}
+		} catch {
+			// Silent fail - button still renders, just shows 0
+		}
+
+		btn.addEventListener("click", async () => {
+			if (btn.getAttribute("data-hearted")) return;
+
+			// Optimistic update
+			const current = parseInt(countEl.textContent || "0", 10);
+			countEl.textContent = String(current + 1);
+			btn.setAttribute("data-hearted", "true");
+
+			// Confirm with server
+			try {
+				const res = await fetch("/_emdash/api/plugins/heartpost/heart", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ id }),
+				});
+				if (res.ok) {
+					const data = await res.json();
+					countEl.textContent = String(data.count ?? current + 1);
+				}
+			} catch {
+				// Keep optimistic state - better UX than reverting
+			}
+		});
+	});
+</script>
+
+<style>
+	/* ---- base ---- */
+	.plugdash-heart {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.3rem;
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: inherit;
+		padding: 0;
+		transition: background var(--plugdash-engage-transition, 150ms ease);
+	}
+
+	/* ---- circle variant (default) ---- */
+	.plugdash-heart--circle {
+		border-radius: var(--plugdash-engage-radius, 9999px);
+		border: 1px solid var(--plugdash-engage-border, rgb(from currentColor r g b / 0.15));
+		background: var(--plugdash-engage-bg, rgb(from currentColor r g b / 0.04));
+	}
+	.plugdash-heart--circle:hover {
+		background: var(--plugdash-engage-bg-hover, rgb(from currentColor r g b / 0.08));
+	}
+
+	/* ---- pill variant ---- */
+	.plugdash-heart--pill {
+		border-radius: var(--plugdash-engage-radius, 9999px);
+		border: 1px solid var(--plugdash-engage-border, rgb(from currentColor r g b / 0.15));
+		background: var(--plugdash-engage-bg, rgb(from currentColor r g b / 0.04));
+	}
+	.plugdash-heart--pill:hover {
+		background: var(--plugdash-engage-bg-hover, rgb(from currentColor r g b / 0.08));
+	}
+
+	/* ---- ghost variant ---- */
+	.plugdash-heart--ghost {
+		border: none;
+		background: none;
+	}
+	.plugdash-heart--ghost:hover {
+		color: var(--plugdash-heart-color, var(--plugdash-accent, #6366f1));
+	}
+
+	/* ---- sizes ---- */
+	.plugdash-heart--sm {
+		width: calc(var(--plugdash-engage-size, 2rem) * 0.75);
+		height: calc(var(--plugdash-engage-size, 2rem) * 0.75);
+		font-size: 0.75rem;
+	}
+	.plugdash-heart--md {
+		width: var(--plugdash-engage-size, 2rem);
+		height: var(--plugdash-engage-size, 2rem);
+		font-size: 0.875rem;
+	}
+	.plugdash-heart--lg {
+		width: calc(var(--plugdash-engage-size, 2rem) * 1.25);
+		height: calc(var(--plugdash-engage-size, 2rem) * 1.25);
+		font-size: 1rem;
+	}
+	/* pill and ghost need auto width for the count text */
+	.plugdash-heart--pill,
+	.plugdash-heart--ghost {
+		width: auto;
+		height: auto;
+		padding: 0.25em 0.6em;
+	}
+	.plugdash-heart--pill.plugdash-heart--sm,
+	.plugdash-heart--ghost.plugdash-heart--sm {
+		padding: 0.15em 0.45em;
+	}
+	.plugdash-heart--pill.plugdash-heart--lg,
+	.plugdash-heart--ghost.plugdash-heart--lg {
+		padding: 0.3em 0.75em;
+	}
+
+	/* ---- SVG icon ---- */
+	.plugdash-heart-svg {
+		width: 1em;
+		height: 1em;
+		flex-shrink: 0;
+	}
+
+	/* ---- fill heart - hidden by default, reveals bottom-to-top ---- */
+	.plugdash-heart-fill {
+		fill: none;
+		clip-path: inset(100% 0 0 0);
+		transition: clip-path var(--plugdash-heart-fill-duration, 200ms) ease-in;
+	}
+
+	/* hearted state - fill animation */
+	.plugdash-heart[data-hearted] .plugdash-heart-fill {
+		fill: var(--plugdash-heart-color, var(--plugdash-accent, #6366f1));
+		clip-path: inset(0% 0 0 0);
+	}
+	.plugdash-heart[data-hearted] .plugdash-heart-outline {
+		stroke: var(--plugdash-heart-color, var(--plugdash-accent, #6366f1));
+	}
+
+	/* ---- count label ---- */
+	.plugdash-heart-count {
+		font-size: var(--plugdash-size-xs, 0.75rem);
+		color: var(--plugdash-muted, rgb(from currentColor r g b / 0.55));
+		font-variant-numeric: tabular-nums;
+		font-family: var(--plugdash-font-ui, "Lexend", system-ui, sans-serif);
+		line-height: 1;
+		/* hidden in circle variant (no space for text) */
+		display: none;
+	}
+	/* show count in pill and ghost variants */
+	.plugdash-heart--pill .plugdash-heart-count,
+	.plugdash-heart--ghost .plugdash-heart-count {
+		display: inline;
+	}
+
+	/* ---- theme overrides ---- */
+	[data-theme="dark"] .plugdash-heart--circle,
+	[data-theme="dark"] .plugdash-heart--pill {
+		--plugdash-engage-border: rgb(255 255 255 / 0.15);
+		--plugdash-engage-bg: rgb(255 255 255 / 0.04);
+		--plugdash-engage-bg-hover: rgb(255 255 255 / 0.08);
+	}
+	[data-theme="light"] .plugdash-heart--circle,
+	[data-theme="light"] .plugdash-heart--pill {
+		--plugdash-engage-border: rgb(0 0 0 / 0.12);
+		--plugdash-engage-bg: rgb(0 0 0 / 0.03);
+		--plugdash-engage-bg-hover: rgb(0 0 0 / 0.06);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		[data-theme="auto"] .plugdash-heart--circle,
+		[data-theme="auto"] .plugdash-heart--pill {
+			--plugdash-engage-border: rgb(255 255 255 / 0.15);
+			--plugdash-engage-bg: rgb(255 255 255 / 0.04);
+			--plugdash-engage-bg-hover: rgb(255 255 255 / 0.08);
+		}
+	}
+</style>

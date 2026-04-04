@@ -5,6 +5,7 @@ import { readtimePlugin } from "@plugdash/readtime";
 import { calloutPlugin } from "@plugdash/callout";
 import { shortlinkPlugin } from "@plugdash/shortlink";
 import { sharepostPlugin } from "@plugdash/sharepost";
+import { heartpostPlugin } from "@plugdash/heartpost";
 
 export default defineConfig({
 	integrations: [
@@ -15,6 +16,7 @@ export default defineConfig({
 				calloutPlugin(),
 				shortlinkPlugin({ autoCreate: true }),
 				sharepostPlugin(),
+				heartpostPlugin(),
 			],
 		}),
 	],

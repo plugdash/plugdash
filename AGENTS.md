@@ -104,6 +104,13 @@ to all plugins without declaring any capability. ctx.kv is always present.
 `write:routes` does not exist as a capability. Routes are declared in
 definePlugin({ routes }) and need no capability declaration.
 
+// confirmed 2026-04-05 while building @plugdash/heartpost
+`routeCtx.input` for POST routes is pre-parsed JSON. The EmDash runtime
+calls `await request.json()` in emdash-runtime.ts before invoking the
+route handler. No JSON.parse() needed in the handler - cast directly:
+`const { id } = routeCtx.input as Record<string, unknown>`
+Verified in emdash-source/packages/core/src/emdash-runtime.ts lines 1793-1800.
+
 ### ctx.content.update() signature
 
 Three arguments: `ctx.content.update(collection, id, data)`

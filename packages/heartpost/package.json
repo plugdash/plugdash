@@ -1,0 +1,20 @@
+{
+	"name": "@plugdash/heartpost",
+	"version": "0.0.0",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./sandbox": "./src/sandbox-entry.ts",
+		"./HeartButton.astro": "./src/HeartButton.astro"
+	},
+	"keywords": ["emdash", "emdash-plugin", "heartpost", "like-button"],
+	"license": "MIT",
+	"peerDependencies": {
+		"emdash": "^0.1.0"
+	},
+	"devDependencies": {
+		"@plugdash/types": "workspace:*",
+		"@plugdash/testing": "workspace:*",
+		"vitest": "^2.0.0"
+	}
+}
