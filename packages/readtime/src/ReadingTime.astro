@@ -36,16 +36,18 @@ interface Props {
 	size?: "sm" | "md" | "lg"
 	theme?: "auto" | "dark" | "light"
 	showWords?: boolean
+	attribution?: boolean
 	class?: string
 }
 
 const {
 	post,
 	label = "min read",
-	variant = "badge",
+	variant = "inline",
 	size = "md",
 	theme = "auto",
 	showWords = false,
+	attribution = false,
 	class: className = "",
 } = Astro.props
 
@@ -61,22 +63,56 @@ const wordCount = typeof metadata?.wordCount === "number"
 ---
 
 {minutes !== null && (
-	<span
-		class:list={[
-			"plugdash-rt",
-			`plugdash-rt--${variant}`,
-			`plugdash-rt--${size}`,
-			className,
-		]}
-		data-theme={theme}
-		aria-label={`${minutes} ${label}${showWords && wordCount ? `, ${wordCount} words` : ""}`}
-	>
-		<span class="plugdash-rt-minutes">{minutes}</span>
-		<span class="plugdash-rt-label">&thinsp;{label}</span>
-		{showWords && wordCount !== null && (
-			<span class="plugdash-rt-words"> · {wordCount.toLocaleString()} words</span>
+	<>
+		<span
+			class:list={[
+				"plugdash-rt",
+				`plugdash-rt--${variant}`,
+				`plugdash-rt--${size}`,
+				className,
+			]}
+			data-theme={theme}
+			aria-label={`${showWords && wordCount ? `${wordCount.toLocaleString()} words, ` : ""}${minutes} ${label}`}
+		>
+			{variant === "inline" ? (
+				<>
+					{showWords && wordCount !== null && (
+						<><span class="plugdash-rt-words">{wordCount.toLocaleString()} words</span><span class="plugdash-rt-sep"> &middot; </span></>
+					)}
+					<span class="plugdash-rt-minutes">{minutes}</span>
+					<span class="plugdash-rt-label"> {label}</span>
+				</>
+			) : (
+				<>
+					<span class="plugdash-rt-minutes">{minutes}</span>
+					<span class="plugdash-rt-label">&thinsp;{label}</span>
+					{showWords && wordCount !== null && (
+						<span class="plugdash-rt-words"> &middot; {wordCount.toLocaleString()} words</span>
+					)}
+				</>
+			)}
+		</span>
+		{attribution && (
+			<a
+				href="https://plugdash.dev"
+				class="plugdash-attribution"
+				target="_blank"
+				rel="noopener noreferrer"
+				aria-label="Built with PlugDash"
+			>
+				<svg class="plugdash-attribution-logo" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M56,64v96a32,32,0,0,0,32,32h80a32,32,0,0,0,32-32V64Z" fill="currentColor" opacity="0.2"/>
+					<line x1="168" y1="16" x2="168" y2="64" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+					<path d="M88,16V64" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+					<path d="M128,192v48" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+					<path d="M32,64H224" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+					<path d="M56,64v96a32,32,0,0,0,32,32h80a32,32,0,0,0,32-32V64" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+					<polyline points="132 160 144 128 112 128 124 96" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+				</svg>
+				<span class="plugdash-attribution-text">plugdash</span>
+			</a>
 		)}
-	</span>
+	</>
 )}
 
 <style>
@@ -122,7 +158,14 @@ const wordCount = typeof metadata?.wordCount === "number"
 
 	/* inline - no background, sits in text flow */
 	.plugdash-rt--inline {
-		/* inherits surrounding text colour at 55% opacity */
+		background: none;
+		border: none;
+		padding: 0;
+		color: var(--plugdash-muted, rgb(from currentColor r g b / 0.55));
+		font-size: var(--plugdash-rt-size, var(--plugdash-size-sm, 0.875rem));
+	}
+	.plugdash-rt--inline .plugdash-rt-sep {
+		opacity: 0.5;
 	}
 
 	/* minimal - no background, slightly smaller */
@@ -154,5 +197,35 @@ const wordCount = typeof metadata?.wordCount === "number"
 			--plugdash-rt-bg: rgb(255 255 255 / 0.06);
 			--plugdash-rt-border: rgb(255 255 255 / 0.1);
 		}
+	}
+
+	/* ---- attribution ---- */
+	.plugdash-attribution {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		margin-left: auto;
+		text-decoration: none;
+		opacity: 0.45;
+		transition: opacity 0.15s;
+	}
+	.plugdash-attribution:hover {
+		opacity: 1;
+	}
+	.plugdash-attribution-logo {
+		width: 13px;
+		height: 13px;
+		color: var(--plugdash-muted, rgb(from currentColor r g b / 0.55));
+		transition: color var(--plugdash-transition, 150ms ease);
+	}
+	.plugdash-attribution:hover .plugdash-attribution-logo {
+		color: var(--plugdash-accent, #6366f1);
+	}
+	.plugdash-attribution-text {
+		font-size: 10px;
+		letter-spacing: 0.04em;
+		font-weight: 400;
+		color: var(--plugdash-muted, rgb(from currentColor r g b / 0.55));
+		font-family: var(--plugdash-font-ui, "Lexend", system-ui, sans-serif);
 	}
 </style>
