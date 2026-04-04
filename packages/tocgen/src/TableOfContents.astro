@@ -1,0 +1,86 @@
+---
+interface TocEntry {
+	id: string;
+	text: string;
+	level: 2 | 3 | 4;
+	children: TocEntry[];
+}
+
+interface Props {
+	post: Record<string, unknown>;
+	maxDepth?: 2 | 3 | 4;
+	sticky?: boolean;
+	class?: string;
+}
+
+const {
+	post,
+	maxDepth = 3,
+	sticky = false,
+	class: className = "",
+} = Astro.props;
+
+const data = post?.data as Record<string, unknown> | undefined;
+const metadata = data?.metadata as Record<string, unknown> | undefined;
+const tocgen = metadata?.tocgen as { entries: TocEntry[] } | undefined;
+const entries = tocgen?.entries ?? [];
+
+function renderEntries(items: TocEntry[], depth: number): string {
+	if (depth > maxDepth || items.length === 0) return "";
+	return `<ul>${items
+		.map(
+			(e) =>
+				`<li><a href="#${e.id}">${e.text}</a>${e.children.length ? renderEntries(e.children, depth + 1) : ""}</li>`,
+		)
+		.join("")}</ul>`;
+}
+---
+
+{
+	entries.length > 0 && (
+		<nav
+			class={`plugdash-toc ${sticky ? "plugdash-toc--sticky" : ""} ${className}`.trim()}
+			aria-label="Table of contents"
+			set:html={renderEntries(entries, 2)}
+		/>
+	)
+}
+
+<style>
+	.plugdash-toc {
+		font-family: var(--plugdash-font-ui, "Lexend", system-ui, sans-serif);
+		font-size: var(--plugdash-toc-size, 0.875rem);
+		line-height: var(--plugdash-toc-line-height, 1.6);
+	}
+
+	.plugdash-toc--sticky {
+		position: sticky;
+		top: var(--plugdash-toc-top, 2rem);
+		max-height: var(--plugdash-toc-max-height, calc(100vh - 4rem));
+		overflow-y: auto;
+	}
+
+	.plugdash-toc ul {
+		list-style: none;
+		padding-left: var(--plugdash-toc-indent, 1rem);
+		margin: 0;
+	}
+
+	.plugdash-toc > ul {
+		padding-left: 0;
+	}
+
+	.plugdash-toc li {
+		margin: 0;
+	}
+
+	.plugdash-toc a {
+		color: var(--plugdash-toc-color, inherit);
+		text-decoration: none;
+		transition: color var(--plugdash-transition, 150ms ease);
+	}
+
+	.plugdash-toc a:hover {
+		color: var(--plugdash-toc-hover, var(--plugdash-accent, #6366f1));
+	}
+</style>

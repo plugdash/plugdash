@@ -1,0 +1,21 @@
+{
+	"name": "@plugdash/tocgen",
+	"version": "0.0.0",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./sandbox": "./src/sandbox-entry.ts",
+		"./TableOfContents.astro": "./src/TableOfContents.astro"
+	},
+	"keywords": ["emdash", "emdash-plugin", "tocgen", "table-of-contents"],
+	"license": "MIT",
+	"peerDependencies": {
+		"emdash": "^0.1.0"
+	},
+	"devDependencies": {
+		"@plugdash/types": "workspace:*",
+		"@plugdash/testing": "workspace:*",
+		"@portabletext/types": "^2.0.0",
+		"vitest": "^2.0.0"
+	}
+}

@@ -1,0 +1,21 @@
+{
+	"name": "tocgen",
+	"tagline": "Table of contents from Portable Text headings",
+	"wordpressEquivalent": "Table of Contents Plus",
+	"npmPackage": "@plugdash/tocgen",
+	"capabilities": "read:content, write:content",
+	"hooks": "content:afterSave",
+	"status": "beta",
+	"installCommand": "npm install @plugdash/tocgen",
+	"configExample": "import { defineConfig } from \"astro/config\";\nimport emdash from \"emdash\";\nimport { tocgenPlugin } from \"@plugdash/tocgen\";\n\nexport default defineConfig({\n\tintegrations: [\n\t\temdash({\n\t\t\tplugins: [tocgenPlugin()],\n\t\t}),\n\t],\n});",
+	"companionComponent": "TableOfContents.astro",
+	"companionImport": "import TableOfContents from \"@plugdash/tocgen/TableOfContents.astro\"",
+	"companionUsage": "<TableOfContents post={post} sticky />",
+	"metadataWritten": "post.data.metadata.tocgen.entries, post.data.metadata.tocgen.generatedAt",
+	"configOptions": [
+		{ "name": "minHeadings", "type": "number", "default": "3", "description": "Minimum headings required to generate a TOC" },
+		{ "name": "maxDepth", "type": "2|3|4", "default": "3", "description": "Deepest heading level to include" },
+		{ "name": "collections", "type": "string[]", "default": "all", "description": "Limit processing to specific collections" }
+	],
+	"pairs": "readtime"
+}

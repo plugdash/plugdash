@@ -13,6 +13,7 @@ All packages published to npm under `@plugdash/`.
 | [@plugdash/shortlink](./packages/shortlink) | Short URLs for EmDash content on publish | `read:content`, `write:content` | beta |
 | [@plugdash/sharepost](./packages/sharepost) | Share buttons without 200KB of JavaScript | `read:content`, `write:content` | beta |
 | [@plugdash/heartpost](./packages/heartpost) | Heart button with KV-backed per-post counter | `read:content`, `write:content` | beta |
+| [@plugdash/tocgen](./packages/tocgen) | Table of contents from Portable Text headings | `read:content`, `write:content` | beta |
 | [@plugdash/engage](./packages/engage) | Heart + share + copy in one import | none (convenience package) | beta |
 
 ## Development
