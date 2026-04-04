@@ -172,15 +172,34 @@ interface ContentHookEvent {
 System fields are at **top level**. Custom fields are under **`data`**:
 
 ```typescript
+// System fields — top level on event.content
 event.content.id; // ✅ top level
 event.content.status; // ✅ top level — "published"|"draft"|"archived"|"scheduled"
 event.content.slug; // ✅ top level
-event.content.data.body; // ✅ nested under data
-event.content.data.metadata; // ✅ nested under data
+event.content.createdAt; // ✅ top level
+event.content.updatedAt; // ✅ top level
+event.content.publishedAt; // ✅ top level
 
+// Custom fields — under event.content.data
+event.content.data.title; // ✅ nested under data — NOT a system field
+event.content.data.body; // ✅ nested under data — Portable Text array
+event.content.data.metadata; // ✅ nested under data — metadata object (read-merge-write)
+event.content.data.[any]; // ✅ all user-defined fields live here
+
+// Collection is on the event itself, not on content
+event.collection; // ✅ on the event object
+
+// Common mistakes
+event.content.title; // ❌ WRONG — title is under data, not top level
 event.content.body; // ❌ WRONG — does not exist at top level
 event.content.metadata; // ❌ WRONG — does not exist at top level
 ```
+
+// confirmed 2026-04-05 while building @plugdash/sharepost
+`title` is a custom data field, not a system field. CLI reads `item.data?.title`,
+repository reads `newData.title` where `newData = { ...original.data }`,
+content handler tests create items with `data: { title: "Hello World" }`.
+Every plugin that needs the post title must read `event.content.data.title`.
 
 ### standard plugins cannot access descriptor options at runtime
 

@@ -4,6 +4,7 @@ import { sqlite } from "emdash/db";
 import { readtimePlugin } from "@plugdash/readtime";
 import { calloutPlugin } from "@plugdash/callout";
 import { shortlinkPlugin } from "@plugdash/shortlink";
+import { sharepostPlugin } from "@plugdash/sharepost";
 
 export default defineConfig({
 	integrations: [
@@ -13,6 +14,7 @@ export default defineConfig({
 				readtimePlugin({ collections: ["posts"] }),
 				calloutPlugin(),
 				shortlinkPlugin({ autoCreate: true }),
+				sharepostPlugin(),
 			],
 		}),
 	],
