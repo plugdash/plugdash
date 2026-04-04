@@ -37,6 +37,22 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9
 
+  packages/engage:
+    dependencies:
+      '@plugdash/heartpost':
+        specifier: workspace:*
+        version: link:../heartpost
+      '@plugdash/sharepost':
+        specifier: workspace:*
+        version: link:../sharepost
+      '@plugdash/shortlink':
+        specifier: workspace:*
+        version: link:../shortlink
+    devDependencies:
+      vitest:
+        specifier: '*'
+        version: 2.1.9
+
   packages/heartpost:
     dependencies:
       emdash:
