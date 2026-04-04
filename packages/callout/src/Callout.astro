@@ -1,0 +1,171 @@
+---
+export interface Props {
+	/** Block data from PortableText auto-wiring */
+	node?: {
+		variant?: string;
+		title?: string;
+		body?: string;
+		icon?: boolean;
+	};
+	/** Direct-import props */
+	variant?: "info" | "warning" | "tip" | "danger";
+	title?: string;
+	body?: string;
+	icon?: boolean;
+	theme?: "auto" | "dark" | "light";
+	class?: string;
+}
+
+const {
+	node,
+	variant: variantProp,
+	title: titleProp,
+	body: bodyProp,
+	icon: iconProp,
+	theme = "auto",
+	class: className,
+} = Astro.props;
+
+const VALID_VARIANTS = new Set(["info", "warning", "tip", "danger"]);
+
+const rawVariant = variantProp ?? node?.variant ?? "info";
+const variant = VALID_VARIANTS.has(rawVariant) ? rawVariant : "info";
+const title = titleProp ?? node?.title;
+const body = bodyProp ?? node?.body ?? "";
+const showIcon = iconProp ?? node?.icon ?? true;
+
+if (!body) return;
+
+const classes = [
+	"plugdash-callout",
+	`plugdash-callout--${variant}`,
+	theme !== "auto" ? `plugdash-callout--${theme}` : "",
+	className ?? "",
+].filter(Boolean).join(" ");
+---
+
+<aside class={classes} role="note">
+	{showIcon && (
+		<span class="plugdash-callout__icon" aria-hidden="true">
+			{variant === "info" && (
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="12" cy="12" r="10" />
+					<path d="M12 16v-4" />
+					<path d="M12 8h.01" />
+				</svg>
+			)}
+			{variant === "warning" && (
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+					<path d="M12 9v4" />
+					<path d="M12 17h.01" />
+				</svg>
+			)}
+			{variant === "tip" && (
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+					<path d="M9 18h6" />
+					<path d="M10 22h4" />
+				</svg>
+			)}
+			{variant === "danger" && (
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" />
+					<path d="m15 9-6 6" />
+					<path d="m9 9 6 6" />
+				</svg>
+			)}
+		</span>
+	)}
+	<div class="plugdash-callout__content">
+		{title && <p class="plugdash-callout__title">{title}</p>}
+		<p class="plugdash-callout__body">{body}</p>
+	</div>
+</aside>
+
+<style>
+	.plugdash-callout {
+		--_accent: var(--plugdash-callout-info-accent, #3b82f6);
+		--_bg: var(--plugdash-callout-info-bg, rgb(from var(--_accent) r g b / 0.08));
+
+		display: flex;
+		gap: 0.75rem;
+		padding: var(--plugdash-callout-padding, 1rem 1.25rem);
+		border-left: var(--plugdash-callout-border-width, 3px) solid var(--_accent);
+		border-radius: var(--plugdash-callout-radius, 6px);
+		background: var(--_bg);
+		font-family: var(--plugdash-callout-font, var(--plugdash-font-ui, "Lexend", system-ui, sans-serif));
+		line-height: 1.6;
+		margin: 1.5rem 0;
+	}
+
+	/* variant accents */
+	.plugdash-callout--info {
+		--_accent: var(--plugdash-callout-info-accent, #3b82f6);
+		--_bg: var(--plugdash-callout-info-bg, rgb(from var(--_accent) r g b / 0.08));
+	}
+
+	.plugdash-callout--warning {
+		--_accent: var(--plugdash-callout-warning-accent, #f59e0b);
+		--_bg: var(--plugdash-callout-warning-bg, rgb(from var(--_accent) r g b / 0.08));
+	}
+
+	.plugdash-callout--tip {
+		--_accent: var(--plugdash-callout-tip-accent, #22c55e);
+		--_bg: var(--plugdash-callout-tip-bg, rgb(from var(--_accent) r g b / 0.08));
+	}
+
+	.plugdash-callout--danger {
+		--_accent: var(--plugdash-callout-danger-accent, #ef4444);
+		--_bg: var(--plugdash-callout-danger-bg, rgb(from var(--_accent) r g b / 0.08));
+	}
+
+	/* icon */
+	.plugdash-callout__icon {
+		flex-shrink: 0;
+		width: var(--plugdash-callout-icon-size, 20px);
+		height: var(--plugdash-callout-icon-size, 20px);
+		color: var(--_accent);
+		margin-top: 0.15rem;
+	}
+
+	.plugdash-callout__icon svg {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+
+	/* content */
+	.plugdash-callout__content {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.plugdash-callout__title {
+		margin: 0 0 0.25rem;
+		font-weight: var(--plugdash-callout-title-weight, 600);
+		font-size: var(--plugdash-size-md, 1rem);
+		color: var(--_accent);
+	}
+
+	.plugdash-callout__body {
+		margin: 0;
+		font-size: var(--plugdash-size-sm, 0.875rem);
+		white-space: pre-wrap;
+	}
+
+	/* theme overrides */
+	.plugdash-callout--dark {
+		color: #e2e8f0;
+	}
+
+	.plugdash-callout--light {
+		color: #1e293b;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.plugdash-callout:not(.plugdash-callout--light) {
+			color: #e2e8f0;
+		}
+	}
+</style>

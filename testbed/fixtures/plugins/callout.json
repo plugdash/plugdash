@@ -1,0 +1,17 @@
+{
+	"name": "callout",
+	"tagline": "Callout blocks for EmDash - the block type WordPress themes always hacked with shortcodes",
+	"wordpressEquivalent": null,
+	"npmPackage": "@plugdash/callout",
+	"capabilities": "none",
+	"hooks": "none",
+	"pluginType": "native",
+	"status": "beta",
+	"installCommand": "npm install @plugdash/callout",
+	"configExample": "import { defineConfig } from \"astro/config\";\nimport emdash from \"emdash\";\nimport { calloutPlugin } from \"@plugdash/callout\";\n\nexport default defineConfig({\n\tintegrations: [\n\t\temdash({\n\t\t\tplugins: [calloutPlugin()],\n\t\t}),\n\t],\n});",
+	"variants": ["info", "warning", "tip", "danger"],
+	"componentImport": "import Callout from \"@plugdash/callout/Callout.astro\"",
+	"componentUsage": "<Callout variant=\"warning\" title=\"Heads up\" body=\"This feature is experimental.\" />",
+	"cssOverrideExample": ":root {\n\t--plugdash-callout-info-accent: #2563eb;\n\t--plugdash-callout-radius: 0;\n\t--plugdash-callout-border-width: 4px;\n}",
+	"pairs": "codeblock"
+}

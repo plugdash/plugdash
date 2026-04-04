@@ -1,0 +1,21 @@
+{
+	"name": "@plugdash/callout",
+	"version": "0.0.0",
+	"description": "Callout blocks for EmDash - the block type WordPress themes always hacked with shortcodes",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./astro": "./src/astro/index.ts",
+		"./Callout.astro": "./src/Callout.astro"
+	},
+	"keywords": ["emdash", "emdash-plugin", "callout", "admonition"],
+	"license": "MIT",
+	"peerDependencies": {
+		"emdash": "^0.1.0"
+	},
+	"devDependencies": {
+		"@plugdash/types": "workspace:*",
+		"@plugdash/testing": "workspace:*",
+		"vitest": "^2.0.0"
+	}
+}

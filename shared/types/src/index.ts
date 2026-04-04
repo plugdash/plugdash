@@ -246,4 +246,40 @@ export interface PluginDescriptor<TOptions = Record<string, unknown>> {
 	storage?: Record<string, { indexes: string[] }>;
 	adminPages?: Array<{ path: string; label: string; icon?: string }>;
 	adminWidgets?: Array<{ id: string; title: string; size?: string }>;
+	/** Module path for site-side block components (native plugins only). */
+	componentsEntry?: string;
+}
+
+// ── Native Plugin Definition ──
+
+export interface PortableTextBlockField {
+	type: string;
+	action_id: string;
+	label: string;
+	placeholder?: string;
+	initial_value?: unknown;
+	multiline?: boolean;
+	options?: Array<{ label: string; value: string }>;
+	min?: number;
+	max?: number;
+}
+
+export interface PortableTextBlockConfig {
+	type: string;
+	label: string;
+	icon?: string;
+	description?: string;
+	placeholder?: string;
+	fields?: PortableTextBlockField[];
+}
+
+export interface NativePluginDefinition {
+	id: string;
+	version: string;
+	capabilities?: PluginCapability[];
+	admin?: {
+		portableTextBlocks?: PortableTextBlockConfig[];
+	};
+	hooks?: Record<string, HookConfig<(...args: any[]) => Promise<any>>>;
+	routes?: Record<string, { public?: boolean; handler: (...args: any[]) => Promise<any> }>;
 }
