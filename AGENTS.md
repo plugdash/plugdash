@@ -95,8 +95,14 @@ These supersede anything in plugin specs if there is a conflict.
 
 `write:metadata` does not exist. Use `write:content` for any plugin that
 calls `ctx.content.update()`. Confirmed capabilities that exist:
-`read:content`, `write:content`, `read:kv`, `write:kv`, `read:media`,
+`read:content`, `write:content`, `read:media`,
 `write:media`, `network:[hostname]`
+
+// confirmed 2026-04-05 while building @plugdash/shortlink
+`read:kv` and `write:kv` do not exist as capabilities. KV is auto-available
+to all plugins without declaring any capability. ctx.kv is always present.
+`write:routes` does not exist as a capability. Routes are declared in
+definePlugin({ routes }) and need no capability declaration.
 
 ### ctx.content.update() signature
 
@@ -330,7 +336,8 @@ STAGE 5 — INTEGRATION TESTS
 Write packages/[name]/tests/integration.test.ts
 Use EmDashTestClient from @plugdash/testing.
 If testbed is not running, write comprehensive mocks and note this.
-Register plugin in testbed/astro.config.mjs.
+Register plugin in testbed/astro.config.mjs — this file exists, register
+every new plugin here as part of Stage 5.
 Stop. Wait for approval.
 
 STAGE 5b — FUNCTIONAL TESTS (e2e)

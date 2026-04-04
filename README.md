@@ -10,6 +10,7 @@ All packages published to npm under `@plugdash/`.
 | ------- | ----------- | ------------ | ------ |
 | [@plugdash/readtime](./packages/readtime) | Word count and reading time on publish | `read:content`, `write:content` | beta |
 | [@plugdash/callout](./packages/callout) | Callout block type (info, warning, tip, danger) | none (native) | beta |
+| [@plugdash/shortlink](./packages/shortlink) | Short URLs for EmDash content on publish | `read:content`, `write:content` | beta |
 
 ## Development
 

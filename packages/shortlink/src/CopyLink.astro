@@ -1,0 +1,210 @@
+---
+interface Props {
+	post: Record<string, unknown>;
+	showUrl?: boolean;
+	variant?: "circle" | "pill" | "ghost";
+	size?: "sm" | "md" | "lg";
+	theme?: "auto" | "dark" | "light";
+	class?: string;
+}
+const {
+	post,
+	showUrl = false,
+	variant = "circle",
+	size = "md",
+	theme = "auto",
+	class: className = "",
+} = Astro.props;
+const data = post?.data as Record<string, unknown> | undefined;
+const metadata = data?.metadata as Record<string, unknown> | undefined;
+const shortlink = metadata?.shortlink as
+	| { url?: string; code?: string; fullUrl?: string }
+	| undefined;
+const url = shortlink?.fullUrl ?? shortlink?.url;
+---
+
+{
+	url && (
+		<button
+			class={`plugdash-copy plugdash-copy--${variant} plugdash-copy--${size} plugdash-theme--${theme} ${className}`}
+			data-copy={url}
+			data-theme={theme}
+			aria-label="Copy short link"
+			type="button"
+		>
+			{/* copy icon */}
+			<svg
+				class="plugdash-copy-icon"
+				width="16"
+				height="16"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				aria-hidden="true"
+			>
+				<rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+				<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+			</svg>
+			{/* check icon - shown on copy */}
+			<svg
+				class="plugdash-copy-check"
+				width="16"
+				height="16"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2.5"
+				aria-hidden="true"
+			>
+				<polyline points="20 6 9 17 4 12" />
+			</svg>
+			{showUrl && <span class="plugdash-copy-url">{url}</span>}
+		</button>
+	)
+}
+
+<script>
+	document.querySelectorAll(".plugdash-copy").forEach((btn) => {
+		btn.addEventListener("click", async () => {
+			const url = btn.getAttribute("data-copy");
+			if (!url) return;
+			await navigator.clipboard.writeText(url);
+			btn.setAttribute("data-copied", "true");
+			setTimeout(
+				() => btn.removeAttribute("data-copied"),
+				parseInt(
+					getComputedStyle(btn)
+						.getPropertyValue("--plugdash-copy-success-duration")
+						.replace("ms", ""),
+				) || 2000,
+			);
+		});
+	});
+</script>
+
+<style>
+	.plugdash-copy {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.3rem;
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: inherit;
+		font-family: var(--plugdash-font-ui, "Lexend", system-ui, sans-serif);
+		transition: background var(--plugdash-engage-transition, 150ms ease);
+	}
+
+	/* circle variant - default, matches engagement bar */
+	.plugdash-copy--circle {
+		width: var(--plugdash-engage-size, 2rem);
+		height: var(--plugdash-engage-size, 2rem);
+		border-radius: var(--plugdash-engage-radius, 9999px);
+		border: 1px solid
+			var(
+				--plugdash-engage-border,
+				rgb(from currentColor r g b / 0.15)
+			);
+		background: var(
+			--plugdash-engage-bg,
+			rgb(from currentColor r g b / 0.04)
+		);
+	}
+	.plugdash-copy--circle:hover {
+		background: var(
+			--plugdash-engage-bg-hover,
+			rgb(from currentColor r g b / 0.08)
+		);
+	}
+
+	/* pill variant */
+	.plugdash-copy--pill {
+		padding: 0.25rem 0.75rem;
+		border-radius: var(--plugdash-radius-full, 9999px);
+		border: 1px solid
+			var(
+				--plugdash-engage-border,
+				rgb(from currentColor r g b / 0.15)
+			);
+		background: var(
+			--plugdash-engage-bg,
+			rgb(from currentColor r g b / 0.04)
+		);
+		font-size: var(--plugdash-size-sm, 0.875rem);
+	}
+	.plugdash-copy--pill:hover {
+		background: var(
+			--plugdash-engage-bg-hover,
+			rgb(from currentColor r g b / 0.08)
+		);
+	}
+
+	/* ghost variant */
+	.plugdash-copy--ghost {
+		padding: 0.25rem;
+		border: none;
+		background: none;
+		opacity: 0.7;
+	}
+	.plugdash-copy--ghost:hover {
+		opacity: 1;
+	}
+
+	/* sizes */
+	.plugdash-copy--sm {
+		width: 1.5rem;
+		height: 1.5rem;
+	}
+	.plugdash-copy--sm svg {
+		width: 12px;
+		height: 12px;
+	}
+	.plugdash-copy--md {
+		width: var(--plugdash-engage-size, 2rem);
+		height: var(--plugdash-engage-size, 2rem);
+	}
+	.plugdash-copy--lg {
+		width: 2.5rem;
+		height: 2.5rem;
+	}
+	.plugdash-copy--lg svg {
+		width: 20px;
+		height: 20px;
+	}
+
+	/* pill/ghost size overrides - don't constrain width */
+	.plugdash-copy--pill.plugdash-copy--sm,
+	.plugdash-copy--pill.plugdash-copy--md,
+	.plugdash-copy--pill.plugdash-copy--lg,
+	.plugdash-copy--ghost.plugdash-copy--sm,
+	.plugdash-copy--ghost.plugdash-copy--md,
+	.plugdash-copy--ghost.plugdash-copy--lg {
+		width: auto;
+		height: auto;
+	}
+
+	/* check icon hidden by default, shown on copy */
+	.plugdash-copy-check {
+		display: none;
+	}
+	.plugdash-copy[data-copied="true"] .plugdash-copy-icon {
+		display: none;
+	}
+	.plugdash-copy[data-copied="true"] .plugdash-copy-check {
+		display: block;
+		color: var(--plugdash-copy-success-color, #22c55e);
+	}
+
+	/* URL text */
+	.plugdash-copy-url {
+		font-size: var(--plugdash-size-xs, 0.75rem);
+		color: var(--plugdash-muted, rgb(from currentColor r g b / 0.55));
+		font-family: var(
+			--plugdash-font-mono,
+			"IBM Plex Mono",
+			monospace
+		);
+	}
+</style>

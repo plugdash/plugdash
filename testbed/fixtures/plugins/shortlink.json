@@ -1,0 +1,18 @@
+{
+	"name": "shortlink",
+	"tagline": "Short URLs for EmDash content on publish",
+	"wordpressEquivalent": "Pretty Links (basic tier)",
+	"npmPackage": "@plugdash/shortlink",
+	"capabilities": "read:content, write:content",
+	"hooks": "content:afterSave",
+	"status": "beta",
+	"installCommand": "npm install @plugdash/shortlink",
+	"configExample": "import { defineConfig } from \"astro/config\";\nimport emdash from \"emdash\";\nimport { shortlinkPlugin } from \"@plugdash/shortlink\";\n\nexport default defineConfig({\n\tintegrations: [\n\t\temdash({\n\t\t\tplugins: [shortlinkPlugin()],\n\t\t}),\n\t],\n});",
+	"pairs": "clickcount",
+	"highlights": [
+		"Auto-creates /s/[code] short URLs on publish",
+		"CopyLink.astro companion with copy-to-clipboard and check animation",
+		"Block Kit admin page for managing links and creating custom slugs",
+		"Reverse index for O(1) duplicate checks on re-publish"
+	]
+}

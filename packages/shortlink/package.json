@@ -1,0 +1,20 @@
+{
+	"name": "@plugdash/shortlink",
+	"version": "0.0.0",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./sandbox": "./src/sandbox-entry.ts",
+		"./CopyLink.astro": "./src/CopyLink.astro"
+	},
+	"keywords": ["emdash", "emdash-plugin", "shortlink", "pretty-links"],
+	"license": "MIT",
+	"peerDependencies": {
+		"emdash": "^0.1.0"
+	},
+	"devDependencies": {
+		"@plugdash/types": "workspace:*",
+		"@plugdash/testing": "workspace:*",
+		"vitest": "^2.0.0"
+	}
+}

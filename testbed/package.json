@@ -1,0 +1,16 @@
+{
+	"name": "@plugdash/testbed",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "astro dev",
+		"build": "astro build"
+	},
+	"dependencies": {
+		"astro": "^4.0.0",
+		"emdash": "^0.1.0",
+		"@plugdash/readtime": "workspace:*",
+		"@plugdash/callout": "workspace:*",
+		"@plugdash/shortlink": "workspace:*"
+	}
+}
