@@ -5,7 +5,7 @@
     "build": "pnpm -r build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "oxlint .",
+    "lint": "oxlint --ignore-pattern '*.astro' .",
     "format": "oxfmt .",
     "changeset": "changeset",
     "version-packages": "changeset version",

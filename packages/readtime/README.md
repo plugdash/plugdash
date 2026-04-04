@@ -54,6 +54,7 @@ const { wordCount, readingTimeMinutes } = post.data.metadata ?? {};
 
 ## What it does
 
+- Ships `ReadingTime.astro` - drop-in companion component with four variants
 - Fires on `content:afterSave` when status is `published`
 - Extracts plain text from Portable Text body blocks
 - Counts words (splits on whitespace)
@@ -65,6 +66,6 @@ const { wordCount, readingTimeMinutes } = post.data.metadata ?? {};
 
 - Does not calculate reading time for drafts, archived, or scheduled content
 - Does not count words in images, embeds, or other non-text block types
-- Does not provide a frontend component - use the metadata values directly
+- Does not provide server-side rendering of the component - it is a client Astro component
 - Does not support per-post WPM overrides
 - Does not account for code blocks or block quotes differently

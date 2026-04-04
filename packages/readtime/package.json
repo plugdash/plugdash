@@ -4,7 +4,8 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
-		"./sandbox": "./src/sandbox-entry.ts"
+		"./sandbox": "./src/sandbox-entry.ts",
+		"./ReadingTime.astro": "./src/ReadingTime.astro"
 	},
 	"keywords": ["emdash", "emdash-plugin"],
 	"license": "MIT",

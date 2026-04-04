@@ -1,0 +1,158 @@
+---
+/**
+ * @plugdash/readtime - ReadingTime.astro
+ *
+ * Renders estimated reading time from post metadata written by the readtime plugin.
+ * Renders nothing if readingTimeMinutes is not present (plugin not installed or
+ * content not yet published).
+ *
+ * Usage:
+ *   import ReadingTime from "@plugdash/readtime/ReadingTime.astro"
+ *   <ReadingTime post={post} />
+ *
+ * Props:
+ *   post      - EmDash content item (required)
+ *   label     - text after the number, default "min read"
+ *   variant   - "badge" | "pill" | "inline" | "minimal", default "badge"
+ *   size      - "sm" | "md" | "lg", default "md"
+ *   theme     - "auto" | "dark" | "light", default "auto"
+ *   showWords - also show word count, default false
+ *   class     - additional CSS class
+ *
+ * Customisation via CSS custom properties:
+ *   --plugdash-rt-color       text colour (default: --plugdash-muted)
+ *   --plugdash-rt-size        font size (default: per size prop)
+ *   --plugdash-rt-font        font family (default: Lexend)
+ *   --plugdash-rt-bg          background (badge/pill only)
+ *   --plugdash-rt-border      border colour (badge only)
+ *   --plugdash-rt-radius      border radius (badge/pill)
+ *   --plugdash-rt-padding     padding (badge/pill)
+ */
+
+interface Props {
+	post: Record<string, unknown>
+	label?: string
+	variant?: "badge" | "pill" | "inline" | "minimal"
+	size?: "sm" | "md" | "lg"
+	theme?: "auto" | "dark" | "light"
+	showWords?: boolean
+	class?: string
+}
+
+const {
+	post,
+	label = "min read",
+	variant = "badge",
+	size = "md",
+	theme = "auto",
+	showWords = false,
+	class: className = "",
+} = Astro.props
+
+// safely navigate post.data.metadata
+const data = (post as Record<string, unknown>)?.data as Record<string, unknown> | undefined
+const metadata = data?.metadata as Record<string, unknown> | undefined
+const minutes = typeof metadata?.readingTimeMinutes === "number"
+	? metadata.readingTimeMinutes
+	: null
+const wordCount = typeof metadata?.wordCount === "number"
+	? metadata.wordCount
+	: null
+---
+
+{minutes !== null && (
+	<span
+		class:list={[
+			"plugdash-rt",
+			`plugdash-rt--${variant}`,
+			`plugdash-rt--${size}`,
+			className,
+		]}
+		data-theme={theme}
+		aria-label={`${minutes} ${label}${showWords && wordCount ? `, ${wordCount} words` : ""}`}
+	>
+		<span class="plugdash-rt-minutes">{minutes}</span>
+		<span class="plugdash-rt-label">&thinsp;{label}</span>
+		{showWords && wordCount !== null && (
+			<span class="plugdash-rt-words"> · {wordCount.toLocaleString()} words</span>
+		)}
+	</span>
+)}
+
+<style>
+	/* ---- base ---- */
+	.plugdash-rt {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0;
+		font-family: var(--plugdash-rt-font, var(--plugdash-font-ui, "Lexend", system-ui, sans-serif));
+		color: var(--plugdash-rt-color, var(--plugdash-muted, rgb(from currentColor r g b / 0.55)));
+		white-space: nowrap;
+		line-height: 1;
+	}
+
+	/* ---- sizes ---- */
+	.plugdash-rt--sm {
+		font-size: var(--plugdash-rt-size, var(--plugdash-size-xs, 0.75rem));
+	}
+	.plugdash-rt--md {
+		font-size: var(--plugdash-rt-size, var(--plugdash-size-sm, 0.875rem));
+	}
+	.plugdash-rt--lg {
+		font-size: var(--plugdash-rt-size, var(--plugdash-size-md, 1rem));
+	}
+
+	/* ---- variants ---- */
+
+	/* badge - subtle rounded rectangle, slight background */
+	.plugdash-rt--badge {
+		padding: var(--plugdash-rt-padding, 0.2em 0.55em);
+		border-radius: var(--plugdash-rt-radius, var(--plugdash-radius-sm, 4px));
+		background: var(--plugdash-rt-bg, rgb(from currentColor r g b / 0.06));
+		border: 1px solid var(--plugdash-rt-border, rgb(from currentColor r g b / 0.1));
+	}
+
+	/* pill - fully rounded */
+	.plugdash-rt--pill {
+		padding: var(--plugdash-rt-padding, 0.2em 0.7em);
+		border-radius: var(--plugdash-rt-radius, 9999px);
+		background: var(--plugdash-rt-bg, rgb(from currentColor r g b / 0.06));
+		border: 1px solid var(--plugdash-rt-border, rgb(from currentColor r g b / 0.1));
+	}
+
+	/* inline - no background, sits in text flow */
+	.plugdash-rt--inline {
+		/* inherits surrounding text colour at 55% opacity */
+	}
+
+	/* minimal - no background, slightly smaller */
+	.plugdash-rt--minimal {
+		font-size: calc(var(--plugdash-rt-size, 0.875em) * 0.9);
+		letter-spacing: 0.02em;
+	}
+
+	.plugdash-rt-words {
+		color: var(--plugdash-muted, rgb(from currentColor r g b / 0.4));
+	}
+
+	/* ---- theme overrides ---- */
+	[data-theme="dark"] .plugdash-rt--badge,
+	[data-theme="dark"] .plugdash-rt--pill {
+		--plugdash-rt-bg: rgb(255 255 255 / 0.06);
+		--plugdash-rt-border: rgb(255 255 255 / 0.1);
+	}
+	[data-theme="light"] .plugdash-rt--badge,
+	[data-theme="light"] .plugdash-rt--pill {
+		--plugdash-rt-bg: rgb(0 0 0 / 0.05);
+		--plugdash-rt-border: rgb(0 0 0 / 0.08);
+	}
+
+	/* ---- auto theme via prefers-color-scheme ---- */
+	@media (prefers-color-scheme: dark) {
+		[data-theme="auto"] .plugdash-rt--badge,
+		[data-theme="auto"] .plugdash-rt--pill {
+			--plugdash-rt-bg: rgb(255 255 255 / 0.06);
+			--plugdash-rt-border: rgb(255 255 255 / 0.1);
+		}
+	}
+</style>

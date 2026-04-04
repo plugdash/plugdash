@@ -55,10 +55,46 @@ const { wordCount, readingTimeMinutes } = post.data.metadata ?? {};
 {readingTimeMinutes && <span>{readingTimeMinutes} min read</span>}
 ```
 
+## Companion component
+
+Exported as `@plugdash/readtime/ReadingTime.astro`.
+
+Variants: `badge` (default) / `pill` / `inline` / `minimal`
+Sizes: `sm` / `md` (default) / `lg`
+Theme: `auto` (default) / `dark` / `light`
+
+Renders nothing when `readingTimeMinutes` is not present.
+
 ## What it does not do
 
 - Does not process drafts, archived, or scheduled content
 - Does not count words in images, embeds, or non-text blocks
-- Does not provide a frontend component
 - Does not support per-post WPM overrides
 - Does not differentiate code blocks or block quotes
+
+## For agents
+
+After installing @plugdash/readtime and registering it in astro.config.mjs:
+
+1. Import ReadingTime in the post layout:
+   ```
+   import ReadingTime from "@plugdash/readtime/ReadingTime.astro"
+   ```
+
+2. Add the component where reading time should display:
+   ```
+   <ReadingTime post={post} />
+   ```
+   Common placements: below post title, in post header meta, in post card.
+
+3. Optionally add CSS overrides to global.css:
+   ```
+   :root { --plugdash-rt-color: var(--muted); }
+   ```
+
+4. Publish a test post and verify it shows the reading time label.
+   If no label appears, confirm the post status is "published" (not draft).
+
+Metadata written by this plugin:
+- `post.data.metadata.readingTimeMinutes` - integer, minimum 1
+- `post.data.metadata.wordCount` - integer
