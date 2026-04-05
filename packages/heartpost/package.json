@@ -1,6 +1,7 @@
 {
 	"name": "@plugdash/heartpost",
 	"version": "0.1.0",
+	"description": "Like button for EmDash posts - readers heart your content",
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",

@@ -1,6 +1,7 @@
 {
 	"name": "@plugdash/tocgen",
 	"version": "0.1.0",
+	"description": "Auto-generated table of contents for EmDash posts",
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",

@@ -1,6 +1,7 @@
 {
 	"name": "@plugdash/readtime",
 	"version": "0.1.0",
+	"description": "Estimated reading time and word count for EmDash posts",
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
@@ -20,7 +21,7 @@
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": ["emdash", "emdash-plugin"],
+	"keywords": ["emdash", "emdash-plugin", "readtime", "reading-time", "word-count"],
 	"license": "MIT",
 	"peerDependencies": {
 		"emdash": "^0.1.0",
