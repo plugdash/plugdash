@@ -41,6 +41,18 @@ describe("createPlugin() native definition", () => {
 		expect(definition.version).toBe("0.1.0");
 	});
 
+	// Regression: EmDash's plugin list API reads capabilities/allowedHosts/
+	// storage/routes off the native createPlugin() result. If any are
+	// undefined the admin Plugin Manager crashes on `.length`. definePlugin()
+	// must fill these in.
+	it("returns a fully normalized ResolvedPlugin shape", () => {
+		const definition = createPlugin();
+		expect(definition.capabilities).toEqual([]);
+		expect(definition.allowedHosts).toEqual([]);
+		expect(definition.storage).toEqual({});
+		expect(definition.routes).toEqual({});
+	});
+
 	it("declares a single portableTextBlocks entry", () => {
 		const definition = createPlugin();
 		const blocks = definition.admin?.portableTextBlocks;

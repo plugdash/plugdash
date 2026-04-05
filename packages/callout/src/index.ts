@@ -1,9 +1,7 @@
 // @plugdash/callout - Native plugin for callout block types
 
-import type {
-	PluginDescriptor,
-	NativePluginDefinition,
-} from "@plugdash/types";
+import { definePlugin } from "emdash";
+import type { PluginDescriptor } from "@plugdash/types";
 
 export function calloutPlugin(): PluginDescriptor {
 	return {
@@ -16,8 +14,8 @@ export function calloutPlugin(): PluginDescriptor {
 	};
 }
 
-export function createPlugin(): NativePluginDefinition {
-	return {
+export function createPlugin() {
+	return definePlugin({
 		id: "callout",
 		version: "0.1.0",
 		hooks: {},
@@ -60,7 +58,7 @@ export function createPlugin(): NativePluginDefinition {
 				},
 			],
 		},
-	};
+	});
 }
 
 export default createPlugin;

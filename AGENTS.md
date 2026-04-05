@@ -137,6 +137,16 @@ createPlugin(). HookPipeline iterates plugin.hooks without a presence
 check and crashes with a TypeError when the key is absent. Even if the
 plugin declares zero hook handlers, the empty object must be present.
 
+// confirmed 2026-04-06 during plugdash.dev plugin-manager crash fix
+Native `createPlugin()` MUST wrap its return value in `definePlugin()`
+from emdash. Returning a raw object (even with `hooks: {}`) leaves
+`capabilities`, `allowedHosts`, `storage`, and `routes` undefined.
+EmDash's plugin list API reads `plugin.capabilities` directly, serializes
+it as undefined, and the admin Plugin Manager UI crashes on
+`plugin.capabilities.length`. definePlugin() normalizes all required
+ResolvedPlugin fields with sensible defaults. This is the same pattern
+the emdash CLI scaffolding uses - match it for every native plugin.
+
 // confirmed 2026-04-05 during plugdash.dev integration fixes
 Never import a `.d.ts` / declaration file at runtime (e.g.
 `import "./globals.d.ts"`). tsdown bundles the import as a real module
@@ -431,6 +441,12 @@ silently destroys keys written by other plugins.
 **10. Using spaces instead of tabs**
 oxfmt uses tabs. Any file with spaces will fail formatting check.
 Run `pnpm format` to fix before committing.
+
+**11. Returning a raw object from native createPlugin()**
+Always wrap the object in `definePlugin()` from emdash. Without it,
+capabilities/allowedHosts/storage/routes are undefined and the admin
+Plugin Manager UI crashes on `plugin.capabilities.length`. Match the
+scaffolding template.
 
 ---
 

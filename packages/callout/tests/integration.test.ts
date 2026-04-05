@@ -117,7 +117,8 @@ describe("block type definition matches block data contract", () => {
 		const definition = createPlugin();
 		const blockDef = definition.admin!.portableTextBlocks![0]!;
 		const variantField = blockDef.fields!.find((f) => f.action_id === "variant");
-		const optionValues = variantField!.options!.map((o) => o.value);
+		if (variantField?.type !== "select") throw new Error("expected select field");
+		const optionValues = variantField.options.map((o) => o.value);
 
 		expect(optionValues).toEqual(["info", "warning", "tip", "danger"]);
 	});
