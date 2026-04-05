@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/autobuild",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Fires a Cloudflare Pages, Netlify, or Vercel build hook on every publish from EmDash",
 	"type": "module",
 	"main": "./dist/index.mjs",
@@ -14,7 +14,9 @@
 			"import": "./dist/sandbox-entry.mjs"
 		}
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"build": "tsdown src/index.ts src/sandbox-entry.ts --dts.eager",
 		"test": "vitest run",
