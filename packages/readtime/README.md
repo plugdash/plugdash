@@ -28,7 +28,15 @@ export default defineConfig({
 });
 ```
 
-## Config options
+## Configuration
+
+### Admin dashboard
+
+After installing, open the EmDash admin and go to Plugins - Reading Time
+- Settings. All configuration options are available there. Changes take
+effect on the next publish - no code changes required.
+
+### astro.config.mjs
 
 Pass config at register time. Values are seeded into KV on install and
 reseeded automatically when the config in code changes.

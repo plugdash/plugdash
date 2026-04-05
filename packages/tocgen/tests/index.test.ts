@@ -4,6 +4,7 @@ import {
 	toAnchor,
 	deduplicateAnchors,
 	nestHeadings,
+	validateTocgenSettings,
 } from "../src/sandbox-entry.ts";
 import { makeContext, makeContentItem } from "@plugdash/testing";
 import type { PortableTextBlock } from "@portabletext/types";
@@ -474,5 +475,92 @@ describe("tocgen hook: content:afterSave", () => {
 
 		await expect(hook.handler(event, noContentCtx)).resolves.toBeUndefined();
 		expect(noContentCtx.log.error).toHaveBeenCalled();
+	});
+});
+
+// ── admin page ──
+
+describe("admin page", () => {
+	let ctx: ReturnType<typeof makeContext>;
+
+	beforeEach(() => {
+		ctx = makeContext();
+	});
+
+	async function invokeAdmin(input: unknown) {
+		const plugin = await import("../src/sandbox-entry.ts");
+		const handler = plugin.default.routes!.admin!.handler;
+		return handler({ input, request: { url: "http://localhost" } }, ctx);
+	}
+
+	it("page_load returns form with current config values", async () => {
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "config:minHeadings") return Promise.resolve(5);
+			if (key === "config:maxDepth") return Promise.resolve(4);
+			if (key === "config:collections") return Promise.resolve(["docs"]);
+			return Promise.resolve(null);
+		});
+		const res = await invokeAdmin({ type: "page_load" });
+		const form = res.blocks.find((b: any) => b.type === "form");
+		expect(form.fields.find((f: any) => f.action_id === "minHeadings").initial_value).toBe(5);
+		expect(form.fields.find((f: any) => f.action_id === "maxDepth").initial_value).toBe("4");
+		expect(form.fields.find((f: any) => f.action_id === "collections").initial_value).toBe("docs");
+	});
+
+	it("page_load returns default values when KV is empty", async () => {
+		const res = await invokeAdmin({ type: "page_load" });
+		const form = res.blocks.find((b: any) => b.type === "form");
+		expect(form.fields.find((f: any) => f.action_id === "minHeadings").initial_value).toBe(3);
+		expect(form.fields.find((f: any) => f.action_id === "maxDepth").initial_value).toBe("3");
+	});
+
+	it("save_settings writes valid config to KV", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { minHeadings: 5, maxDepth: "4", collections: "blog, docs" },
+		});
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:minHeadings", 5);
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:maxDepth", 4);
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:collections", ["blog", "docs"]);
+		expect(res.toast.type).toBe("success");
+	});
+
+	it("save_settings rejects invalid maxDepth", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { minHeadings: 3, maxDepth: "5", collections: "" },
+		});
+		expect(res.toast.type).toBe("error");
+		expect(ctx.kv.set).not.toHaveBeenCalled();
+	});
+
+	it("save_settings rejects minHeadings below 1", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { minHeadings: 0, maxDepth: "3", collections: "" },
+		});
+		expect(res.toast.type).toBe("error");
+		expect(ctx.kv.set).not.toHaveBeenCalled();
+	});
+});
+
+describe("validateTocgenSettings", () => {
+	it("accepts valid input", () => {
+		const r = validateTocgenSettings({ minHeadings: 3, maxDepth: "3", collections: "" });
+		expect(r.ok).toBe(true);
+		expect(r.minHeadings).toBe(3);
+		expect(r.maxDepth).toBe(3);
+		expect(r.collections).toBeNull();
+	});
+
+	it("rejects maxDepth 1", () => {
+		expect(validateTocgenSettings({ minHeadings: 3, maxDepth: "1", collections: "" }).ok).toBe(false);
+	});
+
+	it("rejects minHeadings > 10", () => {
+		expect(validateTocgenSettings({ minHeadings: 11, maxDepth: "3", collections: "" }).ok).toBe(false);
 	});
 });

@@ -412,7 +412,10 @@ export default definePlugin({
 				}
 
 				// Delete shortlink
-				if (interaction.type === "button_click") {
+				if (
+					interaction.type === "block_action" ||
+					interaction.type === "button_click"
+				) {
 					const actionId = String(interaction.action_id ?? "");
 					if (actionId.startsWith("delete_shortlink:")) {
 						const code = actionId.replace("delete_shortlink:", "");

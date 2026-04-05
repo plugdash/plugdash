@@ -23,5 +23,6 @@ export function sharepostPlugin(config?: SharepostConfig): PluginDescriptor {
 		// Options are documentation-only for standard plugins.
 		// At runtime, config is read from ctx.kv (seeded by plugin:install hook).
 		options: config as Record<string, unknown>,
+		adminPages: [{ path: "/settings", label: "Share Post", icon: "share" }],
 	};
 }

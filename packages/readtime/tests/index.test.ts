@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { extractText, calculateReadingTime } from "../src/sandbox-entry.ts";
+import {
+	extractText,
+	calculateReadingTime,
+	validateReadtimeSettings,
+} from "../src/sandbox-entry.ts";
 import { makeContext, makeContentItem } from "@plugdash/testing";
 import type { PortableTextBlock } from "@portabletext/types";
 
@@ -358,5 +362,115 @@ describe("readtime hook: content:afterSave", () => {
 		// Should be 3 (fresh calculation), not 99 or 102
 		expect(updatedData.metadata.wordCount).toBe(3);
 		expect(updatedData.metadata.readingTimeMinutes).toBe(1);
+	});
+});
+
+// ── admin page ──
+
+describe("admin page", () => {
+	let ctx: ReturnType<typeof makeContext>;
+
+	beforeEach(() => {
+		ctx = makeContext();
+	});
+
+	async function invokeAdmin(input: unknown) {
+		const plugin = await import("../src/sandbox-entry.ts");
+		const handler = plugin.default.routes!.admin!.handler;
+		return handler({ input, request: { url: "http://localhost" } }, ctx);
+	}
+
+	it("page_load returns form with current config values", async () => {
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "config:wordsPerMinute") return Promise.resolve(250);
+			if (key === "config:collections") return Promise.resolve(["blog", "notes"]);
+			return Promise.resolve(null);
+		});
+		const res = await invokeAdmin({ type: "page_load" });
+		const form = res.blocks.find((b: any) => b.type === "form");
+		const wpmField = form.fields.find((f: any) => f.action_id === "wordsPerMinute");
+		const collectionsField = form.fields.find((f: any) => f.action_id === "collections");
+		expect(wpmField.initial_value).toBe(250);
+		expect(collectionsField.initial_value).toBe("blog, notes");
+	});
+
+	it("page_load returns default values when KV is empty", async () => {
+		const res = await invokeAdmin({ type: "page_load" });
+		const form = res.blocks.find((b: any) => b.type === "form");
+		const wpmField = form.fields.find((f: any) => f.action_id === "wordsPerMinute");
+		const collectionsField = form.fields.find((f: any) => f.action_id === "collections");
+		expect(wpmField.initial_value).toBe(238);
+		expect(collectionsField.initial_value).toBe("");
+	});
+
+	it("save_settings writes valid config to KV", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { wordsPerMinute: 250, collections: "blog, notes" },
+		});
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:wordsPerMinute", 250);
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:collections", ["blog", "notes"]);
+		expect(res.toast.type).toBe("success");
+	});
+
+	it("save_settings stores null for collections when blank", async () => {
+		await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { wordsPerMinute: 238, collections: "" },
+		});
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:collections", null);
+	});
+
+	it("save_settings returns error feedback on invalid wordsPerMinute", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { wordsPerMinute: 50, collections: "" },
+		});
+		expect(res.toast.type).toBe("error");
+		expect(ctx.kv.set).not.toHaveBeenCalled();
+	});
+
+	it("save_settings does not write when wordsPerMinute exceeds max", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { wordsPerMinute: 1000, collections: "" },
+		});
+		expect(res.toast.type).toBe("error");
+		expect(ctx.kv.set).not.toHaveBeenCalled();
+	});
+});
+
+describe("validateReadtimeSettings", () => {
+	it("accepts valid input", () => {
+		const r = validateReadtimeSettings({ wordsPerMinute: 250, collections: "blog" });
+		expect(r.ok).toBe(true);
+		expect(r.wordsPerMinute).toBe(250);
+		expect(r.collections).toEqual(["blog"]);
+	});
+
+	it("coerces string numbers", () => {
+		const r = validateReadtimeSettings({ wordsPerMinute: "300", collections: "" });
+		expect(r.ok).toBe(true);
+		expect(r.wordsPerMinute).toBe(300);
+		expect(r.collections).toBeNull();
+	});
+
+	it("rejects non-integer wpm", () => {
+		const r = validateReadtimeSettings({ wordsPerMinute: 238.5, collections: "" });
+		expect(r.ok).toBe(false);
+	});
+
+	it("rejects wpm below 100", () => {
+		const r = validateReadtimeSettings({ wordsPerMinute: 99, collections: "" });
+		expect(r.ok).toBe(false);
+	});
+
+	it("rejects wpm above 500", () => {
+		const r = validateReadtimeSettings({ wordsPerMinute: 501, collections: "" });
+		expect(r.ok).toBe(false);
 	});
 });

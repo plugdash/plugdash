@@ -486,3 +486,139 @@ describe("custom shortlink creation", () => {
 		expect(ctx.kv.set).not.toHaveBeenCalled();
 	});
 });
+
+// ── admin: save_settings ──
+
+describe("admin save_settings", () => {
+	let ctx: ReturnType<typeof makeContext>;
+
+	beforeEach(() => {
+		ctx = makeContext();
+	});
+
+	async function callAdmin(interaction: Record<string, unknown>) {
+		const plugin = await import("../src/sandbox-entry.ts");
+		const route = plugin.default.routes!.admin;
+		return route.handler(
+			{
+				input: interaction,
+				request: new Request(
+					"https://example.com/_emdash/api/plugins/shortlink/admin",
+				),
+			},
+			ctx,
+		);
+	}
+
+	it("writes settings to KV on submit", async () => {
+		ctx.kv.list = vi.fn().mockResolvedValue([]);
+		const res = await callAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: {
+				prefix: "/go/",
+				codeLength: 5,
+				autoCreate: false,
+				domain: "https://short.example.com",
+			},
+		});
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:prefix", "/go/");
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:codeLength", 5);
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:autoCreate", false);
+		expect(ctx.kv.set).toHaveBeenCalledWith(
+			"config:domain",
+			"https://short.example.com",
+		);
+		expect(res).toEqual(
+			expect.objectContaining({
+				toast: expect.objectContaining({ type: "success" }),
+			}),
+		);
+	});
+
+	it("stores null when domain is blank", async () => {
+		ctx.kv.list = vi.fn().mockResolvedValue([]);
+		await callAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { prefix: "/s/", codeLength: 4, autoCreate: true, domain: "" },
+		});
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:domain", null);
+	});
+});
+
+// ── admin: delete_shortlink ──
+
+describe("admin delete_shortlink", () => {
+	let ctx: ReturnType<typeof makeContext>;
+
+	beforeEach(() => {
+		ctx = makeContext();
+	});
+
+	async function callAdmin(interaction: Record<string, unknown>) {
+		const plugin = await import("../src/sandbox-entry.ts");
+		const route = plugin.default.routes!.admin;
+		return route.handler(
+			{
+				input: interaction,
+				request: new Request(
+					"https://example.com/_emdash/api/plugins/shortlink/admin",
+				),
+			},
+			ctx,
+		);
+	}
+
+	it("removes shortlink and reverse index when present", async () => {
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "shortlink:abc") {
+				return Promise.resolve({
+					code: "abc",
+					target: "/posts/my",
+					contentId: "post-123",
+					custom: false,
+					createdAt: "2026-04-06",
+				});
+			}
+			return Promise.resolve(null);
+		});
+		ctx.kv.list = vi.fn().mockResolvedValue([]);
+
+		await callAdmin({
+			type: "block_action",
+			action_id: "delete_shortlink:abc",
+		});
+
+		expect(ctx.kv.delete).toHaveBeenCalledWith("shortlink:abc");
+		expect(ctx.kv.delete).toHaveBeenCalledWith("shortlink:by-content:post-123");
+	});
+
+	it("only deletes shortlink entry when no contentId", async () => {
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "shortlink:custom-code") {
+				return Promise.resolve({
+					code: "custom-code",
+					target: "/external",
+					custom: true,
+					createdAt: "2026-04-06",
+				});
+			}
+			return Promise.resolve(null);
+		});
+		ctx.kv.list = vi.fn().mockResolvedValue([]);
+
+		await callAdmin({
+			type: "block_action",
+			action_id: "delete_shortlink:custom-code",
+		});
+
+		expect(ctx.kv.delete).toHaveBeenCalledWith("shortlink:custom-code");
+		// reverse index delete should not be called
+		const deleteCalls = (ctx.kv.delete as ReturnType<typeof vi.fn>).mock.calls;
+		const reverseIndexCalls = deleteCalls.filter((c) =>
+			String(c[0]).startsWith("shortlink:by-content:"),
+		);
+		expect(reverseIndexCalls).toHaveLength(0);
+	});
+});

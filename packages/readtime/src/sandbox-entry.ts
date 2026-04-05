@@ -97,6 +97,97 @@ async function checkAndReseedBootstrap(ctx: PluginContext): Promise<void> {
 	await seedFromBootstrap(ctx, bootstrap);
 }
 
+// ── Admin page helpers ──
+
+function parseCollections(input: unknown): string[] | null {
+	if (typeof input !== "string") return null;
+	const trimmed = input.trim();
+	if (trimmed.length === 0) return null;
+	const list = trimmed
+		.split(",")
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0);
+	return list.length > 0 ? list : null;
+}
+
+function collectionsToString(value: string[] | null): string {
+	if (!value || value.length === 0) return "";
+	return value.join(", ");
+}
+
+export function validateReadtimeSettings(values: Record<string, unknown>): {
+	ok: boolean;
+	error?: string;
+	wordsPerMinute?: number;
+	collections?: string[] | null;
+} {
+	const wpmRaw = values.wordsPerMinute;
+	const wpm = typeof wpmRaw === "number" ? wpmRaw : Number(wpmRaw);
+	if (!Number.isFinite(wpm) || !Number.isInteger(wpm) || wpm < 100 || wpm > 500) {
+		return { ok: false, error: "Words per minute must be an integer between 100 and 500" };
+	}
+	const collections = parseCollections(values.collections);
+	return { ok: true, wordsPerMinute: wpm, collections };
+}
+
+async function buildSettingsPage(ctx: PluginContext) {
+	const wordsPerMinute =
+		(await ctx.kv.get<number>("config:wordsPerMinute")) ?? 238;
+	const collections = await ctx.kv.get<string[] | null>("config:collections");
+
+	return {
+		blocks: [
+			{ type: "header", text: "Reading Time Settings" },
+			{
+				type: "context",
+				text: "Configure reading time. Changes take effect on the next publish.",
+			},
+			{ type: "divider" },
+			{
+				type: "form",
+				block_id: "readtime-settings",
+				fields: [
+					{
+						type: "number_input",
+						action_id: "wordsPerMinute",
+						label: "Words per minute",
+						placeholder: "238",
+						min: 100,
+						max: 500,
+						initial_value: wordsPerMinute,
+						help_text: "Average adult reading speed is 238 wpm.",
+					},
+					{
+						type: "text_input",
+						action_id: "collections",
+						label: "Collections (comma-separated, leave blank for all)",
+						placeholder: "blog, notes",
+						initial_value: collectionsToString(collections ?? null),
+						help_text:
+							"Only these collections will have reading time calculated.",
+					},
+				],
+				submit: { label: "Save", action_id: "save_settings" },
+			},
+		],
+	};
+}
+
+async function handleSaveSettings(
+	values: Record<string, unknown>,
+	ctx: PluginContext,
+) {
+	const result = validateReadtimeSettings(values);
+	if (!result.ok) {
+		const page = await buildSettingsPage(ctx);
+		return { ...page, toast: { message: result.error, type: "error" } };
+	}
+	await ctx.kv.set("config:wordsPerMinute", result.wordsPerMinute!);
+	await ctx.kv.set("config:collections", result.collections ?? null);
+	const page = await buildSettingsPage(ctx);
+	return { ...page, toast: { message: "Settings saved", type: "success" } };
+}
+
 // ── Plugin definition ──
 
 export default definePlugin({
@@ -192,6 +283,36 @@ export default definePlugin({
 						collection: event.collection,
 					});
 				}
+			},
+		},
+	},
+
+	routes: {
+		admin: {
+			handler: async (
+				routeCtx: { input: unknown; request: { url: string } },
+				ctx: PluginContext,
+			) => {
+				const interaction = routeCtx.input as {
+					type?: string;
+					page?: string;
+					action_id?: string;
+					values?: Record<string, unknown>;
+				};
+				if (
+					!interaction ||
+					interaction.type === "page_load" ||
+					interaction.type === undefined
+				) {
+					return buildSettingsPage(ctx);
+				}
+				if (
+					interaction.type === "form_submit" &&
+					interaction.action_id === "save_settings"
+				) {
+					return handleSaveSettings(interaction.values ?? {}, ctx);
+				}
+				return buildSettingsPage(ctx);
 			},
 		},
 	},

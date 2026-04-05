@@ -76,6 +76,10 @@ Renders nothing when `readingTimeMinutes` is not present.
 
 After installing @plugdash/readtime and registering it in astro.config.mjs:
 
+0. To configure without code: navigate to EmDash admin - Plugins - Reading
+   Time - Settings. Both options (words per minute, collections allowlist)
+   are available in the dashboard.
+
 1. Import ReadingTime in the post layout:
    ```
    import ReadingTime from "@plugdash/readtime/ReadingTime.astro"

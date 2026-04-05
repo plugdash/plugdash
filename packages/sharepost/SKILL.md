@@ -105,6 +105,10 @@ LinkedIn `#0a66c2`, Bluesky `#0085ff`, WhatsApp `#25d366`, Email uses
 
 After installing @plugdash/sharepost and registering it in astro.config.mjs:
 
+0. To configure without code: navigate to EmDash admin - Plugins - Share
+   Post - Settings. Platforms, Twitter via handle, hashtags, and
+   collections allowlist are available in the dashboard.
+
 1. Import the companion component in the post layout:
    ```
    import ShareButtons from "@plugdash/sharepost/ShareButtons.astro"

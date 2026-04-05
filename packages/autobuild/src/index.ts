@@ -69,6 +69,7 @@ export function autobuildPlugin(config?: AutobuildConfig): PluginDescriptor {
 		capabilities: ["network:fetch", "read:content"],
 		allowedHosts,
 		options: config as Record<string, unknown> | undefined,
+		adminPages: [{ path: "/settings", label: "Autobuild", icon: "cloud-arrow-up" }],
 	};
 }
 

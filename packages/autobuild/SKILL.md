@@ -91,6 +91,11 @@ to render.
 
 After installing @plugdash/autobuild and registering it in astro.config.mjs:
 
+0. To configure without code: navigate to EmDash admin - Plugins -
+   Autobuild - Settings. Hook URL, method, debounce window, and
+   collections are available in the dashboard. The current hook URL is
+   masked; leave the field blank on save to keep it unchanged.
+
 1. Get a deploy hook URL from the hosting provider:
    - **Cloudflare Pages:** Project -> Settings -> Builds & deployments -> Deploy hooks
    - **Netlify:** Site settings -> Build & deploy -> Build hooks

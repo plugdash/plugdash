@@ -85,6 +85,10 @@ import HeartButton from "@plugdash/heartpost/HeartButton.astro";
 
 After installing @plugdash/heartpost and registering it in astro.config.mjs:
 
+0. To configure without code: navigate to EmDash admin - Plugins - Heart
+   Post - Settings. Label and collections allowlist are available in the
+   dashboard.
+
 1. Import HeartButton in the post layout:
    ```
    import HeartButton from "@plugdash/heartpost/HeartButton.astro"

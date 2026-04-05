@@ -75,6 +75,152 @@ async function getConfig(ctx: PluginContext) {
 	return { platforms, via: via ?? undefined, hashtags: hashtags ?? undefined };
 }
 
+// ── Admin page helpers ──
+
+function parseCollections(input: unknown): string[] | null {
+	if (typeof input !== "string") return null;
+	const list = input
+		.split(",")
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0);
+	return list.length > 0 ? list : null;
+}
+
+function parseHashtags(input: unknown): string[] {
+	if (typeof input !== "string") return [];
+	return input
+		.split(",")
+		.map((s) => s.trim().replace(/^#/, ""))
+		.filter((s) => s.length > 0);
+}
+
+function sanitizeVia(input: unknown): string {
+	if (typeof input !== "string") return "";
+	const stripped = input.trim().replace(/^@/, "");
+	// alphanumeric + underscores only
+	return /^[a-zA-Z0-9_]*$/.test(stripped) ? stripped : "";
+}
+
+export function validateSharepostSettings(values: Record<string, unknown>): {
+	ok: boolean;
+	error?: string;
+	platforms?: Platform[];
+	via?: string;
+	hashtags?: string[];
+	collections?: string[] | null;
+} {
+	let platforms: Platform[];
+	const raw = values.platforms;
+	if (Array.isArray(raw)) {
+		platforms = raw.filter((p): p is Platform =>
+			ALL_PLATFORMS.includes(p as Platform),
+		);
+	} else if (typeof raw === "string" && raw.length > 0) {
+		platforms = raw
+			.split(",")
+			.map((s) => s.trim())
+			.filter((p): p is Platform => ALL_PLATFORMS.includes(p as Platform));
+	} else {
+		platforms = [];
+	}
+	if (platforms.length === 0) {
+		return { ok: false, error: "At least one share platform must be selected" };
+	}
+
+	if (typeof values.via === "string" && values.via.trim().length > 0) {
+		const stripped = values.via.trim().replace(/^@/, "");
+		if (!/^[a-zA-Z0-9_]*$/.test(stripped)) {
+			return {
+				ok: false,
+				error: "Twitter handle must contain only letters, numbers, and underscores",
+			};
+		}
+	}
+
+	const via = sanitizeVia(values.via);
+	const hashtags = parseHashtags(values.hashtags);
+	const collections = parseCollections(values.collections);
+	return { ok: true, platforms, via, hashtags, collections };
+}
+
+async function buildSettingsPage(ctx: PluginContext) {
+	const platforms =
+		(await ctx.kv.get<Platform[]>("config:platforms")) ?? ALL_PLATFORMS;
+	const via = (await ctx.kv.get<string>("config:via")) ?? "";
+	const hashtags = (await ctx.kv.get<string[]>("config:hashtags")) ?? [];
+	const collections = await ctx.kv.get<string[] | null>("config:collections");
+
+	return {
+		blocks: [
+			{ type: "header", text: "Share Post Settings" },
+			{
+				type: "context",
+				text: "Configure share buttons. Changes take effect on the next publish.",
+			},
+			{ type: "divider" },
+			{
+				type: "form",
+				block_id: "sharepost-settings",
+				fields: [
+					{
+						type: "checkbox",
+						action_id: "platforms",
+						label: "Share platforms",
+						options: [
+							{ label: "Twitter / X", value: "twitter" },
+							{ label: "LinkedIn", value: "linkedin" },
+							{ label: "WhatsApp", value: "whatsapp" },
+							{ label: "Bluesky", value: "bluesky" },
+							{ label: "Email", value: "email" },
+						],
+						initial_value: platforms,
+					},
+					{
+						type: "text_input",
+						action_id: "via",
+						label: "Twitter via handle (optional)",
+						placeholder: "abhinavs",
+						initial_value: via,
+						help_text: "Your Twitter handle without the @ sign.",
+					},
+					{
+						type: "text_input",
+						action_id: "hashtags",
+						label: "Twitter hashtags (comma-separated, optional)",
+						placeholder: "emdashcms, plugdash",
+						initial_value: hashtags.join(", "),
+					},
+					{
+						type: "text_input",
+						action_id: "collections",
+						label: "Collections (comma-separated, leave blank for all)",
+						placeholder: "blog",
+						initial_value: collections && collections.length > 0 ? collections.join(", ") : "",
+					},
+				],
+				submit: { label: "Save", action_id: "save_settings" },
+			},
+		],
+	};
+}
+
+async function handleSaveSettings(
+	values: Record<string, unknown>,
+	ctx: PluginContext,
+) {
+	const result = validateSharepostSettings(values);
+	if (!result.ok) {
+		const page = await buildSettingsPage(ctx);
+		return { ...page, toast: { message: result.error, type: "error" } };
+	}
+	await ctx.kv.set("config:platforms", result.platforms!);
+	await ctx.kv.set("config:via", result.via ?? "");
+	await ctx.kv.set("config:hashtags", result.hashtags ?? []);
+	await ctx.kv.set("config:collections", result.collections ?? null);
+	const page = await buildSettingsPage(ctx);
+	return { ...page, toast: { message: "Settings saved", type: "success" } };
+}
+
 // ── Plugin definition ──
 
 export default definePlugin({
@@ -155,6 +301,35 @@ export default definePlugin({
 				} catch (err) {
 					ctx.log.error("sharepost: failed to generate share URLs", { err });
 				}
+			},
+		},
+	},
+
+	routes: {
+		admin: {
+			handler: async (
+				routeCtx: { input: unknown; request: { url: string } },
+				ctx: PluginContext,
+			) => {
+				const interaction = routeCtx.input as {
+					type?: string;
+					action_id?: string;
+					values?: Record<string, unknown>;
+				};
+				if (
+					!interaction ||
+					interaction.type === "page_load" ||
+					interaction.type === undefined
+				) {
+					return buildSettingsPage(ctx);
+				}
+				if (
+					interaction.type === "form_submit" &&
+					interaction.action_id === "save_settings"
+				) {
+					return handleSaveSettings(interaction.values ?? {}, ctx);
+				}
+				return buildSettingsPage(ctx);
 			},
 		},
 	},

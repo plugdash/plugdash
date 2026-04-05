@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { generateShareUrl, generateAllShareUrls } from "../src/sandbox-entry.ts";
+import {
+	generateShareUrl,
+	generateAllShareUrls,
+	validateSharepostSettings,
+} from "../src/sandbox-entry.ts";
 import { makeContext, makeContentItem } from "@plugdash/testing";
 
 // ── generateShareUrl ──
@@ -317,5 +321,137 @@ describe("sharepost hook: content:afterSave", () => {
 		const shareUrls = updateCall[2].metadata.shareUrls;
 		// Should use "posts" as fallback title
 		expect(shareUrls.twitter).toContain("posts");
+	});
+});
+
+// ── admin page ──
+
+describe("admin page", () => {
+	let ctx: ReturnType<typeof makeContext>;
+
+	beforeEach(() => {
+		ctx = makeContext();
+	});
+
+	async function invokeAdmin(input: unknown) {
+		const plugin = await import("../src/sandbox-entry.ts");
+		const handler = plugin.default.routes!.admin!.handler;
+		return handler({ input, request: { url: "http://localhost" } }, ctx);
+	}
+
+	it("page_load returns form with current config values", async () => {
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "config:platforms") return Promise.resolve(["twitter", "linkedin"]);
+			if (key === "config:via") return Promise.resolve("abhinavs");
+			if (key === "config:hashtags") return Promise.resolve(["emdash", "plugdash"]);
+			if (key === "config:collections") return Promise.resolve(["blog"]);
+			return Promise.resolve(null);
+		});
+		const res = await invokeAdmin({ type: "page_load" });
+		const form = res.blocks.find((b: any) => b.type === "form");
+		expect(form.fields.find((f: any) => f.action_id === "platforms").initial_value).toEqual(["twitter", "linkedin"]);
+		expect(form.fields.find((f: any) => f.action_id === "via").initial_value).toBe("abhinavs");
+		expect(form.fields.find((f: any) => f.action_id === "hashtags").initial_value).toBe("emdash, plugdash");
+		expect(form.fields.find((f: any) => f.action_id === "collections").initial_value).toBe("blog");
+	});
+
+	it("page_load returns default platforms when KV is empty", async () => {
+		const res = await invokeAdmin({ type: "page_load" });
+		const form = res.blocks.find((b: any) => b.type === "form");
+		expect(form.fields.find((f: any) => f.action_id === "platforms").initial_value).toEqual([
+			"twitter",
+			"linkedin",
+			"whatsapp",
+			"bluesky",
+			"email",
+		]);
+	});
+
+	it("save_settings writes valid config to KV", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: {
+				platforms: ["twitter", "bluesky"],
+				via: "@abhinavs",
+				hashtags: "#plugdash, emdash",
+				collections: "blog, notes",
+			},
+		});
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:platforms", ["twitter", "bluesky"]);
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:via", "abhinavs");
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:hashtags", ["plugdash", "emdash"]);
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:collections", ["blog", "notes"]);
+		expect(res.toast.type).toBe("success");
+	});
+
+	it("save_settings rejects empty platforms", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { platforms: [], via: "", hashtags: "", collections: "" },
+		});
+		expect(res.toast.type).toBe("error");
+		expect(ctx.kv.set).not.toHaveBeenCalled();
+	});
+
+	it("save_settings rejects invalid twitter handle", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: {
+				platforms: ["twitter"],
+				via: "bad handle!",
+				hashtags: "",
+				collections: "",
+			},
+		});
+		expect(res.toast.type).toBe("error");
+		expect(ctx.kv.set).not.toHaveBeenCalled();
+	});
+});
+
+describe("validateSharepostSettings", () => {
+	it("accepts platforms array", () => {
+		const r = validateSharepostSettings({
+			platforms: ["twitter"],
+			via: "",
+			hashtags: "",
+			collections: "",
+		});
+		expect(r.ok).toBe(true);
+		expect(r.platforms).toEqual(["twitter"]);
+	});
+
+	it("strips @ from via", () => {
+		const r = validateSharepostSettings({
+			platforms: ["twitter"],
+			via: "@abc",
+			hashtags: "",
+			collections: "",
+		});
+		expect(r.ok).toBe(true);
+		expect(r.via).toBe("abc");
+	});
+
+	it("strips # from hashtags", () => {
+		const r = validateSharepostSettings({
+			platforms: ["twitter"],
+			via: "",
+			hashtags: "#a, #b",
+			collections: "",
+		});
+		expect(r.ok).toBe(true);
+		expect(r.hashtags).toEqual(["a", "b"]);
+	});
+
+	it("rejects invalid platforms only", () => {
+		const r = validateSharepostSettings({
+			platforms: ["not-a-platform"],
+			via: "",
+			hashtags: "",
+			collections: "",
+		});
+		expect(r.ok).toBe(false);
 	});
 });

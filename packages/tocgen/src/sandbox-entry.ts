@@ -138,6 +138,112 @@ async function getConfig(ctx: PluginContext) {
 	return { minHeadings, maxDepth, collections };
 }
 
+// ── Admin page helpers ──
+
+function parseCollections(input: unknown): string[] | null {
+	if (typeof input !== "string") return null;
+	const list = input
+		.split(",")
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0);
+	return list.length > 0 ? list : null;
+}
+
+function collectionsToString(value: string[] | null | undefined): string {
+	if (!value || value.length === 0) return "";
+	return value.join(", ");
+}
+
+export function validateTocgenSettings(values: Record<string, unknown>): {
+	ok: boolean;
+	error?: string;
+	minHeadings?: number;
+	maxDepth?: 2 | 3 | 4;
+	collections?: string[] | null;
+} {
+	const minRaw = values.minHeadings;
+	const minH = typeof minRaw === "number" ? minRaw : Number(minRaw);
+	if (!Number.isFinite(minH) || !Number.isInteger(minH) || minH < 1 || minH > 10) {
+		return { ok: false, error: "Minimum headings must be an integer between 1 and 10" };
+	}
+	const depthRaw = String(values.maxDepth ?? "");
+	if (depthRaw !== "2" && depthRaw !== "3" && depthRaw !== "4") {
+		return { ok: false, error: "Maximum depth must be 2, 3, or 4" };
+	}
+	const maxDepth = parseInt(depthRaw, 10) as 2 | 3 | 4;
+	const collections = parseCollections(values.collections);
+	return { ok: true, minHeadings: minH, maxDepth, collections };
+}
+
+async function buildSettingsPage(ctx: PluginContext) {
+	const minHeadings = (await ctx.kv.get<number>("config:minHeadings")) ?? 3;
+	const maxDepth = (await ctx.kv.get<number>("config:maxDepth")) ?? 3;
+	const collections = await ctx.kv.get<string[] | null>("config:collections");
+
+	return {
+		blocks: [
+			{ type: "header", text: "Table of Contents Settings" },
+			{
+				type: "context",
+				text: "Configure TOC generation. Changes take effect on the next publish.",
+			},
+			{ type: "divider" },
+			{
+				type: "form",
+				block_id: "tocgen-settings",
+				fields: [
+					{
+						type: "number_input",
+						action_id: "minHeadings",
+						label: "Minimum headings to show TOC",
+						placeholder: "3",
+						min: 1,
+						max: 10,
+						initial_value: minHeadings,
+						help_text:
+							"Posts with fewer headings than this will not show a TOC.",
+					},
+					{
+						type: "select",
+						action_id: "maxDepth",
+						label: "Maximum heading depth",
+						options: [
+							{ label: "h2 only", value: "2" },
+							{ label: "h2 and h3 (default)", value: "3" },
+							{ label: "h2, h3, and h4", value: "4" },
+						],
+						initial_value: String(maxDepth),
+					},
+					{
+						type: "text_input",
+						action_id: "collections",
+						label: "Collections (comma-separated, leave blank for all)",
+						placeholder: "blog, docs",
+						initial_value: collectionsToString(collections ?? null),
+					},
+				],
+				submit: { label: "Save", action_id: "save_settings" },
+			},
+		],
+	};
+}
+
+async function handleSaveSettings(
+	values: Record<string, unknown>,
+	ctx: PluginContext,
+) {
+	const result = validateTocgenSettings(values);
+	if (!result.ok) {
+		const page = await buildSettingsPage(ctx);
+		return { ...page, toast: { message: result.error, type: "error" } };
+	}
+	await ctx.kv.set("config:minHeadings", result.minHeadings!);
+	await ctx.kv.set("config:maxDepth", result.maxDepth!);
+	await ctx.kv.set("config:collections", result.collections ?? null);
+	const page = await buildSettingsPage(ctx);
+	return { ...page, toast: { message: "Settings saved", type: "success" } };
+}
+
 // ── Plugin definition ──
 
 export default definePlugin({
@@ -221,6 +327,35 @@ export default definePlugin({
 				} catch (err) {
 					ctx.log.error("tocgen: hook failed", { err });
 				}
+			},
+		},
+	},
+
+	routes: {
+		admin: {
+			handler: async (
+				routeCtx: { input: unknown; request: { url: string } },
+				ctx: PluginContext,
+			) => {
+				const interaction = routeCtx.input as {
+					type?: string;
+					action_id?: string;
+					values?: Record<string, unknown>;
+				};
+				if (
+					!interaction ||
+					interaction.type === "page_load" ||
+					interaction.type === undefined
+				) {
+					return buildSettingsPage(ctx);
+				}
+				if (
+					interaction.type === "form_submit" &&
+					interaction.action_id === "save_settings"
+				) {
+					return handleSaveSettings(interaction.values ?? {}, ctx);
+				}
+				return buildSettingsPage(ctx);
 			},
 		},
 	},

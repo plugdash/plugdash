@@ -29,7 +29,15 @@ export default defineConfig({
 });
 ```
 
-## Config options
+## Configuration
+
+### Admin dashboard
+
+After installing, open the EmDash admin and go to Plugins - Share Post -
+Settings. All configuration options are available there. Changes take
+effect on the next publish - no code changes required.
+
+### Config options
 
 Configuration is stored in the plugin's KV store. Defaults are seeded on install.
 

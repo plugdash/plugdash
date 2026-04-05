@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { generateFingerprint } from "../src/sandbox-entry.ts";
+import { generateFingerprint, validateHeartpostSettings } from "../src/sandbox-entry.ts";
 import { makeContext, makeContentItem } from "@plugdash/testing";
 
 // ── generateFingerprint ──
@@ -368,5 +368,89 @@ describe("heart-status route (GET)", () => {
 		expect(result).toEqual(
 			expect.objectContaining({ error: "missing_id" }),
 		);
+	});
+});
+
+// ── admin page ──
+
+describe("admin page", () => {
+	let ctx: ReturnType<typeof makeContext>;
+
+	beforeEach(() => {
+		ctx = makeContext();
+	});
+
+	async function invokeAdmin(input: unknown) {
+		const plugin = await import("../src/sandbox-entry.ts");
+		const handler = plugin.default.routes!.admin!.handler;
+		return handler({ input, request: new Request("http://localhost") } as any, ctx);
+	}
+
+	it("page_load returns form with current config values", async () => {
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "config:label") return Promise.resolve("likes");
+			if (key === "config:collections") return Promise.resolve(["blog"]);
+			return Promise.resolve(null);
+		});
+		const res = await invokeAdmin({ type: "page_load" });
+		const form = res.blocks.find((b: any) => b.type === "form");
+		expect(form.fields.find((f: any) => f.action_id === "label").initial_value).toBe("likes");
+		expect(form.fields.find((f: any) => f.action_id === "collections").initial_value).toBe("blog");
+	});
+
+	it("page_load returns default label when KV is empty", async () => {
+		const res = await invokeAdmin({ type: "page_load" });
+		const form = res.blocks.find((b: any) => b.type === "form");
+		expect(form.fields.find((f: any) => f.action_id === "label").initial_value).toBe("hearts");
+	});
+
+	it("save_settings writes valid config to KV", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { label: "kudos", collections: "blog, notes" },
+		});
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:label", "kudos");
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:collections", ["blog", "notes"]);
+		expect(res.toast.type).toBe("success");
+	});
+
+	it("save_settings rejects empty label", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { label: "", collections: "" },
+		});
+		expect(res.toast.type).toBe("error");
+		expect(ctx.kv.set).not.toHaveBeenCalled();
+	});
+
+	it("save_settings rejects labels over 20 chars", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { label: "a".repeat(21), collections: "" },
+		});
+		expect(res.toast.type).toBe("error");
+		expect(ctx.kv.set).not.toHaveBeenCalled();
+	});
+});
+
+describe("validateHeartpostSettings", () => {
+	it("accepts valid label", () => {
+		const r = validateHeartpostSettings({ label: "hearts", collections: "" });
+		expect(r.ok).toBe(true);
+		expect(r.label).toBe("hearts");
+		expect(r.collections).toBeNull();
+	});
+
+	it("trims label whitespace", () => {
+		const r = validateHeartpostSettings({ label: "  likes  ", collections: "" });
+		expect(r.ok).toBe(true);
+		expect(r.label).toBe("likes");
+	});
+
+	it("rejects over-long label", () => {
+		expect(validateHeartpostSettings({ label: "a".repeat(25), collections: "" }).ok).toBe(false);
 	});
 });

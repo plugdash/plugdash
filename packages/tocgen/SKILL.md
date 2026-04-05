@@ -90,6 +90,10 @@ CSS custom properties:
 
 After installing @plugdash/tocgen and registering it in astro.config.mjs:
 
+0. To configure without code: navigate to EmDash admin - Plugins - Table
+   of Contents - Settings. All options (min headings, max depth,
+   collections) are available in the dashboard.
+
 1. Import the companion component in the post layout:
    ```
    import TableOfContents from "@plugdash/tocgen/TableOfContents.astro"

@@ -4,6 +4,8 @@ import {
 	isPrivateHostname,
 	shouldTrigger,
 	Debouncer,
+	maskHookUrl,
+	validateAutobuildSettings,
 } from "../src/sandbox-entry.ts";
 import { parseHookHostname } from "../src/index.ts";
 import { makeContext, makeContentItem } from "@plugdash/testing";
@@ -732,6 +734,226 @@ describe("bootstrap hash reseed on hook invocation", () => {
 		expect(ctx.kv.set).toHaveBeenCalledWith(
 			"autobuild:config:hookUrl",
 			"https://api.cloudflare.com/new-hook",
+		);
+	});
+});
+
+// ── admin page ──
+
+describe("maskHookUrl", () => {
+	it("returns hostname + path snippet", () => {
+		expect(
+			maskHookUrl("https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/abc123"),
+		).toBe("api.cloudflare.com/client/...");
+	});
+
+	it("returns empty string for empty input", () => {
+		expect(maskHookUrl("")).toBe("");
+	});
+
+	it("does not expose full path for long secrets", () => {
+		const masked = maskHookUrl("https://hooks.example.com/deploy/secret-token-987654321");
+		expect(masked).not.toContain("secret-token");
+	});
+
+	it("returns (invalid) for malformed URLs", () => {
+		expect(maskHookUrl("not-a-url")).toBe("(invalid)");
+	});
+});
+
+describe("validateAutobuildSettings", () => {
+	it("accepts valid settings", () => {
+		const r = validateAutobuildSettings(
+			{
+				hookUrl: "https://api.cloudflare.com/webhooks/abc",
+				method: "POST",
+				debounceMs: 5000,
+				collections: "",
+			},
+			"",
+		);
+		expect(r.ok).toBe(true);
+		expect(r.hookUrl).toBe("https://api.cloudflare.com/webhooks/abc");
+	});
+
+	it("rejects private IP hook URLs", () => {
+		const r = validateAutobuildSettings(
+			{
+				hookUrl: "https://192.168.1.1/hook",
+				method: "POST",
+				debounceMs: 5000,
+				collections: "",
+			},
+			"",
+		);
+		expect(r.ok).toBe(false);
+	});
+
+	it("rejects http:// URLs", () => {
+		const r = validateAutobuildSettings(
+			{
+				hookUrl: "http://example.com/hook",
+				method: "POST",
+				debounceMs: 5000,
+				collections: "",
+			},
+			"",
+		);
+		expect(r.ok).toBe(false);
+	});
+
+	it("preserves current hookUrl when input is blank", () => {
+		const r = validateAutobuildSettings(
+			{ hookUrl: "", method: "POST", debounceMs: 5000, collections: "" },
+			"https://existing.example.com/hook",
+		);
+		expect(r.ok).toBe(true);
+		expect(r.hookUrl).toBe("https://existing.example.com/hook");
+	});
+
+	it("rejects debounceMs below 500", () => {
+		const r = validateAutobuildSettings(
+			{ hookUrl: "", method: "POST", debounceMs: 100, collections: "" },
+			"https://x.example.com/hook",
+		);
+		expect(r.ok).toBe(false);
+	});
+
+	it("rejects debounceMs above 30000", () => {
+		const r = validateAutobuildSettings(
+			{ hookUrl: "", method: "POST", debounceMs: 60000, collections: "" },
+			"https://x.example.com/hook",
+		);
+		expect(r.ok).toBe(false);
+	});
+
+	it("rejects invalid method", () => {
+		const r = validateAutobuildSettings(
+			{ hookUrl: "", method: "PUT", debounceMs: 5000, collections: "" },
+			"https://x.example.com/hook",
+		);
+		expect(r.ok).toBe(false);
+	});
+});
+
+describe("admin page", () => {
+	let ctx: ReturnType<typeof makeContext>;
+
+	beforeEach(() => {
+		ctx = makeContext();
+	});
+
+	async function invokeAdmin(input: unknown) {
+		const plugin = await import("../src/sandbox-entry.ts");
+		const handler = plugin.default.routes!.admin!.handler;
+		return handler({ input, request: { url: "http://localhost" } }, ctx);
+	}
+
+	it("page_load returns form with current config values", async () => {
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "autobuild:config:hookUrl")
+				return Promise.resolve("https://api.cloudflare.com/webhooks/secret");
+			if (key === "autobuild:config:method") return Promise.resolve("GET");
+			if (key === "autobuild:config:debounceMs") return Promise.resolve(10000);
+			if (key === "autobuild:config:collections") return Promise.resolve(["blog"]);
+			return Promise.resolve(null);
+		});
+		const res = await invokeAdmin({ type: "page_load" });
+		const form = res.blocks.find((b: any) => b.type === "form");
+		// hookUrl field should NOT pre-fill the secret
+		expect(form.fields.find((f: any) => f.action_id === "hookUrl").initial_value).toBe("");
+		expect(form.fields.find((f: any) => f.action_id === "method").initial_value).toBe("GET");
+		expect(form.fields.find((f: any) => f.action_id === "debounceMs").initial_value).toBe(10000);
+	});
+
+	it("page_load masks hookUrl to hostname + first 8 chars of path", async () => {
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "autobuild:config:hookUrl")
+				return Promise.resolve("https://api.cloudflare.com/client/v4/very-secret-token");
+			return Promise.resolve(null);
+		});
+		const res = await invokeAdmin({ type: "page_load" });
+		const fieldsBlock = res.blocks.find((b: any) => b.type === "fields");
+		expect(fieldsBlock).toBeTruthy();
+		const value = fieldsBlock.fields[0].value;
+		expect(value).toContain("api.cloudflare.com");
+		expect(value).not.toContain("very-secret-token");
+	});
+
+	it("page_load hides masked URL block when no hook configured", async () => {
+		const res = await invokeAdmin({ type: "page_load" });
+		const fieldsBlock = res.blocks.find((b: any) => b.type === "fields");
+		expect(fieldsBlock).toBeUndefined();
+	});
+
+	it("save_settings writes valid config to KV", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: {
+				hookUrl: "https://api.cloudflare.com/new-hook",
+				method: "POST",
+				debounceMs: 3000,
+				collections: "blog, docs",
+			},
+		});
+		expect(ctx.kv.set).toHaveBeenCalledWith(
+			"autobuild:config:hookUrl",
+			"https://api.cloudflare.com/new-hook",
+		);
+		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:method", "POST");
+		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:debounceMs", 3000);
+		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:collections", [
+			"blog",
+			"docs",
+		]);
+		expect(res.toast.type).toBe("success");
+	});
+
+	it("save_settings rejects private IP hook URLs", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: {
+				hookUrl: "https://10.0.0.1/hook",
+				method: "POST",
+				debounceMs: 5000,
+				collections: "",
+			},
+		});
+		expect(res.toast.type).toBe("error");
+		expect(ctx.kv.set).not.toHaveBeenCalled();
+	});
+
+	it("save_settings rejects http:// hook URLs", async () => {
+		const res = await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: {
+				hookUrl: "http://api.example.com/hook",
+				method: "POST",
+				debounceMs: 5000,
+				collections: "",
+			},
+		});
+		expect(res.toast.type).toBe("error");
+		expect(ctx.kv.set).not.toHaveBeenCalled();
+	});
+
+	it("save_settings does not overwrite hookUrl when new input is empty", async () => {
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "autobuild:config:hookUrl")
+				return Promise.resolve("https://existing.example.com/hook");
+			return Promise.resolve(null);
+		});
+		await invokeAdmin({
+			type: "form_submit",
+			action_id: "save_settings",
+			values: { hookUrl: "", method: "POST", debounceMs: 5000, collections: "" },
+		});
+		expect(ctx.kv.set).toHaveBeenCalledWith(
+			"autobuild:config:hookUrl",
+			"https://existing.example.com/hook",
 		);
 	});
 });

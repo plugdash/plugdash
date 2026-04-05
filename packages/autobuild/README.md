@@ -42,7 +42,17 @@ Store the hook URL as an environment variable. Never commit it.
 - **Netlify:** Site settings -> Build & deploy -> Build hooks. Creates a URL like `https://api.netlify.com/build_hooks/...`
 - **Vercel:** Project Settings -> Git -> Deploy Hooks. Creates a URL like `https://api.vercel.com/v1/integrations/deploy/...`
 
-## Config options
+## Configuration
+
+### Admin dashboard
+
+After installing, open the EmDash admin and go to Plugins - Autobuild -
+Settings. Hook URL, method, debounce window, and collections are
+available there. The current hook URL is shown masked (hostname + first
+8 chars of path); leave the field blank on save to keep the existing
+value.
+
+### Config options
 
 | Option         | Type                       | Default         | Description                                               |
 | -------------- | -------------------------- | --------------- | --------------------------------------------------------- |

@@ -27,5 +27,6 @@ export function readtimePlugin(config?: ReadtimeConfig): PluginDescriptor {
 		// At runtime, config is read from ctx.kv (seeded by plugin:install
 		// hook from the globalThis bootstrap).
 		options: config as Record<string, unknown> | undefined,
+		adminPages: [{ path: "/settings", label: "Reading Time", icon: "clock" }],
 	};
 }

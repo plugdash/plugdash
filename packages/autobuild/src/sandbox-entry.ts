@@ -274,6 +274,180 @@ async function fireWebhook(
 	}
 }
 
+// ── Admin page helpers ──
+
+export function maskHookUrl(url: string): string {
+	if (!url) return "";
+	try {
+		const parsed = new URL(url);
+		const pathSnippet =
+			parsed.pathname.length <= 8
+				? parsed.pathname
+				: parsed.pathname.slice(0, 8) + "...";
+		return parsed.hostname + pathSnippet;
+	} catch {
+		return "(invalid)";
+	}
+}
+
+function parseCollections(input: unknown): string[] | null {
+	if (typeof input !== "string") return null;
+	const list = input
+		.split(",")
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0);
+	return list.length > 0 ? list : null;
+}
+
+export function validateAutobuildSettings(
+	values: Record<string, unknown>,
+	currentHookUrl: string,
+): {
+	ok: boolean;
+	error?: string;
+	hookUrl?: string;
+	method?: "POST" | "GET";
+	debounceMs?: number;
+	collections?: string[] | null;
+} {
+	const methodRaw = String(values.method ?? "POST");
+	if (methodRaw !== "POST" && methodRaw !== "GET") {
+		return { ok: false, error: "Method must be POST or GET" };
+	}
+	const method = methodRaw as "POST" | "GET";
+
+	const debounceRaw = values.debounceMs;
+	const debounceMs = typeof debounceRaw === "number" ? debounceRaw : Number(debounceRaw);
+	if (
+		!Number.isFinite(debounceMs) ||
+		!Number.isInteger(debounceMs) ||
+		debounceMs < 500 ||
+		debounceMs > 30000
+	) {
+		return {
+			ok: false,
+			error: "Debounce must be an integer between 500 and 30000 ms",
+		};
+	}
+
+	const collections = parseCollections(values.collections);
+
+	// Only update hookUrl if non-empty. Validate first.
+	const newHookUrlRaw = typeof values.hookUrl === "string" ? values.hookUrl.trim() : "";
+	let hookUrl = currentHookUrl;
+	if (newHookUrlRaw.length > 0 && newHookUrlRaw !== currentHookUrl) {
+		const check = validateHookUrl(newHookUrlRaw);
+		if (!check.ok) {
+			return {
+				ok: false,
+				error: `Hook URL rejected: ${check.reason}`,
+			};
+		}
+		hookUrl = newHookUrlRaw;
+	}
+
+	return { ok: true, hookUrl, method, debounceMs, collections };
+}
+
+async function buildSettingsPage(ctx: PluginContext) {
+	const hookUrl = (await ctx.kv.get<string>("autobuild:config:hookUrl")) ?? "";
+	const method =
+		(await ctx.kv.get<"POST" | "GET">("autobuild:config:method")) ?? "POST";
+	const debounceMs =
+		(await ctx.kv.get<number>("autobuild:config:debounceMs")) ?? 5000;
+	const collections = await ctx.kv.get<string[] | null>(
+		"autobuild:config:collections",
+	);
+
+	const masked = maskHookUrl(hookUrl);
+
+	return {
+		blocks: [
+			{ type: "header", text: "Autobuild Settings" },
+			{
+				type: "context",
+				text: "Fire a deploy webhook when content is published.",
+			},
+			{ type: "divider" },
+			...(hookUrl
+				? [
+						{
+							type: "fields",
+							fields: [{ label: "Current hook URL", value: masked }],
+						},
+				  ]
+				: []),
+			{
+				type: "form",
+				block_id: "autobuild-settings",
+				fields: [
+					{
+						type: "text_input",
+						action_id: "hookUrl",
+						label: "Deploy hook URL",
+						placeholder:
+							"https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/...",
+						initial_value: "",
+						help_text:
+							"The webhook URL from your hosting provider. Kept private - leave blank to keep the existing value.",
+					},
+					{
+						type: "select",
+						action_id: "method",
+						label: "HTTP method",
+						options: [
+							{ label: "POST (default)", value: "POST" },
+							{ label: "GET", value: "GET" },
+						],
+						initial_value: method,
+					},
+					{
+						type: "number_input",
+						action_id: "debounceMs",
+						label: "Debounce window (milliseconds)",
+						placeholder: "5000",
+						min: 500,
+						max: 30000,
+						initial_value: debounceMs,
+						help_text:
+							"Rapid publishes within this window are coalesced into one deploy.",
+					},
+					{
+						type: "text_input",
+						action_id: "collections",
+						label: "Collections (comma-separated, leave blank for all)",
+						placeholder: "blog, docs",
+						initial_value:
+							collections && collections.length > 0
+								? collections.join(", ")
+								: "",
+					},
+				],
+				submit: { label: "Save", action_id: "save_settings" },
+			},
+		],
+	};
+}
+
+async function handleSaveSettings(
+	values: Record<string, unknown>,
+	ctx: PluginContext,
+) {
+	const currentHookUrl =
+		(await ctx.kv.get<string>("autobuild:config:hookUrl")) ?? "";
+	const result = validateAutobuildSettings(values, currentHookUrl);
+	if (!result.ok) {
+		const page = await buildSettingsPage(ctx);
+		return { ...page, toast: { message: result.error, type: "error" } };
+	}
+	await ctx.kv.set("autobuild:config:hookUrl", result.hookUrl ?? "");
+	await ctx.kv.set("autobuild:config:method", result.method!);
+	await ctx.kv.set("autobuild:config:debounceMs", result.debounceMs!);
+	await ctx.kv.set("autobuild:config:collections", result.collections ?? null);
+	const page = await buildSettingsPage(ctx);
+	return { ...page, toast: { message: "Settings saved", type: "success" } };
+}
+
 // ── Plugin definition ──
 
 export default definePlugin({
@@ -368,6 +542,35 @@ export default definePlugin({
 						err: String(err),
 					});
 				}
+			},
+		},
+	},
+
+	routes: {
+		admin: {
+			handler: async (
+				routeCtx: { input: unknown; request: { url: string } },
+				ctx: PluginContext,
+			) => {
+				const interaction = routeCtx.input as {
+					type?: string;
+					action_id?: string;
+					values?: Record<string, unknown>;
+				};
+				if (
+					!interaction ||
+					interaction.type === "page_load" ||
+					interaction.type === undefined
+				) {
+					return buildSettingsPage(ctx);
+				}
+				if (
+					interaction.type === "form_submit" &&
+					interaction.action_id === "save_settings"
+				) {
+					return handleSaveSettings(interaction.values ?? {}, ctx);
+				}
+				return buildSettingsPage(ctx);
 			},
 		},
 	},
