@@ -77,17 +77,23 @@ const wordCount = typeof metadata?.wordCount === "number"
 			{variant === "inline" ? (
 				<>
 					{showWords && wordCount !== null && (
-						<><span class="plugdash-rt-words">{wordCount.toLocaleString()} words</span><span class="plugdash-rt-sep"> &middot; </span></>
+						<>
+							<span class="plugdash-rt-words">{wordCount.toLocaleString()} words</span>
+							<span class="plugdash-rt-sep">&middot;</span>
+						</>
 					)}
 					<span class="plugdash-rt-minutes">{minutes}</span>
-					<span class="plugdash-rt-label"> {label}</span>
+					<span class="plugdash-rt-label">{label}</span>
 				</>
 			) : (
 				<>
 					<span class="plugdash-rt-minutes">{minutes}</span>
-					<span class="plugdash-rt-label">&thinsp;{label}</span>
+					<span class="plugdash-rt-label">{label}</span>
 					{showWords && wordCount !== null && (
-						<span class="plugdash-rt-words"> &middot; {wordCount.toLocaleString()} words</span>
+						<>
+							<span class="plugdash-rt-sep">&middot;</span>
+							<span class="plugdash-rt-words">{wordCount.toLocaleString()} words</span>
+						</>
 					)}
 				</>
 			)}
@@ -120,7 +126,7 @@ const wordCount = typeof metadata?.wordCount === "number"
 	.plugdash-rt {
 		display: inline-flex;
 		align-items: baseline;
-		gap: 0;
+		gap: 0.25em;
 		font-family: var(--plugdash-rt-font, var(--plugdash-font-ui, "Lexend", system-ui, sans-serif));
 		color: var(--plugdash-rt-color, var(--plugdash-muted, rgb(from currentColor r g b / 0.55)));
 		white-space: nowrap;

@@ -56,7 +56,7 @@ const post = await emdash.content.get("posts", Astro.params.id);
 
 | Prop    | Type                               | Default    | Description                   |
 | ------- | ---------------------------------- | ---------- | ----------------------------- |
-| post    | `Record<string, unknown>`          | (required) | Content item with an `id`     |
+| post    | `Record<string, unknown>`          | (required) | Content item - the component reads `post.id` or `post.data.id` (checks both) |
 | variant | `"circle" \| "pill" \| "ghost"`    | `"circle"` | Visual style                  |
 | size    | `"sm" \| "md" \| "lg"`            | `"md"`     | Component size                |
 | theme   | `"auto" \| "dark" \| "light"`     | `"auto"`   | Color scheme                  |

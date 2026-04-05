@@ -131,6 +131,54 @@ Never let formatting pile up. Run `pnpm format` before committing.
 Verified against the actual EmDash source while building @plugdash/readtime.
 These supersede anything in plugin specs if there is a conflict.
 
+// confirmed 2026-04-05 during plugdash.dev integration fixes
+Native plugins must include `hooks: {}` in the object returned by
+createPlugin(). HookPipeline iterates plugin.hooks without a presence
+check and crashes with a TypeError when the key is absent. Even if the
+plugin declares zero hook handlers, the empty object must be present.
+
+// confirmed 2026-04-05 during plugdash.dev integration fixes
+Never import a `.d.ts` / declaration file at runtime (e.g.
+`import "./globals.d.ts"`). tsdown bundles the import as a real module
+reference in dist/, and Node refuses to execute the emitted
+`import "./globals-xxxx.d.mts"`. For ambient global types, rely on
+tsconfig `include` to pick up the .d.ts file - no import statement is
+needed in runtime source.
+
+// confirmed 2026-04-05 during plugdash.dev integration fixes
+Never use `::-webkit-details-marker` in Astro `<style>` blocks. Astro's
+scoped CSS parser cannot handle it and will throw. Use
+`summary { list-style: none; }` instead - modern browsers honour this
+on summary elements.
+
+// confirmed 2026-04-05 during readtime collections-bug fix
+Every Standard plugin that accepts a `collections` (or any other)
+build-time option MUST seed that option into KV via the `plugin:install`
+hook. Reading descriptor options at runtime is not available to Standard
+plugins, so without seeding the option is silently dropped and the
+plugin runs on every collection by default. Bridge via the globalThis
+bootstrap pattern (see autobuild, readtime). When `collections` is
+intentionally "all", seed `null` explicitly so the afterSave guard can
+distinguish "user said all" from "nothing seeded yet".
+
+// confirmed 2026-04-05 during readtime collections-bug fix
+When seeding from a globalThis bootstrap, also compute and store a
+stable hash of the bootstrap config (`readtime:bootstrapHash`,
+`autobuild:bootstrapHash`). On each hook fire, compare the live
+bootstrap hash to the stored one - if it differs, reseed. This handles
+the common dev case where someone edits their astro.config.mjs and
+restarts the site expecting the new config to take effect.
+
+// confirmed 2026-04-05 during readtime collections-bug fix
+ctx.content.update() can crash with
+`SqliteError: no such column: metadata` when the target collection has
+no metadata field (e.g. system collections like `plugins`). Hook
+handlers that write metadata MUST wrap ctx.content.update() calls in
+try/catch - the content save has already happened, and AGENTS.md rule
+#1 is "never throw to the host from a hook handler." Use collections
+allowlists to avoid the crash in the first place, and the try/catch as
+the defence-in-depth guard.
+
 ### capability names
 
 `write:metadata` does not exist. Use `write:content` for any plugin that

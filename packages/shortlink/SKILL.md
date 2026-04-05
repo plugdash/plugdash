@@ -5,7 +5,7 @@ description: Short URL plugin for EmDash. Generates /s/[code] short links on pub
 
 # @plugdash/shortlink
 
-Generates short URLs for EmDash content on publish. Writes `shortlink.code`, `shortlink.url`, and `shortlink.fullUrl` to the content's metadata field. Ships a public resolve route and a CopyLink companion component.
+Generates short URLs for EmDash content on publish. Writes `shortlink.code`, `shortlink.url`, and `shortlink.fullUrl` to the content's metadata field. Ships a public resolve route, a drop-in RedirectPage.astro, and a CopyLink companion component.
 
 ## Plugin type
 
@@ -78,9 +78,26 @@ Renders nothing when shortlink metadata is not present.
 | autoCreate | `boolean` | `true`   | Create shortlinks on publish           |
 | domain     | `string`  | site URL | Custom domain for full short URLs      |
 
+## Redirect page
+
+Drop-in Astro page. Create `src/pages/s/[code].astro` in your site:
+
+```astro
+---
+import RedirectPage from "@plugdash/shortlink/RedirectPage.astro";
+---
+<RedirectPage />
+```
+
+Requires Astro `output: "server"` or `output: "hybrid"`. Issues a 301
+redirect on hit, 404 on unknown code, 410 Gone on expired.
+
+Optional props: `status` (default 301), `expiredHtml`, `notFoundHtml`.
+
 ## What it does not do
 
-- Does not handle the HTTP redirect - your theme provides the `/s/[code]` page
+- Does not claim the `/s/[code]` path itself - drop `RedirectPage.astro`
+  into `src/pages/s/[code].astro` (one line) and Astro handles routing
 - Does not track click counts (see @plugdash/clickcount)
 - Does not generate cryptographically random codes
 - Does not create shortlinks for drafts or scheduled content
@@ -95,21 +112,15 @@ After installing @plugdash/shortlink and registering it in astro.config.mjs:
    import CopyLink from "@plugdash/shortlink/CopyLink.astro"
    ```
 
-2. Add the redirect page at `src/pages/s/[code].ts`:
-   ```typescript
-   import type { APIRoute } from "astro";
-
-   export const GET: APIRoute = async ({ params, redirect }) => {
-     const res = await fetch(
-       `${import.meta.env.SITE}/_emdash/api/plugins/shortlink/resolve?code=${params.code}`
-     );
-     const json = await res.json();
-     if (!json.success || !json.data?.target) return new Response(null, { status: 404 });
-     if (json.data.expired) return new Response("Gone", { status: 410 });
-     return redirect(json.data.target, 301);
-   };
+2. Add the redirect page at `src/pages/s/[code].astro`:
+   ```astro
+   ---
+   import RedirectPage from "@plugdash/shortlink/RedirectPage.astro";
+   ---
+   <RedirectPage />
    ```
-   This is the critical integration step. Without this page, short URLs will not redirect.
+   This is the critical integration step. Without this page, short URLs
+   will not redirect. Requires Astro `output: "server"` or `output: "hybrid"`.
 
 3. Add the CopyLink button where you want it in the post layout:
    ```

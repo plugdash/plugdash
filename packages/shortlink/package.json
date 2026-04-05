@@ -13,14 +13,19 @@
 		"./sandbox": {
 			"import": "./dist/sandbox-entry.mjs"
 		},
-		"./CopyLink.astro": "./src/CopyLink.astro"
+		"./redirect-logic": {
+			"import": "./dist/redirect-logic.mjs",
+			"types": "./dist/redirect-logic.d.mts"
+		},
+		"./CopyLink.astro": "./src/CopyLink.astro",
+		"./RedirectPage.astro": "./src/RedirectPage.astro"
 	},
 	"files": [
 		"dist",
 		"src/*.astro"
 	],
 	"scripts": {
-		"build": "tsdown src/index.ts src/sandbox-entry.ts --dts.eager",
+		"build": "tsdown src/index.ts src/sandbox-entry.ts src/redirect-logic.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},

@@ -20,6 +20,7 @@ export function createPlugin(): NativePluginDefinition {
 	return {
 		id: "callout",
 		version: "0.1.0",
+		hooks: {},
 		admin: {
 			portableTextBlocks: [
 				{

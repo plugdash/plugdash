@@ -108,6 +108,36 @@ describe("readtime integration", () => {
 		expect(data.metadata.seoScore).toBe(85);
 	});
 
+	it("hook does not throw when ctx.content.update rejects (missing metadata column)", async () => {
+		// Simulates the SqliteError: no such column: metadata case when
+		// the target collection has no metadata field. The afterSave hook
+		// must catch and log, not crash the host's save operation.
+		const content = makeContentItem({
+			status: "published",
+			data: { body: makeBlocks("some text"), metadata: {} },
+		});
+
+		ctx.content!.get = vi.fn().mockResolvedValue({
+			id: content.id,
+			type: "plugins",
+			slug: content.slug,
+			status: "published",
+			data: { body: makeBlocks("some text") },
+			createdAt: content.createdAt,
+			updatedAt: content.updatedAt,
+		});
+		ctx.content!.update = vi.fn().mockRejectedValue(
+			new Error("SqliteError: no such column: metadata"),
+		);
+
+		// Must resolve, not reject
+		await expect(runAfterSave(content, "plugins")).resolves.toBeUndefined();
+		expect(ctx.log.error).toHaveBeenCalledWith(
+			"readtime: afterSave failed",
+			expect.objectContaining({ collection: "plugins" }),
+		);
+	});
+
 	it("post with known word count of 500 returns wordCount 500 and readingTimeMinutes 3", async () => {
 		// Build a fixture of exactly 500 words
 		const fiveHundredWords = Array.from({ length: 500 }, (_, i) => `word${i}`).join(" ");

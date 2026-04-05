@@ -1,0 +1,5 @@
+{
+	"useTabs": true,
+	"tabWidth": 2,
+	"ignorePatterns": ["dist/**", "**/dist/**", "node_modules/**", "**/node_modules/**"]
+}

@@ -30,13 +30,26 @@ export default defineConfig({
 
 ## Config options
 
-Configuration is stored in the plugin's KV store and can be changed via the
-admin UI or programmatically. Defaults are seeded on install.
+Pass config at register time. Values are seeded into KV on install and
+reseeded automatically when the config in code changes.
 
-| Option           | Type       | Default | Description                                      |
-| ---------------- | ---------- | ------- | ------------------------------------------------ |
+```js
+readtimePlugin({
+  wordsPerMinute: 250,
+  collections: ["blog", "articles"],
+});
+```
+
+| Option           | Type       | Default | Description                                       |
+| ---------------- | ---------- | ------- | ------------------------------------------------- |
 | wordsPerMinute   | `number`   | `238`   | Average reading speed used for the calculation    |
 | collections      | `string[]` | all     | Limit processing to specific collection slugs     |
+
+**Set `collections` whenever your site has collections without a
+`metadata` field** (e.g. EmDash's built-in `plugins` collection).
+Without an allowlist, readtime tries to write metadata on every content
+save and will log (but not throw) a "no such column: metadata" error
+when the target collection lacks one.
 
 ## Astro theme usage
 

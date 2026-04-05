@@ -43,7 +43,12 @@ const {
 	class: className = "",
 } = Astro.props
 
-const id = (post as Record<string, unknown>)?.id as string | undefined
+const postRecord = post as Record<string, unknown>
+const id =
+	(postRecord?.id as string | undefined) ??
+	((postRecord?.data as Record<string, unknown> | undefined)?.id as
+		| string
+		| undefined)
 ---
 
 {id && (
@@ -57,7 +62,10 @@ const id = (post as Record<string, unknown>)?.id as string | undefined
 		]}
 		data-post-id={id}
 		data-theme={theme}
+		data-label-idle="Heart this post"
+		data-label-active="Remove heart"
 		aria-label="Heart this post"
+		title="Heart this post"
 		type="button"
 	>
 		<svg class="plugdash-heart-svg" viewBox="0 0 24 24" aria-hidden="true">
@@ -79,36 +87,71 @@ const id = (post as Record<string, unknown>)?.id as string | undefined
 		const countEl = btn.querySelector(".plugdash-heart-count");
 		if (!countEl) return;
 
+		const storageKey = `plugdash-heart-${id}`;
+
+		const labelIdle = btn.getAttribute("data-label-idle") || "Heart this post";
+		const labelActive = btn.getAttribute("data-label-active") || "Remove heart";
+		const setLabel = (active) => {
+			const label = active ? labelActive : labelIdle;
+			btn.setAttribute("aria-label", label);
+			btn.setAttribute("title", label);
+		};
+
 		// Fetch current state
 		try {
 			const res = await fetch(`/_emdash/api/plugins/heartpost/heart-status?id=${encodeURIComponent(id)}`);
 			if (res.ok) {
 				const data = await res.json();
 				countEl.textContent = String(data.count ?? 0);
-				if (data.hearted) btn.setAttribute("data-hearted", "true");
+				if (data.hearted) {
+					btn.setAttribute("data-hearted", "true");
+					setLabel(true);
+				} else {
+					// Fallback: localStorage (covers IP changes, fingerprint mismatch)
+					try {
+						if (localStorage.getItem(storageKey) === "1") {
+							btn.setAttribute("data-hearted", "true");
+							setLabel(true);
+						}
+					} catch {
+						// localStorage unavailable
+					}
+				}
 			}
 		} catch {
 			// Silent fail - button still renders, just shows 0
 		}
 
 		btn.addEventListener("click", async () => {
-			if (btn.getAttribute("data-hearted")) return;
+			const isHearted = btn.getAttribute("data-hearted") === "true";
 
 			// Optimistic update
 			const current = parseInt(countEl.textContent || "0", 10);
-			countEl.textContent = String(current + 1);
-			btn.setAttribute("data-hearted", "true");
+			if (isHearted) {
+				countEl.textContent = String(Math.max(0, current - 1));
+				btn.removeAttribute("data-hearted");
+				setLabel(false);
+				try { localStorage.removeItem(storageKey); } catch {}
+			} else {
+				countEl.textContent = String(current + 1);
+				btn.setAttribute("data-hearted", "true");
+				setLabel(true);
+				try { localStorage.setItem(storageKey, "1"); } catch {}
+			}
 
 			// Confirm with server
+			const endpoint = isHearted ? "heart-remove" : "heart";
 			try {
-				const res = await fetch("/_emdash/api/plugins/heartpost/heart", {
+				const res = await fetch(`/_emdash/api/plugins/heartpost/${endpoint}`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({ id }),
 				});
 				if (res.ok) {
 					const data = await res.json();
-					countEl.textContent = String(data.count ?? current + 1);
+					countEl.textContent = String(
+						data.count ?? (isHearted ? Math.max(0, current - 1) : current + 1),
+					);
 				}
 			} catch {
 				// Keep optimistic state - better UX than reverting

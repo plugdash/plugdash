@@ -8,6 +8,7 @@ import type {
 	PortableTextSpan,
 } from "@portabletext/types";
 import { isRecord } from "@plugdash/types";
+import type { ReadtimeConfig } from "./index.ts";
 
 // ── Pure functions (exported for testing) ──
 
@@ -30,16 +31,70 @@ export function calculateReadingTime(
 	return { wordCount, minutes };
 }
 
+// ── Config hash (stable, non-crypto) ──
+
+function stableStringify(value: unknown): string {
+	if (value === null || typeof value !== "object") return JSON.stringify(value);
+	if (Array.isArray(value)) {
+		return `[${value.map(stableStringify).join(",")}]`;
+	}
+	const rec = value as Record<string, unknown>;
+	const keys = Object.keys(rec).sort();
+	return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(rec[k])}`).join(",")}}`;
+}
+
+export function hashConfig(config: ReadtimeConfig): string {
+	const s = stableStringify(config);
+	let hash = 0;
+	for (let i = 0; i < s.length; i++) {
+		hash = (hash * 31 + s.charCodeAt(i)) | 0;
+	}
+	return `${s.length}:${hash}`;
+}
+
 // ── Config from KV ──
 
 async function getConfig(ctx: PluginContext) {
 	const wordsPerMinute =
 		(await ctx.kv.get<number>("config:wordsPerMinute")) ?? 238;
-	// config:collections is intentionally not seeded at install time.
-	// null means "process all collections" - this is the desired default.
+	// null means "process all collections" - this is the desired default
+	// when no bootstrap collections were supplied.
 	const collections =
-		await ctx.kv.get<string[]>("config:collections");
-	return { wordsPerMinute, collections };
+		await ctx.kv.get<string[] | null>("config:collections");
+	return { wordsPerMinute, collections: collections ?? null };
+}
+
+// ── Bootstrap bridge (trusted mode only) ──
+
+async function seedFromBootstrap(
+	ctx: PluginContext,
+	bootstrap: ReadtimeConfig,
+): Promise<void> {
+	await ctx.kv.set(
+		"config:wordsPerMinute",
+		bootstrap.wordsPerMinute ?? 238,
+	);
+	// Seed collections explicitly. When bootstrap.collections is undefined,
+	// write null so getConfig sees an explicit "all collections" signal.
+	await ctx.kv.set(
+		"config:collections",
+		bootstrap.collections ?? null,
+	);
+	await ctx.kv.set("readtime:bootstrapHash", hashConfig(bootstrap));
+}
+
+async function seedDefaults(ctx: PluginContext): Promise<void> {
+	await ctx.kv.set("config:wordsPerMinute", 238);
+	await ctx.kv.set("config:collections", null);
+}
+
+async function checkAndReseedBootstrap(ctx: PluginContext): Promise<void> {
+	const bootstrap = globalThis.__plugdash_readtime_config__;
+	if (!bootstrap) return;
+	const currentHash = hashConfig(bootstrap);
+	const storedHash = await ctx.kv.get<string>("readtime:bootstrapHash");
+	if (storedHash === currentHash) return;
+	await seedFromBootstrap(ctx, bootstrap);
 }
 
 // ── Plugin definition ──
@@ -48,67 +103,95 @@ export default definePlugin({
 	hooks: {
 		"plugin:install": {
 			handler: async (_event: unknown, ctx: PluginContext) => {
-				await ctx.kv.set("config:wordsPerMinute", 238);
-				// config:collections intentionally not seeded - null means all collections
-				ctx.log.info("readtime: installed with default config");
+				try {
+					const bootstrap = globalThis.__plugdash_readtime_config__;
+					if (bootstrap) {
+						await seedFromBootstrap(ctx, bootstrap);
+						ctx.log.info("readtime: installed from bootstrap config", {
+							collections: bootstrap.collections ?? "all",
+							wordsPerMinute: bootstrap.wordsPerMinute ?? 238,
+						});
+					} else {
+						await seedDefaults(ctx);
+						ctx.log.info("readtime: installed with default config");
+					}
+				} catch (err) {
+					ctx.log.error("readtime: install failed", { err: String(err) });
+				}
 			},
 		},
 
 		"content:afterSave": {
 			handler: async (event: ContentHookEvent, ctx: PluginContext) => {
-				// Only process published content
-				if (event.content.status !== "published") return;
+				try {
+					// Reseed KV if the bootstrap config in code has changed since
+					// the last run (covers the case where a dev edits their
+					// astro.config.mjs collections list and restarts the site).
+					await checkAndReseedBootstrap(ctx);
 
-				// Guard: content capability required
-				if (!ctx.content) {
-					ctx.log.error(
-						"readtime: content capability unavailable - check plugin capabilities",
-					);
-					return;
-				}
+					// Only process published content
+					if (event.content.status !== "published") return;
 
-				const { wordsPerMinute, collections } = await getConfig(ctx);
+					// Guard: content capability required
+					if (!ctx.content) {
+						ctx.log.error(
+							"readtime: content capability unavailable - check plugin capabilities",
+						);
+						return;
+					}
 
-				// If collections allowlist is set, check membership
-				if (collections && !collections.includes(event.collection)) return;
+					const { wordsPerMinute, collections } = await getConfig(ctx);
 
-				// Extract body from the nested data field
-				const contentData = isRecord(event.content.data)
-					? event.content.data
-					: {};
-				const body = Array.isArray(contentData.body)
-					? (contentData.body as PortableTextBlock[])
-					: [];
+					// If collections allowlist is set, check membership
+					if (collections && !collections.includes(event.collection)) return;
 
-				// Calculate reading time
-				const text = extractText(body);
-				const { wordCount, minutes: readingTimeMinutes } =
-					calculateReadingTime(text, wordsPerMinute);
+					// Extract body from the nested data field
+					const contentData = isRecord(event.content.data)
+						? event.content.data
+						: {};
+					const body = Array.isArray(contentData.body)
+						? (contentData.body as PortableTextBlock[])
+						: [];
 
-				// Read existing content to merge metadata safely
-				const id = event.content.id as string;
-				const existing = await ctx.content.get(event.collection, id);
-				const existingData = isRecord(existing?.data)
-					? existing!.data
-					: {};
-				const existingMetadata = isRecord(existingData.metadata)
-					? (existingData.metadata as Record<string, unknown>)
-					: {};
+					// Calculate reading time
+					const text = extractText(body);
+					const { wordCount, minutes: readingTimeMinutes } =
+						calculateReadingTime(text, wordsPerMinute);
 
-				// Write only the metadata column - other data columns are untouched
-				await ctx.content.update!(event.collection, id, {
-					metadata: {
-						...existingMetadata,
+					// Read existing content to merge metadata safely
+					const id = event.content.id as string;
+					const existing = await ctx.content.get(event.collection, id);
+					const existingData = isRecord(existing?.data)
+						? existing!.data
+						: {};
+					const existingMetadata = isRecord(existingData.metadata)
+						? (existingData.metadata as Record<string, unknown>)
+						: {};
+
+					// Write only the metadata column - other data columns are
+					// untouched. May throw if target collection has no metadata
+					// field; caught below and logged rather than failing the save.
+					await ctx.content.update!(event.collection, id, {
+						metadata: {
+							...existingMetadata,
+							wordCount,
+							readingTimeMinutes,
+						},
+					});
+
+					ctx.log.info("readtime: updated", {
+						id,
 						wordCount,
 						readingTimeMinutes,
-					},
-				});
-
-				ctx.log.info("readtime: updated", {
-					id,
-					wordCount,
-					readingTimeMinutes,
-				});
+					});
+				} catch (err) {
+					// Hooks must never throw to the host - the content save has
+					// already happened and we do not want to fail it.
+					ctx.log.error("readtime: afterSave failed", {
+						err: String(err),
+						collection: event.collection,
+					});
+				}
 			},
 		},
 	},

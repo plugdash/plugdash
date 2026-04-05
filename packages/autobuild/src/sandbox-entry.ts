@@ -4,7 +4,6 @@
 import { definePlugin } from "emdash";
 import type { PluginContext } from "emdash";
 import type { AutobuildConfig, ContentStatus } from "./index.ts";
-import "./globals.d.ts";
 
 // ── Pure functions (exported for testing) ──
 

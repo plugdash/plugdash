@@ -42,7 +42,7 @@ export default defineConfig({
 | Option           | Type       | Default | Description                                      |
 | ---------------- | ---------- | ------- | ------------------------------------------------ |
 | wordsPerMinute   | `number`   | `238`   | Average reading speed used for the calculation    |
-| collections      | `string[]` | all     | Limit processing to specific collection slugs     |
+| collections      | `string[]` | all     | Limit processing to specific collection slugs (set this if your site has collections without a `metadata` field) |
 
 ## Astro theme usage
 

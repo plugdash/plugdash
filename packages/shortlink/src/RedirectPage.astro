@@ -1,0 +1,84 @@
+---
+/**
+ * @plugdash/shortlink - RedirectPage.astro
+ *
+ * Drop-in Astro page that resolves a short code and issues an HTTP redirect
+ * to its target URL. Designed to be mounted at src/pages/s/[code].astro (or
+ * whatever prefix matches your shortlink config).
+ *
+ * Usage:
+ *   // src/pages/s/[code].astro
+ *   ---
+ *   import RedirectPage from "@plugdash/shortlink/RedirectPage.astro"
+ *   ---
+ *   <RedirectPage />
+ *
+ * Requires the site to run in server output mode (output: "server" or
+ * output: "hybrid") so Astro.redirect can issue a 301 response.
+ *
+ * Props:
+ *   status      - redirect status code (default 301). Use 302 for temporary.
+ *   expiredHtml - HTML body for expired links (returns 410 Gone)
+ *   notFoundHtml - HTML body for unknown codes (returns 404)
+ */
+
+import {
+	interpretResolveResponse,
+	validateCode,
+	buildResolveUrl,
+} from "@plugdash/shortlink/redirect-logic"
+
+interface Props {
+	status?: 301 | 302 | 307 | 308
+	expiredHtml?: string
+	notFoundHtml?: string
+}
+
+const {
+	status = 301,
+	expiredHtml = "<h1>Link expired</h1><p>This short link is no longer active.</p>",
+	notFoundHtml = "<h1>Not found</h1><p>This short link does not exist.</p>",
+} = Astro.props
+
+const rawCode = Astro.params.code
+const code = validateCode(rawCode)
+
+if (code === null) {
+	return new Response(notFoundHtml, {
+		status: 404,
+		headers: { "content-type": "text/html; charset=utf-8" },
+	})
+}
+
+// Call the plugin's resolve route server-side. Astro's fetch hits the same
+// origin so this works without any additional config.
+const resolveUrl = buildResolveUrl(Astro.url.origin, code)
+
+let data: unknown = null
+try {
+	const res = await fetch(resolveUrl)
+	if (res.ok) {
+		data = await res.json()
+	}
+} catch {
+	// Network or runtime failure - treat as not_found below.
+}
+
+const decision = interpretResolveResponse(data)
+
+if (decision.kind === "redirect") {
+	return Astro.redirect(decision.target, status)
+}
+
+if (decision.kind === "expired") {
+	return new Response(expiredHtml, {
+		status: 410,
+		headers: { "content-type": "text/html; charset=utf-8" },
+	})
+}
+
+return new Response(notFoundHtml, {
+	status: 404,
+	headers: { "content-type": "text/html; charset=utf-8" },
+})
+---

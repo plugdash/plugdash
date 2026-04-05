@@ -10,6 +10,13 @@ export interface ReadtimeConfig {
 }
 
 export function readtimePlugin(config?: ReadtimeConfig): PluginDescriptor {
+	// Bridge config into the sandbox-entry via globalThis. Only works in
+	// trusted mode (same process). Sandboxed isolates fall back to
+	// KV-only (hardcoded defaults on first install).
+	if (config) {
+		globalThis.__plugdash_readtime_config__ = config;
+	}
+
 	return {
 		id: "readtime",
 		version: "0.1.0",
@@ -17,7 +24,8 @@ export function readtimePlugin(config?: ReadtimeConfig): PluginDescriptor {
 		entrypoint: "@plugdash/readtime/sandbox",
 		capabilities: ["read:content", "write:content"],
 		// Options are documentation-only for standard plugins.
-		// At runtime, config is read from ctx.kv (seeded by plugin:install hook).
+		// At runtime, config is read from ctx.kv (seeded by plugin:install
+		// hook from the globalThis bootstrap).
 		options: config as Record<string, unknown> | undefined,
 	};
 }

@@ -29,9 +29,13 @@ const url = shortlink?.fullUrl ?? shortlink?.url;
 			class={`plugdash-copy plugdash-copy--${variant} plugdash-copy--${size} plugdash-theme--${theme} ${className}`}
 			data-copy={url}
 			data-theme={theme}
+			data-label-idle="Copy short link"
+			data-label-copied="Copied!"
 			aria-label="Copy short link"
+			title="Copy short link"
 			type="button"
 		>
+			{showUrl && <span class="plugdash-copy-url">{url}</span>}
 			{/* copy icon */}
 			<svg
 				class="plugdash-copy-icon"
@@ -59,26 +63,36 @@ const url = shortlink?.fullUrl ?? shortlink?.url;
 			>
 				<polyline points="20 6 9 17 4 12" />
 			</svg>
-			{showUrl && <span class="plugdash-copy-url">{url}</span>}
 		</button>
 	)
 }
 
 <script>
 	document.querySelectorAll(".plugdash-copy").forEach((btn) => {
+		const labelIdle = btn.getAttribute("data-label-idle") || "Copy short link";
+		const labelCopied = btn.getAttribute("data-label-copied") || "Copied!";
+		const setLabel = (copied) => {
+			const label = copied ? labelCopied : labelIdle;
+			btn.setAttribute("aria-label", label);
+			btn.setAttribute("title", label);
+		};
+
 		btn.addEventListener("click", async () => {
 			const url = btn.getAttribute("data-copy");
 			if (!url) return;
 			await navigator.clipboard.writeText(url);
 			btn.setAttribute("data-copied", "true");
-			setTimeout(
-				() => btn.removeAttribute("data-copied"),
+			setLabel(true);
+			const duration =
 				parseInt(
 					getComputedStyle(btn)
 						.getPropertyValue("--plugdash-copy-success-duration")
 						.replace("ms", ""),
-				) || 2000,
-			);
+				) || 2000;
+			setTimeout(() => {
+				btn.removeAttribute("data-copied");
+				setLabel(false);
+			}, duration);
 		});
 	});
 </script>

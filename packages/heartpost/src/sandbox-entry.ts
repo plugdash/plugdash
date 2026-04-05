@@ -112,6 +112,50 @@ export default definePlugin({
 			},
 		},
 
+		"heart-remove": {
+			public: true,
+			handler: async (
+				routeCtx: { input: unknown; request: Request },
+				ctx: PluginContext,
+			) => {
+				const input = isRecord(routeCtx.input) ? routeCtx.input : {};
+				const id = input.id as string | undefined;
+
+				if (!id) {
+					return { error: "missing_id" };
+				}
+
+				const ip = getIp(routeCtx.request);
+				const ua = routeCtx.request.headers.get("user-agent") || "";
+				const fp = await generateFingerprint(ip, ua);
+
+				// Check if currently hearted
+				const existing = await ctx.kv.get<string>(
+					`heartpost:${id}:${fp}`,
+				);
+				if (!existing) {
+					const count =
+						(await ctx.kv.get<number>(`heartpost:${id}:count`)) ?? 0;
+					return { count, hearted: false };
+				}
+
+				// Delete fingerprint (fire-and-forget)
+				ctx.kv
+					.delete(`heartpost:${id}:${fp}`)
+					.catch((err) =>
+						ctx.log.error("heartpost: fp delete failed", { err }),
+					);
+
+				// Decrement count (min 0)
+				const currentCount =
+					(await ctx.kv.get<number>(`heartpost:${id}:count`)) ?? 0;
+				const newCount = Math.max(0, currentCount - 1);
+				await ctx.kv.set(`heartpost:${id}:count`, newCount);
+
+				return { count: newCount, hearted: false };
+			},
+		},
+
 		"heart-status": {
 			public: true,
 			handler: async (

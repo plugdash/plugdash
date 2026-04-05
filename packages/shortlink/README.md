@@ -30,26 +30,44 @@ export default defineConfig({
 
 ## Add the redirect page
 
-The plugin owns shortlink logic. Your theme owns routing. Add this Astro
-page to wire up `/s/[code]` redirects:
+The plugin ships a ready-to-use Astro page. Create one file in your site:
 
-```typescript
-// src/pages/s/[code].ts
-import type { APIRoute } from "astro";
-
-export const GET: APIRoute = async ({ params, redirect }) => {
-  const res = await fetch(
-    `${import.meta.env.SITE}/_emdash/api/plugins/shortlink/resolve?code=${params.code}`
-  );
-  const json = await res.json();
-  if (!json.success || !json.data?.target) return new Response(null, { status: 404 });
-  if (json.data.expired) return new Response("Gone", { status: 410 });
-  return redirect(json.data.target, 301);
-};
+```astro
+---
+// src/pages/s/[code].astro
+import RedirectPage from "@plugdash/shortlink/RedirectPage.astro";
+---
+<RedirectPage />
 ```
 
-This is the only setup step beyond plugin registration. Agents can wire
-this in with a single file write - see SKILL.md for the exact instructions.
+That's it. The page resolves the code server-side, issues a 301 redirect
+to the target on hit, returns 404 for unknown codes, and 410 Gone for
+expired links. Requires Astro `output: "server"` or `output: "hybrid"`.
+
+### Redirect page props (optional)
+
+| Prop          | Type                 | Default | Description                         |
+| ------------- | -------------------- | ------- | ----------------------------------- |
+| status        | `301 \| 302 \| 307 \| 308` | `301`   | Redirect status code            |
+| expiredHtml   | `string`             | default | HTML body for 410 Gone responses    |
+| notFoundHtml  | `string`             | default | HTML body for 404 responses         |
+
+To customise the expired/not-found pages:
+
+```astro
+---
+import RedirectPage from "@plugdash/shortlink/RedirectPage.astro";
+---
+<RedirectPage
+  status={302}
+  expiredHtml="<h1>This link retired.</h1>"
+  notFoundHtml="<h1>No such link.</h1>"
+/>
+```
+
+If you need a different prefix than `/s/`, place the page at a matching
+path (e.g. `src/pages/link/[code].astro`) and update the plugin's `prefix`
+config in the admin UI.
 
 ## Config options
 
@@ -124,7 +142,9 @@ On publish, writes to `post.data.metadata.shortlink`:
 ## What it does not do
 
 - Does not create shortlinks for drafts, archived, or scheduled content
-- Does not handle the HTTP redirect itself - your theme provides the `/s/[code]` page
+- Does not claim the `/s/[code]` URL path by itself - EmDash plugins cannot
+  mount top-level routes, so you drop `RedirectPage.astro` into your
+  site's `src/pages/s/[code].astro` (one line)
 - Does not track click counts - that is the clickcount plugin's job
 - Does not generate cryptographically random codes - do not use shortlinks for secret or access-controlled URLs
 - Does not delete shortlinks when content is deleted (orphaned links stay until manually removed via admin)

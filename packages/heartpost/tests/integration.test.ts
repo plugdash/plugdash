@@ -86,6 +86,22 @@ describe("heartpost lifecycle", () => {
 		return route.handler(routeCtx, ctx);
 	}
 
+	async function postHeartRemove(id: string, ip: string, ua: string) {
+		const plugin = await getPlugin();
+		const route = plugin.default.routes!["heart-remove"];
+		const routeCtx = {
+			input: { id },
+			request: new Request(
+				"https://example.com/_emdash/api/plugins/heartpost/heart-remove",
+				{
+					method: "POST",
+					headers: { "x-forwarded-for": ip, "user-agent": ua },
+				},
+			),
+		};
+		return route.handler(routeCtx, ctx);
+	}
+
 	async function getHeartStatus(id: string, ip: string, ua: string) {
 		const plugin = await getPlugin();
 		const route = plugin.default.routes!["heart-status"];
@@ -196,6 +212,75 @@ describe("heartpost lifecycle", () => {
 		// This simulates hearting content that was published before the plugin was installed
 		const result = await postHeart("orphan-1", "10.0.0.1", "Chrome");
 		expect(result).toEqual({ count: 1, hearted: true });
+	});
+
+	it("heart-remove decrements count and clears fingerprint", async () => {
+		await runInstall();
+		await runAfterSave("post-r", "posts");
+
+		// Heart, then unheart - same user
+		const hearted = await postHeart("post-r", "10.0.0.1", "Chrome");
+		expect(hearted).toEqual({ count: 1, hearted: true });
+
+		const removed = await postHeartRemove("post-r", "10.0.0.1", "Chrome");
+		expect(removed).toEqual({ count: 0, hearted: false });
+
+		// Status should now show not hearted
+		const status = await getHeartStatus("post-r", "10.0.0.1", "Chrome");
+		expect(status).toEqual({ count: 0, hearted: false });
+	});
+
+	it("heart-remove on non-hearted post is a no-op", async () => {
+		await runInstall();
+		await runAfterSave("post-n", "posts");
+
+		const result = await postHeartRemove("post-n", "10.0.0.1", "Chrome");
+		expect(result).toEqual({ count: 0, hearted: false });
+		expect(kvStore.get("heartpost:post-n:count")).toBe(0);
+	});
+
+	it("heart-remove clamps at 0, never negative", async () => {
+		await runInstall();
+		await runAfterSave("post-z", "posts");
+
+		await postHeart("post-z", "10.0.0.1", "Chrome");
+		await postHeartRemove("post-z", "10.0.0.1", "Chrome");
+		// Second remove - already at 0, fingerprint gone
+		const result = await postHeartRemove("post-z", "10.0.0.1", "Chrome");
+		expect(result.count).toBe(0);
+		expect(result.hearted).toBe(false);
+	});
+
+	it("heart-remove only removes for the caller's fingerprint", async () => {
+		await runInstall();
+		await runAfterSave("post-m", "posts");
+
+		await postHeart("post-m", "10.0.0.1", "Chrome");
+		await postHeart("post-m", "10.0.0.2", "Firefox");
+		expect(kvStore.get("heartpost:post-m:count")).toBe(2);
+
+		const removed = await postHeartRemove("post-m", "10.0.0.1", "Chrome");
+		expect(removed).toEqual({ count: 1, hearted: false });
+
+		// User B still hearted
+		const statusB = await getHeartStatus("post-m", "10.0.0.2", "Firefox");
+		expect(statusB).toEqual({ count: 1, hearted: true });
+	});
+
+	it("heart-remove without id returns error", async () => {
+		const plugin = await getPlugin();
+		const route = plugin.default.routes!["heart-remove"];
+		const result = await route.handler(
+			{
+				input: {},
+				request: new Request(
+					"https://example.com/_emdash/api/plugins/heartpost/heart-remove",
+					{ method: "POST" },
+				),
+			},
+			ctx,
+		);
+		expect(result).toEqual({ error: "missing_id" });
 	});
 
 	it("multiple posts track counts independently", async () => {

@@ -69,6 +69,22 @@ Theme: `auto` (default) / `dark` / `light`
 
 Renders nothing when shareUrls metadata is not present.
 
+## Platform hover colours
+
+Buttons tint to their brand colour on hover by default (X `#1d9bf0`,
+LinkedIn `#0a66c2`, Bluesky `#0085ff`, WhatsApp `#25d366`, Email uses
+`--plugdash-accent`). Override via CSS custom properties:
+
+```css
+:root {
+  --plugdash-share-twitter-color: #000000;
+  --plugdash-share-linkedin-color: #004182;
+  --plugdash-share-bluesky-color: #0085ff;
+  --plugdash-share-whatsapp-color: #25d366;
+  --plugdash-share-email-color: #6366f1;
+}
+```
+
 ## Configuration
 
 | Option    | Type       | Default   | Description                          |

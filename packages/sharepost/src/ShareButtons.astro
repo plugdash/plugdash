@@ -21,6 +21,15 @@ const data = post?.data as Record<string, unknown> | undefined
 const metadata = data?.metadata as Record<string, unknown> | undefined
 const shareUrls = metadata?.shareUrls as Record<string, string> | undefined
 
+// Human-friendly display names for each platform.
+const labels: Record<string, string> = {
+	twitter: "X",
+	linkedin: "LinkedIn",
+	whatsapp: "WhatsApp",
+	bluesky: "Bluesky",
+	email: "Email",
+}
+
 // SVG icons - inline for zero requests
 const icons: Record<string, string> = {
 	twitter: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
@@ -41,11 +50,12 @@ const icons: Record<string, string> = {
 				target="_blank"
 				rel="noopener noreferrer"
 				class={`plugdash-share-btn plugdash-share-btn--${p}`}
-				aria-label={`Share on ${p}`}
+				aria-label={`Share on ${labels[p] ?? p}`}
+				title={`Share on ${labels[p] ?? p}`}
 				set:html={variant === "ghost"
-					? p
+					? (labels[p] ?? p)
 					: variant === "pill"
-						? `${icons[p]}<span>${p}</span>`
+						? `${icons[p]}<span>${labels[p] ?? p}</span>`
 						: icons[p]}
 			/>
 		) : null)}
@@ -86,7 +96,9 @@ const icons: Record<string, string> = {
 		color: inherit;
 		text-decoration: none;
 		transition: background var(--plugdash-engage-transition, 150ms ease),
-					opacity var(--plugdash-engage-transition, 150ms ease);
+					opacity var(--plugdash-engage-transition, 150ms ease),
+					color var(--plugdash-engage-transition, 150ms ease),
+					border-color var(--plugdash-engage-transition, 150ms ease);
 	}
 
 	/* circle variant - default */
@@ -134,6 +146,33 @@ const icons: Record<string, string> = {
 	/* sizes */
 	.plugdash-share--sm { --plugdash-engage-size: var(--plugdash-engage-size-sm, 1.5rem); }
 	.plugdash-share--lg { --plugdash-engage-size: var(--plugdash-engage-size-lg, 2.5rem); }
+
+	/* ---- per-platform brand colours on hover ---- */
+	/* Each platform has a CSS custom property. Users can override the
+	   defaults with their own brand guideline values. */
+	.plugdash-share-btn--twitter   { --plugdash-share-platform: var(--plugdash-share-twitter-color, #1d9bf0); }
+	.plugdash-share-btn--linkedin  { --plugdash-share-platform: var(--plugdash-share-linkedin-color, #0a66c2); }
+	.plugdash-share-btn--bluesky   { --plugdash-share-platform: var(--plugdash-share-bluesky-color, #0085ff); }
+	.plugdash-share-btn--whatsapp  { --plugdash-share-platform: var(--plugdash-share-whatsapp-color, #25d366); }
+	.plugdash-share-btn--email     { --plugdash-share-platform: var(--plugdash-share-email-color, var(--plugdash-accent, #6366f1)); }
+
+	/* circle/pill: colour icon + border, keep subtle background lift */
+	.plugdash-share--circle .plugdash-share-btn:hover,
+	.plugdash-share--pill .plugdash-share-btn:hover {
+		color: var(--plugdash-share-platform);
+		border-color: var(--plugdash-share-platform);
+	}
+
+	/* ghost: colour the text/icon, no border to tint */
+	.plugdash-share--ghost .plugdash-share-btn:hover {
+		color: var(--plugdash-share-platform);
+	}
+
+	/* filled: swap the accent background for the platform colour */
+	.plugdash-share--filled .plugdash-share-btn:hover {
+		background: var(--plugdash-share-platform);
+		opacity: 1;
+	}
 
 	/* attribution */
 	.plugdash-attribution {

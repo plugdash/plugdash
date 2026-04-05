@@ -76,6 +76,33 @@ import ShareButtons from "@plugdash/sharepost/ShareButtons.astro";
 | `--plugdash-accent-fg`         | `#ffffff`                              | Filled variant fg |
 | `--plugdash-font-ui`           | `"Lexend", system-ui, sans-serif`      | UI font family    |
 
+## Platform hover colours
+
+Each button tints to its platform brand colour on hover by default.
+
+| Platform  | Default hover colour | CSS variable                         |
+| --------- | -------------------- | ------------------------------------ |
+| X/Twitter | `#1d9bf0`            | `--plugdash-share-twitter-color`     |
+| LinkedIn  | `#0a66c2`            | `--plugdash-share-linkedin-color`    |
+| Bluesky   | `#0085ff`            | `--plugdash-share-bluesky-color`     |
+| WhatsApp  | `#25d366`            | `--plugdash-share-whatsapp-color`    |
+| Email     | `--plugdash-accent`  | `--plugdash-share-email-color`       |
+
+Override a platform's colour via the CSS variable:
+
+```css
+:root {
+  --plugdash-share-twitter-color: #000000;  /* X black branding */
+  --plugdash-share-linkedin-color: #004182;
+}
+```
+
+Or target the per-platform class directly for custom hover treatments:
+
+```css
+.plugdash-share-btn--bluesky:hover { background: #0085ff; color: #fff; }
+```
+
 ## Metadata written
 
 On publish, writes to `post.data.metadata.shareUrls`:
