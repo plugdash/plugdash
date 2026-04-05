@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/tocgen",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Auto-generated table of contents for EmDash posts",
 	"type": "module",
 	"main": "./dist/index.mjs",
@@ -15,13 +15,21 @@
 		},
 		"./TableOfContents.astro": "./src/TableOfContents.astro"
 	},
-	"files": ["dist", "src/*.astro"],
+	"files": [
+		"dist",
+		"src/*.astro"
+	],
 	"scripts": {
 		"build": "tsdown src/index.ts src/sandbox-entry.ts --dts.eager --external @portabletext/types",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": ["emdash", "emdash-plugin", "tocgen", "table-of-contents"],
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"tocgen",
+		"table-of-contents"
+	],
 	"license": "MIT",
 	"peerDependencies": {
 		"emdash": "^0.1.0",

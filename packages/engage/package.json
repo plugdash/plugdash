@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/engage",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Heart + share + copy - the engagement bundle for EmDash",
 	"type": "module",
 	"exports": {
@@ -10,12 +10,17 @@
 		"build": "echo 'engage: astro-only, no build needed'",
 		"test": "vitest run"
 	},
-	"keywords": ["emdash", "emdash-plugin", "engage", "engagement"],
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"engage",
+		"engagement"
+	],
 	"license": "MIT",
 	"peerDependencies": {
-		"@plugdash/heartpost": ">=0.1.0",
-		"@plugdash/sharepost": ">=0.1.0",
-		"@plugdash/shortlink": ">=0.1.0"
+		"@plugdash/heartpost": ">=0.1.1",
+		"@plugdash/sharepost": ">=0.1.1",
+		"@plugdash/shortlink": ">=0.1.1"
 	},
 	"devDependencies": {
 		"@plugdash/heartpost": "workspace:*",

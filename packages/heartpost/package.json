@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/heartpost",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Like button for EmDash posts - readers heart your content",
 	"type": "module",
 	"main": "./dist/index.mjs",
@@ -15,13 +15,21 @@
 		},
 		"./HeartButton.astro": "./src/HeartButton.astro"
 	},
-	"files": ["dist", "src/*.astro"],
+	"files": [
+		"dist",
+		"src/*.astro"
+	],
 	"scripts": {
 		"build": "tsdown src/index.ts src/sandbox-entry.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": ["emdash", "emdash-plugin", "heartpost", "like-button"],
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"heartpost",
+		"like-button"
+	],
 	"license": "MIT",
 	"peerDependencies": {
 		"emdash": "^0.1.0"
