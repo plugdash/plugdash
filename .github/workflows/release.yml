@@ -63,7 +63,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # ensure npm >=11.5.1 for OIDC support
-      - run: npm install -g npm@latest
+      # pinned: `npm@latest` fails on Node 22.22.2 runners due to a
+      # bundled-arborist module resolution bug (promise-retry not found)
+      - run: npm install -g npm@11.5.1
 
       # smoke gate: do not publish if anything is broken
       - run: pnpm lint
