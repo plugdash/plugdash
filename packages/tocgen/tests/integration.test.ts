@@ -57,7 +57,7 @@ describe("tocgen integration: full lifecycle", () => {
 
 	async function runInstall() {
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["plugin:install"];
+		const hook = plugin.default.hooks!["plugin:install"];
 		await hook.handler({}, ctx);
 	}
 
@@ -66,7 +66,7 @@ describe("tocgen integration: full lifecycle", () => {
 		collection = "posts",
 	) {
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		await hook.handler({ content, collection, isNew: false }, ctx);
 	}
 
@@ -92,7 +92,7 @@ describe("tocgen integration: full lifecycle", () => {
 		await runAfterSave(content);
 
 		// Step 3: Verify TOC structure
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const tocgen = updateCall[2].metadata.tocgen;
 
 		expect(tocgen.entries).toHaveLength(3); // 3 top-level h2s
@@ -142,7 +142,7 @@ describe("tocgen integration: full lifecycle", () => {
 
 		await runAfterSave(content);
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const tocgen = updateCall[2].metadata.tocgen;
 
 		// "Usage" h2 should now have "Astro Usage" h4 nested under it
@@ -181,7 +181,7 @@ describe("tocgen integration: full lifecycle", () => {
 		await runAfterSave(content);
 
 		// Should update to remove tocgen while preserving wordCount
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const metadata = updateCall[2].metadata;
 		expect(metadata.tocgen).toBeUndefined();
 		expect(metadata.wordCount).toBe(100);
@@ -216,7 +216,7 @@ describe("tocgen integration: full lifecycle", () => {
 		await runAfterSave(publishedContent);
 		expect(ctx.content!.update).toHaveBeenCalled();
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		expect(updateCall[2].metadata.tocgen.entries).toHaveLength(3);
 	});
 
@@ -268,7 +268,7 @@ describe("tocgen integration: full lifecycle", () => {
 
 		await runAfterSave(content);
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const entries = updateCall[2].metadata.tocgen.entries;
 
 		expect(entries[0].id).toBe("overview");
@@ -298,7 +298,7 @@ describe("tocgen integration: full lifecycle", () => {
 
 		await runAfterSave(content);
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const metadata = updateCall[2].metadata;
 
 		expect(metadata.wordCount).toBe(1200);

@@ -46,7 +46,7 @@ describe("heartpost hook: plugin:install", () => {
 	it("seeds config:label to KV", async () => {
 		const ctx = makeContext();
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["plugin:install"];
+		const hook = plugin.default.hooks!["plugin:install"];
 		await hook.handler({}, ctx);
 
 		expect(ctx.kv.set).toHaveBeenCalledWith("config:label", "hearts");
@@ -55,7 +55,7 @@ describe("heartpost hook: plugin:install", () => {
 	it("seeds config:collections as null to KV", async () => {
 		const ctx = makeContext();
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["plugin:install"];
+		const hook = plugin.default.hooks!["plugin:install"];
 		await hook.handler({}, ctx);
 
 		expect(ctx.kv.set).toHaveBeenCalledWith("config:collections", null);
@@ -76,7 +76,7 @@ describe("heartpost hook: content:afterSave", () => {
 		collection = "posts",
 	) {
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		const event = { content, collection, isNew: false };
 		await hook.handler(event, ctx);
 	}
@@ -165,7 +165,7 @@ describe("heartpost hook: content:afterSave", () => {
 		const content = makeContentItem({ status: "published" });
 
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		const event = { content, collection: "posts", isNew: false };
 
 		await expect(hook.handler(event, noContentCtx)).resolves.toBeUndefined();

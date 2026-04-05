@@ -39,7 +39,7 @@ describe("shortlink integration", () => {
 
 	async function runInstall() {
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["plugin:install"];
+		const hook = plugin.default.hooks!["plugin:install"];
 		await hook.handler({}, ctx);
 	}
 
@@ -48,7 +48,7 @@ describe("shortlink integration", () => {
 		collection = "posts",
 	) {
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		await hook.handler({ content, collection, isNew: false }, ctx);
 	}
 
@@ -108,7 +108,7 @@ describe("shortlink integration", () => {
 		// Verify metadata was written
 		expect(ctx.content!.update).toHaveBeenCalledOnce();
 		const updateData = (ctx.content!.update as ReturnType<typeof vi.fn>)
-			.mock.calls[0][2];
+			.mock.calls[0]![2];
 		const shortlink = updateData.metadata.shortlink;
 		expect(shortlink.code).toMatch(/^[a-zA-Z0-9]{4}$/);
 		expect(shortlink.url).toBe(`/s/${shortlink.code}`);
@@ -169,7 +169,7 @@ describe("shortlink integration", () => {
 		await runAfterSave(content, "posts");
 		expect(ctx.content!.update).toHaveBeenCalledOnce();
 		const firstCode = (ctx.content!.update as ReturnType<typeof vi.fn>)
-			.mock.calls[0][2].metadata.shortlink.code;
+			.mock.calls[0]![2].metadata.shortlink.code;
 
 		// Reset update mock
 		(ctx.content!.update as ReturnType<typeof vi.fn>).mockClear();
@@ -211,7 +211,7 @@ describe("shortlink integration", () => {
 		await runAfterSave(content, "posts");
 
 		const updateData = (ctx.content!.update as ReturnType<typeof vi.fn>)
-			.mock.calls[0][2];
+			.mock.calls[0]![2];
 		expect(updateData.metadata.readingTimeMinutes).toBe(3);
 		expect(updateData.metadata.wordCount).toBe(500);
 		expect(updateData.metadata.author).toBe("Jane");

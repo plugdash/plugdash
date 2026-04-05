@@ -18,6 +18,6 @@ export function tocgenPlugin(config?: TocgenConfig): PluginDescriptor {
 		format: "standard",
 		entrypoint: "@plugdash/tocgen/sandbox",
 		capabilities: ["read:content", "write:content"],
-		options: config,
+		options: config as Record<string, unknown>,
 	};
 }

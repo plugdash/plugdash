@@ -50,14 +50,14 @@ describe("createPlugin() native definition", () => {
 
 	it("block type is 'callout'", () => {
 		const definition = createPlugin();
-		const block = definition.admin!.portableTextBlocks![0];
+		const block = definition.admin!.portableTextBlocks![0]!;
 		expect(block.type).toBe("callout");
 		expect(block.label).toBe("Callout");
 	});
 
 	it("block has icon", () => {
 		const definition = createPlugin();
-		const block = definition.admin!.portableTextBlocks![0];
+		const block = definition.admin!.portableTextBlocks![0]!;
 		expect(block.icon).toBeDefined();
 		expect(typeof block.icon).toBe("string");
 	});
@@ -68,7 +68,7 @@ describe("createPlugin() native definition", () => {
 describe("block type definition", () => {
 	function getBlock(): PortableTextBlockConfig {
 		const definition = createPlugin();
-		return definition.admin!.portableTextBlocks![0];
+		return definition.admin!.portableTextBlocks![0]!;
 	}
 
 	it("has fields array", () => {
@@ -160,7 +160,7 @@ describe("descriptor and definition consistency", () => {
 	it("block type matches the plugin id", () => {
 		const descriptor = calloutPlugin();
 		const definition = createPlugin();
-		const block = definition.admin!.portableTextBlocks![0];
+		const block = definition.admin!.portableTextBlocks![0]!;
 		expect(block.type).toBe(descriptor.id);
 	});
 });

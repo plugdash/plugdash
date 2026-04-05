@@ -150,8 +150,8 @@ describe("deduplicateAnchors", () => {
 			{ level: 2, text: "Usage" },
 		];
 		const result = deduplicateAnchors(headings);
-		expect(result[0].id).toBe("introduction");
-		expect(result[1].id).toBe("usage");
+		expect(result[0]!.id).toBe("introduction");
+		expect(result[1]!.id).toBe("usage");
 	});
 
 	it("handles duplicate headings with -2 -3 suffix", () => {
@@ -161,9 +161,9 @@ describe("deduplicateAnchors", () => {
 			{ level: 2, text: "Introduction" },
 		];
 		const result = deduplicateAnchors(headings);
-		expect(result[0].id).toBe("introduction");
-		expect(result[1].id).toBe("introduction-2");
-		expect(result[2].id).toBe("introduction-3");
+		expect(result[0]!.id).toBe("introduction");
+		expect(result[1]!.id).toBe("introduction-2");
+		expect(result[2]!.id).toBe("introduction-3");
 	});
 
 	it("preserves text and level", () => {
@@ -187,9 +187,9 @@ describe("nestHeadings", () => {
 		];
 		const result = nestHeadings(flat, 3);
 		expect(result).toHaveLength(1);
-		expect(result[0].id).toBe("intro");
-		expect(result[0].children).toHaveLength(1);
-		expect(result[0].children[0].id).toBe("details");
+		expect(result[0]!.id).toBe("intro");
+		expect(result[0]!.children).toHaveLength(1);
+		expect(result[0]!.children[0]!.id).toBe("details");
 	});
 
 	it("nests h4 under preceding h3", () => {
@@ -200,9 +200,9 @@ describe("nestHeadings", () => {
 		];
 		const result = nestHeadings(flat, 4);
 		expect(result).toHaveLength(1);
-		expect(result[0].children).toHaveLength(1);
-		expect(result[0].children[0].children).toHaveLength(1);
-		expect(result[0].children[0].children[0].id).toBe("subdetail");
+		expect(result[0]!.children).toHaveLength(1);
+		expect(result[0]!.children[0]!.children).toHaveLength(1);
+		expect(result[0]!.children[0]!.children[0]!.id).toBe("subdetail");
 	});
 
 	it("h3 with no preceding h2 becomes top-level entry", () => {
@@ -212,9 +212,9 @@ describe("nestHeadings", () => {
 		];
 		const result = nestHeadings(flat, 3);
 		expect(result).toHaveLength(2);
-		expect(result[0].id).toBe("orphan");
-		expect(result[0].children).toEqual([]);
-		expect(result[1].id).toBe("section");
+		expect(result[0]!.id).toBe("orphan");
+		expect(result[0]!.children).toEqual([]);
+		expect(result[1]!.id).toBe("section");
 	});
 
 	it("multiple h2 sections each with h3 children", () => {
@@ -227,8 +227,8 @@ describe("nestHeadings", () => {
 		];
 		const result = nestHeadings(flat, 3);
 		expect(result).toHaveLength(2);
-		expect(result[0].children).toHaveLength(2);
-		expect(result[1].children).toHaveLength(1);
+		expect(result[0]!.children).toHaveLength(2);
+		expect(result[1]!.children).toHaveLength(1);
 	});
 
 	it("h4 headings excluded from tree when maxDepth=3", () => {
@@ -239,9 +239,9 @@ describe("nestHeadings", () => {
 		];
 		const result = nestHeadings(flat, 3);
 		expect(result).toHaveLength(1);
-		expect(result[0].children).toHaveLength(1);
+		expect(result[0]!.children).toHaveLength(1);
 		// h4 should not appear anywhere in the tree
-		expect(result[0].children[0].children).toEqual([]);
+		expect(result[0]!.children[0]!.children).toEqual([]);
 	});
 
 	it("all headings included when maxDepth=4", () => {
@@ -252,8 +252,8 @@ describe("nestHeadings", () => {
 		];
 		const result = nestHeadings(flat, 4);
 		expect(result).toHaveLength(1);
-		expect(result[0].children[0].children).toHaveLength(1);
-		expect(result[0].children[0].children[0].id).toBe("subdetail");
+		expect(result[0]!.children[0]!.children).toHaveLength(1);
+		expect(result[0]!.children[0]!.children[0]!.id).toBe("subdetail");
 	});
 
 	it("h3 only list with maxDepth=2 excludes all h3s", () => {
@@ -263,7 +263,7 @@ describe("nestHeadings", () => {
 		];
 		const result = nestHeadings(flat, 2);
 		expect(result).toHaveLength(1);
-		expect(result[0].children).toEqual([]);
+		expect(result[0]!.children).toEqual([]);
 	});
 });
 
@@ -285,7 +285,7 @@ describe("tocgen hook: content:afterSave", () => {
 		collection = "posts",
 	) {
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		const event = { content, collection, isNew: false };
 		await hook.handler(event, ctx);
 	}
@@ -319,7 +319,7 @@ describe("tocgen hook: content:afterSave", () => {
 			}),
 		);
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const entries = updateCall[2].metadata.tocgen.entries;
 		expect(entries).toHaveLength(3);
 		expect(entries[0].id).toBe("heading-1");
@@ -365,7 +365,7 @@ describe("tocgen hook: content:afterSave", () => {
 
 		// Should still update to clear the stale tocgen key
 		if ((ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls.length > 0) {
-			const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+			const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 			const metadata = updateCall[2].metadata;
 			expect(metadata.tocgen).toBeUndefined();
 			// Other plugins' metadata preserved
@@ -381,7 +381,7 @@ describe("tocgen hook: content:afterSave", () => {
 			const freshCtx = makeContext();
 			const content = makeContentItem({ status });
 			const plugin = await import("../src/sandbox-entry.ts");
-			const hook = plugin.default.hooks["content:afterSave"];
+			const hook = plugin.default.hooks!["content:afterSave"];
 			await hook.handler({ content, collection: "posts", isNew: false }, freshCtx);
 			expect(freshCtx.content!.update).not.toHaveBeenCalled();
 		}
@@ -424,7 +424,7 @@ describe("tocgen hook: content:afterSave", () => {
 
 		await runHook(content, "posts");
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const entries = updateCall[2].metadata.tocgen.entries;
 		// Fresh calculation, not old stale data
 		expect(entries).toHaveLength(3);
@@ -450,7 +450,7 @@ describe("tocgen hook: content:afterSave", () => {
 
 		await runHook(content, "posts");
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const metadata = updateCall[2].metadata;
 		// Other plugins' keys preserved
 		expect(metadata.wordCount).toBe(500);
@@ -469,7 +469,7 @@ describe("tocgen hook: content:afterSave", () => {
 		});
 
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		const event = { content, collection: "posts", isNew: false };
 
 		await expect(hook.handler(event, noContentCtx)).resolves.toBeUndefined();

@@ -18,7 +18,7 @@ export function shortlinkPlugin(config?: ShortlinkConfig): PluginDescriptor {
 		format: "standard",
 		entrypoint: "@plugdash/shortlink/sandbox",
 		capabilities: ["read:content", "write:content"],
-		options: config,
+		options: config as Record<string, unknown>,
 		adminPages: [{ path: "/shortlinks", label: "Short Links", icon: "link" }],
 	};
 }

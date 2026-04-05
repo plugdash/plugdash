@@ -21,8 +21,8 @@ describe("callout plugin registration lifecycle", () => {
 		// Simulate what astro.config.mjs does: pass descriptor to emdash()
 		const pluginsArray = [descriptor];
 		expect(pluginsArray).toHaveLength(1);
-		expect(pluginsArray[0].id).toBe("callout");
-		expect(pluginsArray[0].format).toBe("native");
+		expect(pluginsArray[0]!.id).toBe("callout");
+		expect(pluginsArray[0]!.format).toBe("native");
 	});
 
 	it("createPlugin produces a definition that EmDash can consume", () => {
@@ -50,7 +50,7 @@ describe("block data produced by EmDash editor", () => {
 		const block = makeCalloutBlock({
 			variant: "info",
 			body: "This is a note.",
-		});
+		}) as Record<string, unknown>;
 		expect(block._type).toBe("callout");
 		expect(block._key).toBeDefined();
 		expect(block.variant).toBe("info");
@@ -63,7 +63,7 @@ describe("block data produced by EmDash editor", () => {
 			title: "Deprecation notice",
 			body: "This API will be removed in v3.",
 			icon: true,
-		});
+		}) as Record<string, unknown>;
 		expect(block._type).toBe("callout");
 		expect(block.variant).toBe("warning");
 		expect(block.title).toBe("Deprecation notice");
@@ -76,7 +76,7 @@ describe("block data produced by EmDash editor", () => {
 			variant: "tip",
 			body: "Try this approach instead.",
 			icon: false,
-		});
+		}) as Record<string, unknown>;
 		expect(block.icon).toBe(false);
 	});
 
@@ -86,7 +86,7 @@ describe("block data produced by EmDash editor", () => {
 			const block = makeCalloutBlock({
 				variant,
 				body: `This is a ${variant} callout.`,
-			});
+			}) as Record<string, unknown>;
 			expect(block._type).toBe("callout");
 			expect(block.variant).toBe(variant);
 		}
@@ -94,7 +94,7 @@ describe("block data produced by EmDash editor", () => {
 
 	it("multiline body content is preserved", () => {
 		const body = "Line one.\nLine two.\nLine three.";
-		const block = makeCalloutBlock({ variant: "info", body });
+		const block = makeCalloutBlock({ variant: "info", body }) as Record<string, unknown>;
 		expect(block.body).toBe(body);
 		expect((block.body as string).split("\n")).toHaveLength(3);
 	});
@@ -103,7 +103,7 @@ describe("block data produced by EmDash editor", () => {
 describe("block type definition matches block data contract", () => {
 	it("every field in the block type has a corresponding action_id", () => {
 		const definition = createPlugin();
-		const blockDef = definition.admin!.portableTextBlocks![0];
+		const blockDef = definition.admin!.portableTextBlocks![0]!;
 		const fieldIds = blockDef.fields!.map((f) => f.action_id);
 
 		// These are the keys EmDash will put on the PT block
@@ -115,7 +115,7 @@ describe("block type definition matches block data contract", () => {
 
 	it("variant field options match the four supported variants", () => {
 		const definition = createPlugin();
-		const blockDef = definition.admin!.portableTextBlocks![0];
+		const blockDef = definition.admin!.portableTextBlocks![0]!;
 		const variantField = blockDef.fields!.find((f) => f.action_id === "variant");
 		const optionValues = variantField!.options!.map((o) => o.value);
 
@@ -124,7 +124,7 @@ describe("block type definition matches block data contract", () => {
 
 	it("block type name matches what the renderer expects", () => {
 		const definition = createPlugin();
-		const blockDef = definition.admin!.portableTextBlocks![0];
+		const blockDef = definition.admin!.portableTextBlocks![0]!;
 		// The astro/index.ts exports { callout: Callout }
 		// The block type must match the key in blockComponents
 		expect(blockDef.type).toBe("callout");

@@ -131,7 +131,7 @@ describe("sharepost hook: content:afterSave", () => {
 		collection = "posts",
 	) {
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		const event = { content, collection, isNew: false };
 		await hook.handler(event, ctx);
 	}
@@ -197,7 +197,7 @@ describe("sharepost hook: content:afterSave", () => {
 
 		await runHook(content, "posts");
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const shareUrls = updateCall[2].metadata.shareUrls;
 		expect(shareUrls.twitter).toBeDefined();
 		expect(shareUrls.bluesky).toBeDefined();
@@ -246,7 +246,7 @@ describe("sharepost hook: content:afterSave", () => {
 
 		await runHook(content, "posts");
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const updatedMeta = updateCall[2].metadata;
 		expect(updatedMeta.author).toBe("someone");
 		expect(updatedMeta.wordCount).toBe(100);
@@ -288,7 +288,7 @@ describe("sharepost hook: content:afterSave", () => {
 
 		await runHook(content, "posts");
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const shareUrls = updateCall[2].metadata.shareUrls;
 		expect(shareUrls.twitter).toContain("Updated+Title");
 		expect(shareUrls.twitter).not.toContain("Old+Title");
@@ -313,7 +313,7 @@ describe("sharepost hook: content:afterSave", () => {
 
 		await runHook(content, "posts");
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const shareUrls = updateCall[2].metadata.shareUrls;
 		// Should use "posts" as fallback title
 		expect(shareUrls.twitter).toContain("posts");

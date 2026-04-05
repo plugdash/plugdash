@@ -13,7 +13,7 @@ describe("sharepost integration: full lifecycle", () => {
 	});
 
 	async function runInstall() {
-		const hook = plugin.default.hooks["plugin:install"];
+		const hook = plugin.default.hooks!["plugin:install"];
 		await hook.handler({}, ctx);
 	}
 
@@ -21,7 +21,7 @@ describe("sharepost integration: full lifecycle", () => {
 		content: Record<string, unknown>,
 		collection = "posts",
 	) {
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		const event = { content, collection, isNew: false };
 		await hook.handler(event, ctx);
 	}
@@ -75,7 +75,7 @@ describe("sharepost integration: full lifecycle", () => {
 
 		// Step 4: Verify metadata was written with all 5 platforms
 		expect(ctx.content!.update).toHaveBeenCalledOnce();
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		expect(updateCall[0]).toBe("posts");
 		expect(updateCall[1]).toBe(content.id);
 
@@ -107,7 +107,7 @@ describe("sharepost integration: full lifecycle", () => {
 
 		await runAfterSave(content, "posts");
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const shareUrls = updateCall[2].metadata.shareUrls;
 
 		// ctx.url() in makeContext returns https://example.com + path
@@ -143,7 +143,7 @@ describe("sharepost integration: full lifecycle", () => {
 
 		await runAfterSave(content, "posts");
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const twitterUrl = updateCall[2].metadata.shareUrls.twitter;
 		expect(twitterUrl).toContain("via=abhinavs");
 		expect(twitterUrl).toContain("hashtags=emdash%2Ccms");
@@ -184,7 +184,7 @@ describe("sharepost integration: full lifecycle", () => {
 
 		await runAfterSave(content, "posts");
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const metadata = updateCall[2].metadata;
 
 		// Other plugins' fields preserved
@@ -232,7 +232,7 @@ describe("sharepost integration: full lifecycle", () => {
 			data: { title: "Test", body: [], metadata: {} },
 		});
 
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		await expect(
 			hook.handler({ content, collection: "posts", isNew: false }, noContentCtx),
 		).resolves.toBeUndefined();
@@ -264,7 +264,7 @@ describe("sharepost integration: full lifecycle", () => {
 
 			await runAfterSave(content, collection);
 
-			const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+			const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 			expect(updateCall[0]).toBe(collection);
 
 			// URL should contain the collection in the path

@@ -11,7 +11,7 @@ export function heartpostPlugin(_config?: HeartpostConfig): PluginDescriptor {
 		version: "0.1.0",
 		format: "standard",
 		entrypoint: "@plugdash/heartpost/sandbox",
-		options: {},
+		options: {} as Record<string, unknown>,
 		capabilities: ["read:content", "write:content"],
 	};
 }

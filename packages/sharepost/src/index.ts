@@ -22,6 +22,6 @@ export function sharepostPlugin(config?: SharepostConfig): PluginDescriptor {
 		capabilities: ["read:content", "write:content"],
 		// Options are documentation-only for standard plugins.
 		// At runtime, config is read from ctx.kv (seeded by plugin:install hook).
-		options: config,
+		options: config as Record<string, unknown>,
 	};
 }

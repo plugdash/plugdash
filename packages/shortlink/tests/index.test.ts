@@ -46,7 +46,7 @@ describe("shortlink hook: content:afterSave", () => {
 		collection = "posts",
 	) {
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		const event = { content, collection, isNew: false };
 		await hook.handler(event, ctx);
 	}
@@ -174,7 +174,7 @@ describe("shortlink hook: content:afterSave", () => {
 
 		await runHook(content, "posts");
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const updatedData = updateCall[2];
 		expect(updatedData.metadata.shortlink).toBeDefined();
 		expect(updatedData.metadata.shortlink.code).toMatch(/^[a-zA-Z0-9]{4}$/);
@@ -216,7 +216,7 @@ describe("shortlink hook: content:afterSave", () => {
 
 		await runHook(content, "posts");
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const updatedData = updateCall[2];
 		expect(updatedData.metadata.author).toBe("someone");
 		expect(updatedData.metadata.readingTimeMinutes).toBe(3);
@@ -228,7 +228,7 @@ describe("shortlink hook: content:afterSave", () => {
 		const content = makeContentItem({ status: "published" });
 
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		const event = { content, collection: "posts", isNew: false };
 
 		await expect(hook.handler(event, noContentCtx)).resolves.toBeUndefined();
@@ -264,7 +264,7 @@ describe("shortlink hook: content:afterSave", () => {
 
 		await runHook(content, "posts");
 
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
+		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
 		const updatedData = updateCall[2];
 		expect(updatedData.metadata.shortlink.fullUrl).toMatch(
 			/^https:\/\/short\.me\/s\/[a-zA-Z0-9]{4}$/,

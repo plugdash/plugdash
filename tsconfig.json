@@ -8,7 +8,9 @@
     "noImplicitOverride": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true
   },
   "exclude": ["node_modules", "dist"]
 }

@@ -37,7 +37,7 @@ describe("readtime integration", () => {
 		collection = "posts",
 	) {
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		await hook.handler({ content, collection, isNew: false }, ctx);
 	}
 
@@ -60,7 +60,7 @@ describe("readtime integration", () => {
 		await runAfterSave(content);
 
 		expect(ctx.content!.update).toHaveBeenCalledOnce();
-		const data = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0][2];
+		const data = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]![2];
 		expect(data.metadata.wordCount).toBe(3);
 		expect(data.metadata.readingTimeMinutes).toBe(1);
 	});
@@ -100,7 +100,7 @@ describe("readtime integration", () => {
 
 		await runAfterSave(content);
 
-		const data = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0][2];
+		const data = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]![2];
 		// Overwritten with fresh values
 		expect(data.metadata.wordCount).toBe(4);
 		expect(data.metadata.readingTimeMinutes).toBe(1);
@@ -128,7 +128,7 @@ describe("readtime integration", () => {
 
 		await runAfterSave(content);
 
-		const data = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0][2];
+		const data = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]![2];
 		expect(data.metadata.wordCount).toBe(500);
 		// ceil(500 / 238) = ceil(2.1008...) = 3
 		expect(data.metadata.readingTimeMinutes).toBe(3);

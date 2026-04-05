@@ -157,7 +157,7 @@ describe("readtime hook: content:afterSave", () => {
 	) {
 		// Import the plugin definition and invoke the content:afterSave handler
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		const event = { content, collection, isNew: false };
 		await hook.handler(event, ctx);
 	}
@@ -185,7 +185,7 @@ describe("readtime hook: content:afterSave", () => {
 			type: "posts",
 			slug: content.slug,
 			status: "published",
-			data: { body: content.data.body, metadata: {} },
+			data: { body: (content.data as Record<string, unknown>).body, metadata: {} },
 			createdAt: content.createdAt,
 			updatedAt: content.updatedAt,
 		});
@@ -303,7 +303,7 @@ describe("readtime hook: content:afterSave", () => {
 		await runHook(content, "posts");
 
 		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
-		const updatedData = updateCall[2];
+		const updatedData = updateCall![2];
 		expect(updatedData.metadata.author).toBe("someone");
 		expect(updatedData.metadata.seoTitle).toBe("My Post");
 		expect(updatedData.metadata.wordCount).toBe(2);
@@ -316,7 +316,7 @@ describe("readtime hook: content:afterSave", () => {
 		const content = makeContentItem({ status: "published" });
 
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"];
 		const event = { content, collection: "posts", isNew: false };
 
 		// Should not throw
@@ -354,7 +354,7 @@ describe("readtime hook: content:afterSave", () => {
 		await runHook(content, "posts");
 
 		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
-		const updatedData = updateCall[2];
+		const updatedData = updateCall![2];
 		// Should be 3 (fresh calculation), not 99 or 102
 		expect(updatedData.metadata.wordCount).toBe(3);
 		expect(updatedData.metadata.readingTimeMinutes).toBe(1);
