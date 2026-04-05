@@ -111,10 +111,11 @@ describe("engage package has no plugin artifacts", () => {
 		expect(existsSync(resolve(pkgRoot, "dist"))).toBe(false);
 	});
 
-	it("has no build script in package.json", () => {
+	it("has no-op build script in package.json", () => {
 		const pkg = JSON.parse(
 			readFileSync(resolve(pkgRoot, "package.json"), "utf-8"),
 		);
-		expect(pkg.scripts?.build).toBeUndefined();
+		expect(pkg.scripts?.build).toBeDefined();
+		expect(pkg.scripts.build).not.toContain("tsdown");
 	});
 });

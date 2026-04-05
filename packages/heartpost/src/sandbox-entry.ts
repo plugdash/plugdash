@@ -1,5 +1,6 @@
+import { definePlugin } from "emdash";
+import type { PluginContext, ContentHookEvent } from "emdash";
 import { isRecord } from "@plugdash/types";
-import type { PluginContext, StandardPluginDefinition } from "@plugdash/types";
 
 // ── Pure functions (exported for testing) ──
 
@@ -33,7 +34,7 @@ async function getConfig(ctx: PluginContext) {
 
 // ── Plugin definition ──
 
-const plugin: StandardPluginDefinition = {
+export default definePlugin({
 	hooks: {
 		"plugin:install": {
 			handler: async (_event: unknown, ctx: PluginContext) => {
@@ -43,7 +44,7 @@ const plugin: StandardPluginDefinition = {
 		},
 
 		"content:afterSave": {
-			handler: async (event: any, ctx: PluginContext) => {
+			handler: async (event: ContentHookEvent, ctx: PluginContext) => {
 				try {
 					if (event.content.status !== "published") return;
 
@@ -138,6 +139,4 @@ const plugin: StandardPluginDefinition = {
 			},
 		},
 	},
-};
-
-export default plugin;
+});

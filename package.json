@@ -11,9 +11,19 @@
     "version-packages": "changeset version",
     "publish-packages": "changeset publish"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@rolldown/binding-darwin-arm64",
+      "@rolldown/binding-darwin-universal",
+      "esbuild",
+      "better-sqlite3",
+      "sharp"
+    ]
+  },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
     "oxlint": "^0.13.0",
+    "tsdown": "^0.21.7",
     "typescript": "^5.4.0",
     "vitest": "^2.0.0"
   }

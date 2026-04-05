@@ -19,9 +19,9 @@ describe("@plugdash/engage package structure", () => {
 		const pkg = JSON.parse(
 			readFileSync(resolve(pkgRoot, "package.json"), "utf-8"),
 		);
-		expect(pkg.dependencies["@plugdash/heartpost"]).toBeDefined();
-		expect(pkg.dependencies["@plugdash/sharepost"]).toBeDefined();
-		expect(pkg.dependencies["@plugdash/shortlink"]).toBeDefined();
+		expect(pkg.peerDependencies["@plugdash/heartpost"]).toBeDefined();
+		expect(pkg.peerDependencies["@plugdash/sharepost"]).toBeDefined();
+		expect(pkg.peerDependencies["@plugdash/shortlink"]).toBeDefined();
 	});
 
 	it("has no main or sandbox entry", () => {

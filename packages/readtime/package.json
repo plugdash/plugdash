@@ -1,11 +1,24 @@
 {
 	"name": "@plugdash/readtime",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"type": "module",
+	"main": "./dist/index.mjs",
+	"types": "./dist/index.d.mts",
 	"exports": {
-		".": "./src/index.ts",
-		"./sandbox": "./src/sandbox-entry.ts",
+		".": {
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.mts"
+		},
+		"./sandbox": {
+			"import": "./dist/sandbox-entry.mjs"
+		},
 		"./ReadingTime.astro": "./src/ReadingTime.astro"
+	},
+	"files": ["dist", "src/*.astro"],
+	"scripts": {
+		"build": "tsdown src/index.ts src/sandbox-entry.ts --dts",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit"
 	},
 	"keywords": ["emdash", "emdash-plugin"],
 	"license": "MIT",
