@@ -30,6 +30,11 @@
 		"admonition"
 	],
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/callout"
+	},
 	"peerDependencies": {
 		"emdash": "^0.1.0"
 	},

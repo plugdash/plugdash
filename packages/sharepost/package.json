@@ -32,6 +32,11 @@
 		"share-buttons"
 	],
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/sharepost"
+	},
 	"peerDependencies": {
 		"emdash": "^0.1.0"
 	},

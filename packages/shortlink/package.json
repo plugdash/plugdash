@@ -36,6 +36,11 @@
 		"pretty-links"
 	],
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/shortlink"
+	},
 	"peerDependencies": {
 		"emdash": "^0.1.0"
 	},

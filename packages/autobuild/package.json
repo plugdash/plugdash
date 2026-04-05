@@ -33,6 +33,11 @@
 		"ci-cd"
 	],
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/autobuild"
+	},
 	"peerDependencies": {
 		"emdash": "^0.1.0"
 	},

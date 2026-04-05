@@ -32,6 +32,11 @@
 		"word-count"
 	],
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/readtime"
+	},
 	"peerDependencies": {
 		"emdash": "^0.1.0",
 		"@portabletext/types": "^2.0.0"

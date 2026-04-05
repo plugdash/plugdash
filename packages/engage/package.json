@@ -17,6 +17,11 @@
 		"engagement"
 	],
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/engage"
+	},
 	"peerDependencies": {
 		"@plugdash/heartpost": ">=0.2.0",
 		"@plugdash/sharepost": ">=0.2.0",
