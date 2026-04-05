@@ -1,5 +1,5 @@
 ---
-"@plugdash/sharepost": minor
+"@plugdash/sharepost": patch
 ---
 
 Initial release. Social share buttons for EmDash posts - generates sharing URLs for Twitter/X, LinkedIn, WhatsApp, Bluesky, and email. Ships ShareButtons.astro component with zero client-side JavaScript.

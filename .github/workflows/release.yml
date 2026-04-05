@@ -62,7 +62,12 @@ jobs:
       # ensure npm >=11.5.1 for OIDC support
       - run: npm install -g npm@latest
 
+      # smoke gate: do not publish if anything is broken
+      - run: pnpm lint
       - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm smoke
 
       - run: pnpm publish-packages --no-git-checks
         env:
