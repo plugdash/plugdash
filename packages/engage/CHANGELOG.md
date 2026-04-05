@@ -1,5 +1,14 @@
 # @plugdash/engage
 
+## 1.0.0
+
+### Patch Changes
+
+- Updated dependencies [95f903d]
+  - @plugdash/sharepost@0.2.0
+  - @plugdash/heartpost@0.2.0
+  - @plugdash/shortlink@0.2.0
+
 ## 0.1.1
 
 ### Patch Changes

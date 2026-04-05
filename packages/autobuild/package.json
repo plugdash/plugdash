@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/autobuild",
-	"version": "0.1.1",
+	"version": "0.2.0",
 	"description": "Fires a Cloudflare Pages, Netlify, or Vercel build hook on every publish from EmDash",
 	"type": "module",
 	"main": "./dist/index.mjs",

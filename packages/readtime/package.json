@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/readtime",
-	"version": "0.1.1",
+	"version": "0.2.0",
 	"description": "Estimated reading time and word count for EmDash posts",
 	"type": "module",
 	"main": "./dist/index.mjs",
