@@ -15,7 +15,7 @@
 	},
 	"files": ["dist", "src/astro", "src/*.astro"],
 	"scripts": {
-		"build": "tsdown src/index.ts --dts",
+		"build": "tsdown src/index.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},

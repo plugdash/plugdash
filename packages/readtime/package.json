@@ -16,14 +16,15 @@
 	},
 	"files": ["dist", "src/*.astro"],
 	"scripts": {
-		"build": "tsdown src/index.ts src/sandbox-entry.ts --dts",
+		"build": "tsdown src/index.ts src/sandbox-entry.ts --dts.eager --external @portabletext/types",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
 	"keywords": ["emdash", "emdash-plugin"],
 	"license": "MIT",
 	"peerDependencies": {
-		"emdash": "^0.1.0"
+		"emdash": "^0.1.0",
+		"@portabletext/types": "^2.0.0"
 	},
 	"devDependencies": {
 		"@plugdash/types": "workspace:*",
