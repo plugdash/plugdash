@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/sharepost",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Share buttons without 200KB of JavaScript - generates sharing URLs for Twitter/X, LinkedIn, WhatsApp, Bluesky, and email on publish",
 	"type": "module",
 	"main": "./dist/index.mjs",
@@ -15,13 +15,22 @@
 		},
 		"./ShareButtons.astro": "./src/ShareButtons.astro"
 	},
-	"files": ["dist", "src/*.astro"],
+	"files": [
+		"dist",
+		"src/*.astro"
+	],
 	"scripts": {
 		"build": "tsdown src/index.ts src/sandbox-entry.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": ["emdash", "emdash-plugin", "sharepost", "social-sharing", "share-buttons"],
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"sharepost",
+		"social-sharing",
+		"share-buttons"
+	],
 	"license": "MIT",
 	"peerDependencies": {
 		"emdash": "^0.1.0"
