@@ -15,6 +15,7 @@ Each plugin does one thing, ships a companion Astro component that works with no
 | [@plugdash/sharepost](./packages/sharepost) | Share button URLs for Twitter, LinkedIn, WhatsApp, Bluesky, email |
 | [@plugdash/heartpost](./packages/heartpost) | Heart button with KV-backed per-post counter and fingerprint dedup |
 | [@plugdash/engage](./packages/engage) | Heart, share, and copy-link composed into one component |
+| [@plugdash/autobuild](./packages/autobuild) | Fires a Cloudflare Pages, Netlify, or Vercel build hook on every publish |
 
 ## Install
 

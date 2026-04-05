@@ -7,6 +7,7 @@ import { shortlinkPlugin } from "@plugdash/shortlink";
 import { sharepostPlugin } from "@plugdash/sharepost";
 import { heartpostPlugin } from "@plugdash/heartpost";
 import { tocgenPlugin } from "@plugdash/tocgen";
+import { autobuildPlugin } from "@plugdash/autobuild";
 
 export default defineConfig({
 	integrations: [
@@ -19,6 +20,11 @@ export default defineConfig({
 				sharepostPlugin(),
 				heartpostPlugin(),
 				tocgenPlugin({ collections: ["posts"] }),
+				autobuildPlugin({
+					hookUrl: "https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/testbed-placeholder",
+					collections: ["posts"],
+					debounceMs: 100,
+				}),
 			],
 		}),
 	],

@@ -136,7 +136,18 @@ These supersede anything in plugin specs if there is a conflict.
 `write:metadata` does not exist. Use `write:content` for any plugin that
 calls `ctx.content.update()`. Confirmed capabilities that exist:
 `read:content`, `write:content`, `read:media`,
-`write:media`, `network:[hostname]`
+`write:media`, `network:fetch`, `read:users`, `email:send`
+
+// corrected 2026-04-05 while building @plugdash/autobuild
+The network capability is literally `"network:fetch"`, not
+`"network:[hostname]"`. Hostnames go in a separate `allowedHosts` array
+on the PluginDescriptor, which supports wildcards. Example:
+```typescript
+capabilities: ["read:content", "network:fetch"],
+allowedHosts: ["api.cloudflare.com", "*.googleapis.com"],
+```
+Verified in emdash-source/skills/creating-plugins/SKILL.md lines 189,
+211-214, 420, 438-439.
 
 // confirmed 2026-04-05 while building @plugdash/shortlink
 `read:kv` and `write:kv` do not exist as capabilities. KV is auto-available
@@ -314,7 +325,13 @@ const res = await fetch("https://api.example.com");
 const res = await ctx.http.fetch("https://api.example.com");
 ```
 
-Declare the network capability: `"network:api.example.com"`
+Declare the network capability as `"network:fetch"` and list hostnames in
+`allowedHosts` on the descriptor (wildcards supported):
+
+```typescript
+capabilities: ["network:fetch"],
+allowedHosts: ["api.example.com", "*.googleapis.com"],
+```
 
 ### isRecord() lives in shared/types
 

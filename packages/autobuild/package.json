@@ -1,0 +1,42 @@
+{
+	"name": "@plugdash/autobuild",
+	"version": "0.1.0",
+	"description": "Fires a Cloudflare Pages, Netlify, or Vercel build hook on every publish from EmDash",
+	"type": "module",
+	"main": "./dist/index.mjs",
+	"types": "./dist/index.d.mts",
+	"exports": {
+		".": {
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.mts"
+		},
+		"./sandbox": {
+			"import": "./dist/sandbox-entry.mjs"
+		}
+	},
+	"files": ["dist"],
+	"scripts": {
+		"build": "tsdown src/index.ts src/sandbox-entry.ts --dts.eager",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit"
+	},
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"autobuild",
+		"deploy-hook",
+		"cloudflare-pages",
+		"netlify",
+		"vercel",
+		"ci-cd"
+	],
+	"license": "MIT",
+	"peerDependencies": {
+		"emdash": "^0.1.0"
+	},
+	"devDependencies": {
+		"@plugdash/types": "workspace:*",
+		"@plugdash/testing": "workspace:*",
+		"vitest": "^2.0.0"
+	}
+}

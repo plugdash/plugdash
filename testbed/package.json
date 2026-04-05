@@ -11,6 +11,7 @@
 		"emdash": "^0.1.0",
 		"@plugdash/readtime": "workspace:*",
 		"@plugdash/callout": "workspace:*",
-		"@plugdash/shortlink": "workspace:*"
+		"@plugdash/shortlink": "workspace:*",
+		"@plugdash/autobuild": "workspace:*"
 	}
 }
