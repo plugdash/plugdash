@@ -1,5 +1,13 @@
 # @plugdash/sharepost
 
+## 0.2.2
+
+### Patch Changes
+
+- 6ae7d86: Export generateShareUrl and generateAllShareUrls from new ./utils subpath
+  so consumers can reuse share URL generation without reimplementing it.
+  Sync descriptor version with package version.
+
 ## 0.2.0
 
 ### Minor Changes
