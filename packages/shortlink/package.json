@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/shortlink",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Short URLs for EmDash posts - shareable links created on publish",
 	"type": "module",
 	"main": "./dist/index.mjs",
@@ -45,8 +45,8 @@
 		"emdash": "^0.1.0"
 	},
 	"devDependencies": {
-		"@plugdash/types": "workspace:*",
 		"@plugdash/testing": "workspace:*",
+		"@plugdash/types": "workspace:*",
 		"vitest": "^2.0.0"
 	}
 }

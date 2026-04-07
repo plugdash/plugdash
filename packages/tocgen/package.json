@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/tocgen",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Auto-generated table of contents for EmDash posts",
 	"type": "module",
 	"main": "./dist/index.mjs",
@@ -13,6 +13,10 @@
 		"./sandbox": {
 			"import": "./dist/sandbox-entry.mjs"
 		},
+		"./utils": {
+			"import": "./dist/utils.mjs",
+			"types": "./dist/utils.d.mts"
+		},
 		"./TableOfContents.astro": "./src/TableOfContents.astro"
 	},
 	"files": [
@@ -20,7 +24,7 @@
 		"src/*.astro"
 	],
 	"scripts": {
-		"build": "tsdown src/index.ts src/sandbox-entry.ts --dts.eager --external @portabletext/types",
+		"build": "tsdown src/index.ts src/sandbox-entry.ts src/utils.ts --dts.eager --external @portabletext/types",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},

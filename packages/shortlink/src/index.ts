@@ -14,7 +14,7 @@ export interface ShortlinkConfig {
 export function shortlinkPlugin(config?: ShortlinkConfig): PluginDescriptor {
 	return {
 		id: "shortlink",
-		version: "0.1.0",
+		version: "0.2.1",
 		format: "standard",
 		entrypoint: "@plugdash/shortlink/sandbox",
 		capabilities: ["read:content", "write:content"],

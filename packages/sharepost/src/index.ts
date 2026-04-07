@@ -16,7 +16,7 @@ export interface SharepostConfig {
 export function sharepostPlugin(config?: SharepostConfig): PluginDescriptor {
 	return {
 		id: "sharepost",
-		version: "0.1.0",
+		version: "0.2.1",
 		format: "standard",
 		entrypoint: "@plugdash/sharepost/sandbox",
 		capabilities: ["read:content", "write:content"],

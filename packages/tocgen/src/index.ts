@@ -14,7 +14,7 @@ export interface TocgenConfig {
 export function tocgenPlugin(config?: TocgenConfig): PluginDescriptor {
 	return {
 		id: "tocgen",
-		version: "0.1.0",
+		version: "0.2.1",
 		format: "standard",
 		entrypoint: "@plugdash/tocgen/sandbox",
 		capabilities: ["read:content", "write:content"],

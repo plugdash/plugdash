@@ -2,7 +2,7 @@
 interface Props {
 	post: Record<string, unknown>;
 	showUrl?: boolean;
-	variant?: "circle" | "pill" | "ghost";
+	variant?: "circle" | "pill" | "ghost" | "inline";
 	size?: "sm" | "md" | "lg";
 	theme?: "auto" | "dark" | "light";
 	class?: string;
@@ -36,7 +36,7 @@ const url = shortlink?.fullUrl ?? shortlink?.url;
 			type="button"
 		>
 			{showUrl && <span class="plugdash-copy-url">{url}</span>}
-			{/* copy icon */}
+			{/* link icon */}
 			<svg
 				class="plugdash-copy-icon"
 				width="16"
@@ -47,8 +47,8 @@ const url = shortlink?.fullUrl ?? shortlink?.url;
 				stroke-width="2"
 				aria-hidden="true"
 			>
-				<rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-				<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+				<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+				<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
 			</svg>
 			{/* check icon - shown on copy */}
 			<svg
@@ -166,6 +166,17 @@ const url = shortlink?.fullUrl ?? shortlink?.url;
 		opacity: 1;
 	}
 
+	/* inline variant - minimal, flows with text */
+	.plugdash-copy--inline {
+		padding: 0.25rem;
+		border: none;
+		background: none;
+		opacity: 0.7;
+	}
+	.plugdash-copy--inline:hover {
+		opacity: 1;
+	}
+
 	/* sizes */
 	.plugdash-copy--sm {
 		width: 1.5rem;
@@ -188,13 +199,16 @@ const url = shortlink?.fullUrl ?? shortlink?.url;
 		height: 20px;
 	}
 
-	/* pill/ghost size overrides - don't constrain width */
+	/* pill/ghost/inline size overrides - don't constrain width */
 	.plugdash-copy--pill.plugdash-copy--sm,
 	.plugdash-copy--pill.plugdash-copy--md,
 	.plugdash-copy--pill.plugdash-copy--lg,
 	.plugdash-copy--ghost.plugdash-copy--sm,
 	.plugdash-copy--ghost.plugdash-copy--md,
-	.plugdash-copy--ghost.plugdash-copy--lg {
+	.plugdash-copy--ghost.plugdash-copy--lg,
+	.plugdash-copy--inline.plugdash-copy--sm,
+	.plugdash-copy--inline.plugdash-copy--md,
+	.plugdash-copy--inline.plugdash-copy--lg {
 		width: auto;
 		height: auto;
 	}
