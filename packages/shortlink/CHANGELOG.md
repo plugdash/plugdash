@@ -1,5 +1,13 @@
 # @plugdash/shortlink
 
+## 0.2.2
+
+### Patch Changes
+
+- 6ae7d86: Fix shortlink creation by syncing descriptor version with package version.
+  Replace copy icon with link icon in CopyLink.astro. Add "inline" variant
+  to CopyLink Props and CSS.
+
 ## 0.2.0
 
 ### Minor Changes

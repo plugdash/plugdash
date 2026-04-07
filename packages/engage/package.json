@@ -24,8 +24,8 @@
 	},
 	"peerDependencies": {
 		"@plugdash/heartpost": ">=0.2.0",
-		"@plugdash/sharepost": ">=0.2.0",
-		"@plugdash/shortlink": ">=0.2.0"
+		"@plugdash/sharepost": ">=0.2.2",
+		"@plugdash/shortlink": ">=0.2.2"
 	},
 	"devDependencies": {
 		"@plugdash/heartpost": "workspace:*",
