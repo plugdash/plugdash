@@ -11,7 +11,7 @@ describe("calloutPlugin() descriptor", () => {
 	it("returns a valid PluginDescriptor", () => {
 		const descriptor = calloutPlugin();
 		expect(descriptor.id).toBe("callout");
-		expect(descriptor.version).toBe("0.1.0");
+		expect(descriptor.version).toBe("0.1.3");
 		expect(descriptor.format).toBe("native");
 		expect(descriptor.entrypoint).toBe("@plugdash/callout");
 	});
@@ -38,7 +38,7 @@ describe("createPlugin() native definition", () => {
 	it("returns a definition with id and version", () => {
 		const definition = createPlugin();
 		expect(definition.id).toBe("callout");
-		expect(definition.version).toBe("0.1.0");
+		expect(definition.version).toBe("0.1.3");
 	});
 
 	// Regression: EmDash's plugin list API reads capabilities/allowedHosts/
