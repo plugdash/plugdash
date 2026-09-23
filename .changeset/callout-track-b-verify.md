@@ -2,4 +2,4 @@
 "@plugdash/callout": patch
 ---
 
-Bump stale emdash peerDependency range and sync internal descriptor version strings. No behavior change - the previously reported hooks: {} crash and the definePlugin() sandboxed-removal issue do not affect this package; both were confirmed already fine during this pass.
+Sync the stale hardcoded "0.1.0" version strings in the plugin descriptor and its tests to 0.1.3, matching the package version. No behavior change.

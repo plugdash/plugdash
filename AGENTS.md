@@ -92,19 +92,6 @@ Never let formatting pile up. Run `pnpm format` before committing.
 Verified against the actual EmDash source while building @plugdash/readtime.
 These supersede anything in plugin specs if there is a conflict.
 
-// confirmed 2026-09-22 while running Track B fix-and-audit on @plugdash/callout
-The "callout createPlugin() missing hooks: {}" crash documented in
-cc-prompt-integration-fixes.md fix 1 and update-plan-22-09-2026.md
-Section 5 is already fixed in current source - hooks: {} is present.
-Also confirmed: emdash's definePlugin() is native-plugin-only as of
-core 0.13.0 (id/version required) and callout's createPlugin() call
-already satisfies that contract correctly - do not remove or "migrate
-away from" definePlugin() here, unlike the 6 Standard plugins where
-definePlugin() must be removed entirely. callout declares zero
-capabilities, so the Section 1.1 capability rename does not apply to
-this package either. Do not re-investigate either issue unless a
-future regression reintroduces them - check `pnpm test` first.
-
 // confirmed 2026-09-22 during Track B audit, emdash core CHANGELOG 0.13.0 (PR #1057)
 `definePlugin()` is BREAKING-removed for sandboxed-format (Standard) plugins
 as of emdash core 0.13.0. `sandbox-entry.ts` no longer wraps its export in
