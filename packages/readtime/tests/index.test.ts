@@ -374,10 +374,16 @@ describe("admin page", () => {
 		ctx = makeContext();
 	});
 
-	async function invokeAdmin(input: unknown) {
+	async function invokeAdmin(input: unknown): Promise<any> {
 		const plugin = await import("../src/sandbox-entry.ts");
 		const handler = plugin.default.routes!.admin!.handler;
-		return handler({ input, request: { url: "http://localhost" } }, ctx);
+		return handler(
+			{
+				input,
+				request: { url: "http://localhost", method: "POST", headers: {} },
+			},
+			ctx,
+		);
 	}
 
 	it("page_load returns form with current config values", async () => {
