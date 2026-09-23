@@ -55,7 +55,7 @@ export function autobuildPlugin(config?: AutobuildConfig): PluginDescriptor {
 
 	return {
 		id: "autobuild",
-		version: "0.2.1",
+		version: "0.2.0",
 		format: "standard",
 		entrypoint: "@plugdash/autobuild/sandbox",
 		capabilities: ["network:request", "content:read"],
