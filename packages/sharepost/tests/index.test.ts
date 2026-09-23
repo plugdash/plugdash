@@ -66,7 +66,7 @@ describe("generateShareUrl", () => {
 	it("URL-encodes special characters in title", () => {
 		const result = generateShareUrl("twitter", {
 			...baseArgs,
-			title: "Hello & Goodbye: A \"Post\"",
+			title: 'Hello & Goodbye: A "Post"',
 		});
 		// URLSearchParams encodes spaces as +
 		expect(result).toContain("text=Hello+%26+Goodbye%3A+A+%22Post%22");
@@ -130,12 +130,9 @@ describe("sharepost hook: content:afterSave", () => {
 		ctx = makeContext();
 	});
 
-	async function runHook(
-		content: Record<string, unknown>,
-		collection = "posts",
-	) {
+	async function runHook(content: Record<string, unknown>, collection = "posts") {
 		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"]!;
 		const event = { content, collection, isNew: false };
 		await hook.handler(event, ctx);
 	}
@@ -298,6 +295,42 @@ describe("sharepost hook: content:afterSave", () => {
 		expect(shareUrls.twitter).not.toContain("Old+Title");
 	});
 
+	it("skips content outside the configured collections allowlist", async () => {
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "config:collections") return Promise.resolve(["blog"]);
+			return Promise.resolve(null);
+		});
+
+		const content = makeContentItem({ status: "published", slug: "test-post" });
+
+		await runHook(content, "docs");
+
+		expect(ctx.content!.update).not.toHaveBeenCalled();
+	});
+
+	it("processes content inside the configured collections allowlist", async () => {
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "config:collections") return Promise.resolve(["blog"]);
+			return Promise.resolve(null);
+		});
+
+		const content = makeContentItem({ status: "published", slug: "test-post" });
+
+		ctx.content!.get = vi.fn().mockResolvedValue({
+			id: content.id,
+			type: "blog",
+			slug: "test-post",
+			status: "published",
+			data: content.data,
+			createdAt: content.createdAt,
+			updatedAt: content.updatedAt,
+		});
+
+		await runHook(content, "blog");
+
+		expect(ctx.content!.update).toHaveBeenCalled();
+	});
+
 	it("uses collection name as fallback when title is missing", async () => {
 		const content = makeContentItem({
 			status: "published",
@@ -333,7 +366,7 @@ describe("admin page", () => {
 		ctx = makeContext();
 	});
 
-	async function invokeAdmin(input: unknown) {
+	async function invokeAdmin(input: unknown): Promise<any> {
 		const plugin = await import("../src/sandbox-entry.ts");
 		const handler = plugin.default.routes!.admin!.handler;
 		return handler({ input, request: { url: "http://localhost" } }, ctx);
@@ -349,9 +382,14 @@ describe("admin page", () => {
 		});
 		const res = await invokeAdmin({ type: "page_load" });
 		const form = res.blocks.find((b: any) => b.type === "form");
-		expect(form.fields.find((f: any) => f.action_id === "platforms").initial_value).toEqual(["twitter", "linkedin"]);
+		expect(form.fields.find((f: any) => f.action_id === "platforms").initial_value).toEqual([
+			"twitter",
+			"linkedin",
+		]);
 		expect(form.fields.find((f: any) => f.action_id === "via").initial_value).toBe("abhinavs");
-		expect(form.fields.find((f: any) => f.action_id === "hashtags").initial_value).toBe("emdash, plugdash");
+		expect(form.fields.find((f: any) => f.action_id === "hashtags").initial_value).toBe(
+			"emdash, plugdash",
+		);
 		expect(form.fields.find((f: any) => f.action_id === "collections").initial_value).toBe("blog");
 	});
 

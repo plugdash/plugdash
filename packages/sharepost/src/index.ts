@@ -19,7 +19,7 @@ export function sharepostPlugin(config?: SharepostConfig): PluginDescriptor {
 		version: "0.2.1",
 		format: "standard",
 		entrypoint: "@plugdash/sharepost/sandbox",
-		capabilities: ["read:content", "write:content"],
+		capabilities: ["content:read", "content:write"],
 		// Options are documentation-only for standard plugins.
 		// At runtime, config is read from ctx.kv (seeded by plugin:install hook).
 		options: config as Record<string, unknown>,
