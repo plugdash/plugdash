@@ -22,7 +22,7 @@ export function readtimePlugin(config?: ReadtimeConfig): PluginDescriptor {
 		version: "0.1.0",
 		format: "standard",
 		entrypoint: "@plugdash/readtime/sandbox",
-		capabilities: ["read:content", "write:content"],
+		capabilities: ["content:read", "content:write"],
 		// Options are documentation-only for standard plugins.
 		// At runtime, config is read from ctx.kv (seeded by plugin:install
 		// hook from the globalThis bootstrap).
