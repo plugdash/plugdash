@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/shortlink",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"description": "Short URLs for EmDash posts - shareable links created on publish",
 	"type": "module",
 	"main": "./dist/index.mjs",
@@ -27,7 +27,8 @@
 	"scripts": {
 		"build": "tsdown src/index.ts src/sandbox-entry.ts src/redirect-logic.ts --dts.eager",
 		"test": "vitest run",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"lint": "oxlint --ignore-pattern '*.astro' ."
 	},
 	"keywords": [
 		"emdash",

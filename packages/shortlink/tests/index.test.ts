@@ -286,7 +286,11 @@ describe("resolve route handler", () => {
 		const route = plugin.default.routes!.resolve;
 		const routeCtx = {
 			input: undefined,
-			request: new Request(`https://example.com/_emdash/api/plugins/shortlink/resolve?code=${code}`),
+			request: {
+				url: `https://example.com/_emdash/api/plugins/shortlink/resolve?code=${code}`,
+				method: "GET",
+				headers: {},
+			},
 		};
 		return route.handler(routeCtx, ctx);
 	}
@@ -372,7 +376,11 @@ describe("resolve route handler", () => {
 		const route = plugin.default.routes!.resolve;
 		const routeCtx = {
 			input: undefined,
-			request: new Request("https://example.com/_emdash/api/plugins/shortlink/resolve"),
+			request: {
+				url: "https://example.com/_emdash/api/plugins/shortlink/resolve",
+				method: "GET",
+				headers: {},
+			},
 		};
 
 		const result = await route.handler(routeCtx, ctx);
@@ -396,7 +404,11 @@ describe("custom shortlink creation", () => {
 		const route = plugin.default.routes!.admin;
 		const routeCtx = {
 			input: interaction,
-			request: new Request("https://example.com/_emdash/api/plugins/shortlink/admin"),
+			request: {
+				url: "https://example.com/_emdash/api/plugins/shortlink/admin",
+				method: "GET",
+				headers: {},
+			},
 		};
 		return route.handler(routeCtx, ctx);
 	}
@@ -414,6 +426,30 @@ describe("custom shortlink creation", () => {
 			"shortlink:myslug",
 			expect.objectContaining({
 				code: "myslug",
+				target: "/posts/my-post",
+				custom: true,
+			}),
+		);
+		expect(result).toEqual(
+			expect.objectContaining({
+				toast: expect.objectContaining({ type: "success" }),
+			}),
+		);
+	});
+
+	it("accepts hyphenated codes", async () => {
+		ctx.kv.get = vi.fn().mockResolvedValue(null);
+
+		const result = await callAdmin({
+			type: "form_submit",
+			action_id: "create_shortlink",
+			values: { code: "my-custom-slug", target: "/posts/my-post" },
+		});
+
+		expect(ctx.kv.set).toHaveBeenCalledWith(
+			"shortlink:my-custom-slug",
+			expect.objectContaining({
+				code: "my-custom-slug",
 				target: "/posts/my-post",
 				custom: true,
 			}),
@@ -502,9 +538,11 @@ describe("admin save_settings", () => {
 		return route.handler(
 			{
 				input: interaction,
-				request: new Request(
-					"https://example.com/_emdash/api/plugins/shortlink/admin",
-				),
+				request: {
+					url: "https://example.com/_emdash/api/plugins/shortlink/admin",
+					method: "GET",
+					headers: {},
+				},
 			},
 			ctx,
 		);
@@ -562,9 +600,11 @@ describe("admin delete_shortlink", () => {
 		return route.handler(
 			{
 				input: interaction,
-				request: new Request(
-					"https://example.com/_emdash/api/plugins/shortlink/admin",
-				),
+				request: {
+					url: "https://example.com/_emdash/api/plugins/shortlink/admin",
+					method: "GET",
+					headers: {},
+				},
 			},
 			ctx,
 		);
