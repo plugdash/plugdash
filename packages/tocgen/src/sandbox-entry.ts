@@ -1,8 +1,7 @@
 // @plugdash/tocgen - sandbox entry (runs at request time)
 // Standard plugin: no Node.js built-ins, no direct fetch()
 
-import { definePlugin } from "emdash";
-import type { PluginContext, ContentHookEvent } from "emdash";
+import type { SandboxedPlugin, PluginContext } from "emdash/plugin";
 import type {
 	PortableTextBlock,
 	PortableTextSpan,
@@ -246,10 +245,10 @@ async function handleSaveSettings(
 
 // ── Plugin definition ──
 
-export default definePlugin({
+export default {
 	hooks: {
 		"plugin:install": {
-			handler: async (_event: unknown, ctx: PluginContext) => {
+			handler: async (_event, ctx) => {
 				await ctx.kv.set("config:minHeadings", 3);
 				await ctx.kv.set("config:maxDepth", 3);
 				ctx.log.info("tocgen: installed with default config");
@@ -257,7 +256,7 @@ export default definePlugin({
 		},
 
 		"content:afterSave": {
-			handler: async (event: ContentHookEvent, ctx: PluginContext) => {
+			handler: async (event, ctx) => {
 				try {
 					if (event.content.status !== "published") return;
 
@@ -333,10 +332,7 @@ export default definePlugin({
 
 	routes: {
 		admin: {
-			handler: async (
-				routeCtx: { input: unknown; request: { url: string } },
-				ctx: PluginContext,
-			) => {
+			handler: async (routeCtx, ctx) => {
 				const interaction = routeCtx.input as {
 					type?: string;
 					action_id?: string;
@@ -359,4 +355,4 @@ export default definePlugin({
 			},
 		},
 	},
-});
+} satisfies SandboxedPlugin;

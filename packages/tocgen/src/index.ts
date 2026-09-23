@@ -17,7 +17,7 @@ export function tocgenPlugin(config?: TocgenConfig): PluginDescriptor {
 		version: "0.2.1",
 		format: "standard",
 		entrypoint: "@plugdash/tocgen/sandbox",
-		capabilities: ["read:content", "write:content"],
+		capabilities: ["content:read", "content:write"],
 		options: config as Record<string, unknown>,
 		adminPages: [{ path: "/settings", label: "Table of Contents", icon: "list" }],
 	};
