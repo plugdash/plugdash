@@ -38,7 +38,7 @@
 		"directory": "packages/readtime"
 	},
 	"peerDependencies": {
-		"emdash": "^0.1.0",
+		"emdash": ">=0.13.0",
 		"@portabletext/types": "^2.0.0"
 	},
 	"devDependencies": {

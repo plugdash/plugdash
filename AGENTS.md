@@ -7,8 +7,9 @@ All packages published to npm under @plugdash/.
 
 ## what this is
 
-Quality plugins for EmDash. Each plugin uses EmDash's definePlugin() API
-with explicit capability declarations. No thin API wrappers — every plugin
+Quality plugins for EmDash, built with explicit capability declarations.
+Standard (sandboxed) plugins export a bare object `satisfies SandboxedPlugin`;
+Native plugins use `createPlugin()` wrapped in `definePlugin()`. No thin API wrappers — every plugin
 owns its logic. Every plugin ships a companion UI component that works
 beautifully out of the box with no configuration required.
 
@@ -43,7 +44,7 @@ plugdash/
 │   └── readtime/
 │       ├── src/
 │       │   ├── index.ts           # PluginDescriptor factory
-│       │   ├── sandbox-entry.ts   # definePlugin() with hooks
+│       │   ├── sandbox-entry.ts   # satisfies SandboxedPlugin, with hooks
 │       │   └── ReadingTime.astro  # companion UI component
 │       ├── tests/
 │       │   ├── index.test.ts      # unit tests
@@ -103,6 +104,20 @@ definePlugin() must be removed entirely. callout declares zero
 capabilities, so the Section 1.1 capability rename does not apply to
 this package either. Do not re-investigate either issue unless a
 future regression reintroduces them - check `pnpm test` first.
+
+// confirmed 2026-09-22 during Track B audit, emdash core CHANGELOG 0.13.0 (PR #1057)
+`definePlugin()` is BREAKING-removed for sandboxed-format (Standard) plugins
+as of emdash core 0.13.0. `sandbox-entry.ts` no longer wraps its export in
+`definePlugin()` - it is a bare default export with a `satisfies
+SandboxedPlugin` annotation, typed via `import type { SandboxedPlugin } from
+"emdash/plugin"` (type-only, erased at bundle time, no runtime `emdash`
+import remains). Explicit parameter type annotations on hook/route handlers
+also go away - the mapped `SandboxedPlugin` type infers them per hook/route
+name. This does NOT affect Native plugins: `createPlugin()` still requires
+wrapping in `definePlugin()` per the entry below. Every published plugdash
+package's `peerDependencies.emdash` must allow `>=0.13.0` (not `^0.1.0`) for
+`emdash/plugin` to resolve - the npm-published `emdash` package didn't gain
+the `./plugin` export until well after 0.1.0.
 
 // confirmed 2026-04-05 during plugdash.dev integration fixes
 Native plugins must include `hooks: {}` in the object returned by
@@ -164,18 +179,28 @@ the defence-in-depth guard.
 
 ### capability names
 
-`write:metadata` does not exist. Use `write:content` for any plugin that
+// corrected 2026-09-22 during Track B audit - old names below are deprecated
+The deprecated capability names (`read:content`, `write:content`,
+`read:media`, `write:media`, `read:users`, `network:fetch`,
+`network:fetch:any`, `email:provide`, `email:intercept`, `page:inject`)
+still work as runtime aliases but must not be used in new or edited code.
+Use the canonical names: `content:read`, `content:write`, `media:read`,
+`media:write`, `users:read`, `network:request`,
+`network:request:unrestricted`, `hooks.email-transport:register`,
+`hooks.email-events:register`, `hooks.page-fragments:register`.
+
+`write:metadata` does not exist. Use `content:write` for any plugin that
 calls `ctx.content.update()`. Confirmed capabilities that exist:
-`read:content`, `write:content`, `read:media`,
-`write:media`, `network:fetch`, `read:users`, `email:send`
+`content:read`, `content:write`, `media:read`, `media:write`,
+`network:request`, `users:read`, `email:send`.
 
 // corrected 2026-04-05 while building @plugdash/autobuild
-The network capability is literally `"network:fetch"`, not
+The network capability is literally `"network:request"`, not
 `"network:[hostname]"`. Hostnames go in a separate `allowedHosts` array
 on the PluginDescriptor, which supports wildcards. Example:
 
 ```typescript
-capabilities: ["read:content", "network:fetch"],
+capabilities: ["content:read", "network:request"],
 allowedHosts: ["api.cloudflare.com", "*.googleapis.com"],
 ```
 
@@ -185,8 +210,8 @@ Verified in emdash-source/skills/creating-plugins/SKILL.md lines 189,
 // confirmed 2026-04-05 while building @plugdash/shortlink
 `read:kv` and `write:kv` do not exist as capabilities. KV is auto-available
 to all plugins without declaring any capability. ctx.kv is always present.
-`write:routes` does not exist as a capability. Routes are declared in
-definePlugin({ routes }) and need no capability declaration.
+`write:routes` does not exist as a capability. Routes are declared in the
+sandbox-entry.ts export's `routes` field and need no capability declaration.
 
 // confirmed 2026-04-05 while building @plugdash/heartpost
 `routeCtx.input` for POST routes is pre-parsed JSON. The EmDash runtime
@@ -319,7 +344,7 @@ Every Standard plugin requires two files:
 
 ```
 src/index.ts          → PluginDescriptor factory (Vite build time)
-src/sandbox-entry.ts  → definePlugin() with hooks (request time)
+src/sandbox-entry.ts  → bare object satisfies SandboxedPlugin, with hooks (request time)
 ```
 
 package.json must export both:
@@ -358,11 +383,11 @@ const res = await fetch("https://api.example.com");
 const res = await ctx.http.fetch("https://api.example.com");
 ```
 
-Declare the network capability as `"network:fetch"` and list hostnames in
+Declare the network capability as `"network:request"` and list hostnames in
 `allowedHosts` on the descriptor (wildcards supported):
 
 ```typescript
-capabilities: ["network:fetch"],
+capabilities: ["network:request"],
 allowedHosts: ["api.example.com", "*.googleapis.com"],
 ```
 
@@ -889,7 +914,7 @@ Format per plugin:
 ```
 ### @plugdash/readtime
 install: npm install @plugdash/readtime
-capabilities: read:content, write:content
+capabilities: content:read, content:write
 hook: content:afterSave
 what it writes: post.data.metadata.readingTimeMinutes, post.data.metadata.wordCount
 companion component: ReadingTime.astro

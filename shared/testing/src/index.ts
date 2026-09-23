@@ -1,7 +1,7 @@
 // @plugdash/testing - Mock context factories for plugin tests
 
 import { vi } from "vitest";
-import type { PluginContext, ContentAccess } from "@plugdash/types";
+import type { PluginContext, ContentAccess } from "emdash";
 
 export function makeContext(
 	overrides?: Partial<PluginContext>,
@@ -19,8 +19,11 @@ export function makeContext(
 		storage: {},
 		kv: {
 			get: vi.fn().mockResolvedValue(null),
+			getVersioned: vi.fn().mockResolvedValue(null),
+			compareAndSet: vi.fn().mockResolvedValue({ applied: true }),
+			compareAndDelete: vi.fn().mockResolvedValue({ applied: true }),
 			set: vi.fn().mockResolvedValue(undefined),
-			delete: vi.fn().mockResolvedValue(undefined),
+			delete: vi.fn().mockResolvedValue(true),
 			list: vi.fn().mockResolvedValue([]),
 		},
 		log: {
@@ -29,7 +32,7 @@ export function makeContext(
 			error: vi.fn(),
 			debug: vi.fn(),
 		},
-		site: { url: "https://example.com", name: "Test Site" },
+		site: { url: "https://example.com", name: "Test Site", locale: "en" },
 		url: (path: string) => `https://example.com${path}`,
 		content: defaultContent,
 		media: undefined,

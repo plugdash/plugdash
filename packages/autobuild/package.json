@@ -39,7 +39,7 @@
 		"directory": "packages/autobuild"
 	},
 	"peerDependencies": {
-		"emdash": "^0.1.0"
+		"emdash": ">=0.13.0"
 	},
 	"devDependencies": {
 		"@plugdash/types": "workspace:*",

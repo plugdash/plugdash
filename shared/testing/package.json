@@ -7,7 +7,7 @@
 		".": "./src/index.ts"
 	},
 	"devDependencies": {
-		"@plugdash/types": "workspace:*",
+		"emdash": ">=0.13.0",
 		"vitest": "^2.0.0"
 	}
 }

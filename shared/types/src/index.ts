@@ -12,6 +12,19 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 // ── Capability ──
 
 export type PluginCapability =
+	// canonical names (use these in new/edited code)
+	| "content:read"
+	| "content:write"
+	| "media:read"
+	| "media:write"
+	| "users:read"
+	| "network:request"
+	| "network:request:unrestricted"
+	| "hooks.email-transport:register"
+	| "hooks.email-events:register"
+	| "hooks.page-fragments:register"
+	| "email:send"
+	// deprecated aliases - still accepted at runtime, do not use in new code
 	| "read:content"
 	| "write:content"
 	| "read:media"
@@ -19,9 +32,9 @@ export type PluginCapability =
 	| "network:fetch"
 	| "network:fetch:any"
 	| "read:users"
-	| "email:send"
 	| "email:provide"
-	| "email:intercept";
+	| "email:intercept"
+	| "page:inject";
 
 // ── KV ──
 
