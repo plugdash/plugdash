@@ -2,7 +2,7 @@
 // Standard plugin: no Node.js built-ins, no direct fetch()
 
 import type { SandboxedPlugin } from "emdash/plugin";
-import type { PluginContext, ContentHookEvent } from "emdash/plugin";
+import type { PluginContext } from "emdash/plugin";
 import type {
 	PortableTextBlock,
 	PortableTextSpan,
