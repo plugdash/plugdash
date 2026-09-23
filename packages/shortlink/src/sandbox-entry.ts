@@ -1,5 +1,6 @@
 import type { SandboxedPlugin, PluginContext } from "emdash/plugin";
 import { isRecord } from "@plugdash/types";
+import { isValidCode } from "./redirect-logic";
 
 // ── Pure functions (exported for testing) ──
 
@@ -11,10 +12,6 @@ export function generateCode(length: number): string {
 		code += CHARSET[Math.floor(Math.random() * CHARSET.length)];
 	}
 	return code;
-}
-
-function isAlphanumeric(str: string): boolean {
-	return /^[a-zA-Z0-9-]+$/.test(str);
 }
 
 // ── Config from KV ──
@@ -351,12 +348,12 @@ export default {
 					const code = String(values.code ?? "").trim();
 					const target = String(values.target ?? "").trim();
 
-					if (!code || !isAlphanumeric(code)) {
+					if (!code || !isValidCode(code)) {
 						const page = await renderAdminPage(ctx);
 						return {
 							...page,
 							toast: {
-								message: "Code must be alphanumeric only",
+								message: "Code must be alphanumeric with optional hyphens, up to 64 characters",
 								type: "error",
 							},
 						};

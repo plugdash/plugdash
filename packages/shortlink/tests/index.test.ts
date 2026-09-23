@@ -388,6 +388,33 @@ describe("resolve route handler", () => {
 			expect.objectContaining({ error: "missing_code" }),
 		);
 	});
+
+	it("resolves a hyphenated code end-to-end, same as RedirectPage.astro's redirect path", async () => {
+		const { validateCode, interpretResolveResponse } = await import(
+			"../src/redirect-logic.ts"
+		);
+
+		// RedirectPage.astro validates the raw URL param before it ever
+		// calls the resolve route - a hyphenated code must survive that.
+		const code = validateCode("my-custom-slug");
+		expect(code).toBe("my-custom-slug");
+
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "shortlink:my-custom-slug") {
+				return Promise.resolve({
+					code: "my-custom-slug",
+					target: "/posts/my-post",
+					custom: true,
+					createdAt: "2026-01-01T00:00:00Z",
+				});
+			}
+			return Promise.resolve(null);
+		});
+
+		const resolved = await callResolve(code!);
+		const decision = interpretResolveResponse(resolved);
+		expect(decision).toEqual({ kind: "redirect", target: "/posts/my-post" });
+	});
 });
 
 // ── custom shortlink creation (admin route) ──

@@ -27,14 +27,25 @@ export function interpretResolveResponse(data: unknown): ResolveDecision {
 }
 
 /**
- * Validates a short code extracted from the URL path. Mirrors the
- * alphanumeric rule used by the admin `create_shortlink` form.
- * Returns null for invalid input (missing, empty, non-alphanumeric, too long).
+ * Single source of truth for what a short code may look like. Used by both
+ * the admin `create_shortlink` form (sandbox-entry.ts) and the redirect
+ * lookup path (validateCode below) so the two can never drift apart - a
+ * code accepted at creation time must always resolve at redirect time.
+ * Alphanumeric and hyphens, at least one alphanumeric character, max 64.
+ */
+const CODE_PATTERN = /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9-]{1,64}$/;
+
+export function isValidCode(code: string): boolean {
+	return CODE_PATTERN.test(code);
+}
+
+/**
+ * Validates a short code extracted from the URL path.
+ * Returns null for invalid input (missing, empty, disallowed characters, too long).
  */
 export function validateCode(code: unknown): string | null {
 	if (typeof code !== "string") return null;
-	if (code.length === 0 || code.length > 64) return null;
-	if (!/^[a-zA-Z0-9]+$/.test(code)) return null;
+	if (!isValidCode(code)) return null;
 	return code;
 }
 
