@@ -164,26 +164,6 @@ try/catch - the content save has already happened, and AGENTS.md rule
 allowlists to avoid the crash in the first place, and the try/catch as
 the defence-in-depth guard.
 
-// confirmed 2026-09-22 during Track B close-out (readtime)
-`ctx.settings` reachability from plugdash's descriptor-factory +
-`sandbox-entry.ts` registration style is not determined. @plugdash/readtime
-works entirely through the KV-bootstrap pattern (`ctx.kv.get`/`ctx.kv.set`
-with a `plugin:install` bootstrap hook) and never references `ctx.settings`
-or `admin.settingsSchema`, so its working admin implementation gives no
-evidence either way. Checking `emdash-source/packages/plugin-test` for a
-`createPluginTestHost()` utility was out of scope for that close-out task
-(scope discipline limited it to `packages/readtime/`, `shared/types/`,
-`shared/testing/`, and this file) - a future task with a wider scope
-boundary should settle this.
-
-// confirmed 2026-09-22 during Track B close-out (readtime)
-`plugdash.dev`'s `global.css` still has a CSS override workaround
-(`.plugdash-rt-minutes::after { content: "\00a0" }`) for a spacing bug in
-`ReadingTime.astro` that no longer exists - the component's `.plugdash-rt`
-rule already has `gap: 0.25em` and no `&thinsp;`/`&nbsp;` entities remain
-in the source. Removing the override in `plugdash.dev` is a one-line
-follow-up, out of scope for the readtime package itself.
-
 ### capability names
 
 // corrected 2026-09-22 during Track B audit - old names below are deprecated
