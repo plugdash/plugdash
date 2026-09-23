@@ -72,12 +72,12 @@ async function getConfig(ctx: PluginContext) {
 	const platforms = (await ctx.kv.get<Platform[]>("config:platforms")) ?? ALL_PLATFORMS;
 	const via = await ctx.kv.get<string>("config:via");
 	const hashtags = await ctx.kv.get<string[]>("config:hashtags");
-	const collections = await ctx.kv.get<string[] | null>("config:collections");
+	const collectionsRaw = await ctx.kv.get<string[] | null>("config:collections");
 	return {
 		platforms,
 		via: via ?? undefined,
 		hashtags: hashtags ?? undefined,
-		collections: collections ?? null,
+		collections: Array.isArray(collectionsRaw) ? collectionsRaw : null,
 	};
 }
 
