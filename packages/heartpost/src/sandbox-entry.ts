@@ -8,10 +8,7 @@ import { isRecord } from "@plugdash/types";
 
 // ── Pure functions (exported for testing) ──
 
-export async function generateFingerprint(
-	ip: string,
-	userAgent: string,
-): Promise<string> {
+export async function generateFingerprint(ip: string, userAgent: string): Promise<string> {
 	const data = new TextEncoder().encode(ip + userAgent);
 	const hash = await crypto.subtle.digest("SHA-256", data);
 	const bytes = new Uint8Array(hash);
@@ -23,15 +20,21 @@ export async function generateFingerprint(
 }
 
 // ponytail: sandboxed runtime sends plain {headers: Record<string,string>}
-// (lowercased keys) per SandboxedRequest, but our own tests build real
-// Request/Headers objects. Duck-type across both instead of forcing tests
-// to hand-construct lowercase header records.
+// per SandboxedRequest with UNSPECIFIED key casing, but our own tests build
+// real Request/Headers objects. Duck-type across both instead of forcing
+// tests to hand-construct lowercase header records, and scan case-insensitively
+// for the plain-object branch since the key casing isn't guaranteed.
 function getHeader(request: SandboxedRequest, name: string): string {
 	const headers = request.headers as unknown;
 	if (headers && typeof (headers as Headers).get === "function") {
 		return (headers as Headers).get(name) ?? "";
 	}
-	return (headers as Record<string, string>)[name.toLowerCase()] ?? "";
+	const record = headers as Record<string, string>;
+	const target = name.toLowerCase();
+	for (const key in record) {
+		if (key.toLowerCase() === target) return record[key] ?? "";
+	}
+	return "";
 }
 
 function getIp(request: SandboxedRequest): string {
@@ -110,8 +113,7 @@ async function buildSettingsPage(ctx: PluginContext) {
 						label: "Collections (comma-separated, leave blank for all)",
 						placeholder: "blog",
 						initial_value: collections && collections.length > 0 ? collections.join(", ") : "",
-						help_text:
-							"Only these collections will have heart counts initialised on publish.",
+						help_text: "Only these collections will have heart counts initialised on publish.",
 					},
 				],
 				submit: { label: "Save", action_id: "save_settings" },
@@ -120,10 +122,7 @@ async function buildSettingsPage(ctx: PluginContext) {
 	};
 }
 
-async function handleSaveSettings(
-	values: Record<string, unknown>,
-	ctx: PluginContext,
-) {
+async function handleSaveSettings(values: Record<string, unknown>, ctx: PluginContext) {
 	const result = validateHeartpostSettings(values);
 	if (!result.ok) {
 		const page = await buildSettingsPage(ctx);
@@ -155,9 +154,7 @@ export default {
 					if (collections && !collections.includes(event.collection)) return;
 
 					const id = event.content.id as string;
-					const existingCount = await ctx.kv.get<number>(
-						`heartpost:${id}:count`,
-					);
+					const existingCount = await ctx.kv.get<number>(`heartpost:${id}:count`);
 
 					// Only initialise if count doesn't exist yet
 					if (existingCount === null) {
@@ -173,10 +170,7 @@ export default {
 	routes: {
 		heart: {
 			public: true,
-			handler: async (
-				routeCtx,
-				ctx: PluginContext,
-			) => {
+			handler: async (routeCtx, ctx: PluginContext) => {
 				const input = isRecord(routeCtx.input) ? routeCtx.input : {};
 				const id = input.id as string | undefined;
 
@@ -189,27 +183,21 @@ export default {
 				const fp = await generateFingerprint(ip, ua);
 
 				// Check if already hearted
-				const existing = await ctx.kv.get<string>(
-					`heartpost:${id}:${fp}`,
-				);
+				const existing = await ctx.kv.get<string>(`heartpost:${id}:${fp}`);
 				if (existing) {
-					const count =
-						(await ctx.kv.get<number>(`heartpost:${id}:count`)) ?? 0;
+					const count = (await ctx.kv.get<number>(`heartpost:${id}:count`)) ?? 0;
 					return { count, hearted: true };
 				}
 
 				// Increment count (get + set)
-				const currentCount =
-					(await ctx.kv.get<number>(`heartpost:${id}:count`)) ?? 0;
+				const currentCount = (await ctx.kv.get<number>(`heartpost:${id}:count`)) ?? 0;
 				const newCount = currentCount + 1;
 				await ctx.kv.set(`heartpost:${id}:count`, newCount);
 
 				// Store fingerprint (fire-and-forget)
 				ctx.kv
 					.set(`heartpost:${id}:${fp}`, "1")
-					.catch((err) =>
-						ctx.log.error("heartpost: fp write failed", { err }),
-					);
+					.catch((err) => ctx.log.error("heartpost: fp write failed", { err }));
 
 				return { count: newCount, hearted: true };
 			},
@@ -217,10 +205,7 @@ export default {
 
 		"heart-remove": {
 			public: true,
-			handler: async (
-				routeCtx,
-				ctx: PluginContext,
-			) => {
+			handler: async (routeCtx, ctx: PluginContext) => {
 				const input = isRecord(routeCtx.input) ? routeCtx.input : {};
 				const id = input.id as string | undefined;
 
@@ -233,25 +218,19 @@ export default {
 				const fp = await generateFingerprint(ip, ua);
 
 				// Check if currently hearted
-				const existing = await ctx.kv.get<string>(
-					`heartpost:${id}:${fp}`,
-				);
+				const existing = await ctx.kv.get<string>(`heartpost:${id}:${fp}`);
 				if (!existing) {
-					const count =
-						(await ctx.kv.get<number>(`heartpost:${id}:count`)) ?? 0;
+					const count = (await ctx.kv.get<number>(`heartpost:${id}:count`)) ?? 0;
 					return { count, hearted: false };
 				}
 
 				// Delete fingerprint (fire-and-forget)
 				ctx.kv
 					.delete(`heartpost:${id}:${fp}`)
-					.catch((err) =>
-						ctx.log.error("heartpost: fp delete failed", { err }),
-					);
+					.catch((err) => ctx.log.error("heartpost: fp delete failed", { err }));
 
 				// Decrement count (min 0)
-				const currentCount =
-					(await ctx.kv.get<number>(`heartpost:${id}:count`)) ?? 0;
+				const currentCount = (await ctx.kv.get<number>(`heartpost:${id}:count`)) ?? 0;
 				const newCount = Math.max(0, currentCount - 1);
 				await ctx.kv.set(`heartpost:${id}:count`, newCount);
 
@@ -261,10 +240,7 @@ export default {
 
 		"heart-status": {
 			public: true,
-			handler: async (
-				routeCtx,
-				ctx: PluginContext,
-			) => {
+			handler: async (routeCtx, ctx: PluginContext) => {
 				const url = new URL(routeCtx.request.url);
 				const id = url.searchParams.get("id");
 
@@ -276,37 +252,24 @@ export default {
 				const ua = getHeader(routeCtx.request, "user-agent");
 				const fp = await generateFingerprint(ip, ua);
 
-				const count =
-					(await ctx.kv.get<number>(`heartpost:${id}:count`)) ?? 0;
-				const fpExists = await ctx.kv.get<string>(
-					`heartpost:${id}:${fp}`,
-				);
+				const count = (await ctx.kv.get<number>(`heartpost:${id}:count`)) ?? 0;
+				const fpExists = await ctx.kv.get<string>(`heartpost:${id}:${fp}`);
 
 				return { count, hearted: fpExists !== null };
 			},
 		},
 
 		admin: {
-			handler: async (
-				routeCtx,
-				ctx: PluginContext,
-			) => {
+			handler: async (routeCtx, ctx: PluginContext) => {
 				const interaction = routeCtx.input as {
 					type?: string;
 					action_id?: string;
 					values?: Record<string, unknown>;
 				};
-				if (
-					!interaction ||
-					interaction.type === "page_load" ||
-					interaction.type === undefined
-				) {
+				if (!interaction || interaction.type === "page_load" || interaction.type === undefined) {
 					return buildSettingsPage(ctx);
 				}
-				if (
-					interaction.type === "form_submit" &&
-					interaction.action_id === "save_settings"
-				) {
+				if (interaction.type === "form_submit" && interaction.action_id === "save_settings") {
 					return handleSaveSettings(interaction.values ?? {}, ctx);
 				}
 				return buildSettingsPage(ctx);

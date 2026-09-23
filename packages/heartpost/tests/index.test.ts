@@ -80,10 +80,7 @@ describe("heartpost hook: content:afterSave", () => {
 		ctx = makeContext();
 	});
 
-	async function runHook(
-		content: Record<string, unknown>,
-		collection = "posts",
-	) {
+	async function runHook(content: Record<string, unknown>, collection = "posts") {
 		const plugin = await import("../src/sandbox-entry.ts");
 		const hook = plugin.default.hooks!["content:afterSave"];
 		const event = { content, collection, isNew: false };
@@ -101,10 +98,7 @@ describe("heartpost hook: content:afterSave", () => {
 
 		await runHook(content, "posts");
 
-		expect(ctx.kv.set).toHaveBeenCalledWith(
-			`heartpost:${content.id}:count`,
-			0,
-		);
+		expect(ctx.kv.set).toHaveBeenCalledWith(`heartpost:${content.id}:count`, 0);
 	});
 
 	it("does not reset count on re-publish", async () => {
@@ -122,10 +116,7 @@ describe("heartpost hook: content:afterSave", () => {
 		await runHook(content, "posts");
 
 		// Should not overwrite existing count
-		expect(ctx.kv.set).not.toHaveBeenCalledWith(
-			`heartpost:${content.id}:count`,
-			expect.anything(),
-		);
+		expect(ctx.kv.set).not.toHaveBeenCalledWith(`heartpost:${content.id}:count`, expect.anything());
 	});
 
 	it("skips non-published content", async () => {
@@ -163,10 +154,7 @@ describe("heartpost hook: content:afterSave", () => {
 		});
 		await runHook(content, "any-collection");
 
-		expect(ctx.kv.set).toHaveBeenCalledWith(
-			`heartpost:${content.id}:count`,
-			0,
-		);
+		expect(ctx.kv.set).toHaveBeenCalledWith(`heartpost:${content.id}:count`, 0);
 	});
 
 	it("handles undefined ctx.content gracefully - does not throw", async () => {
@@ -217,9 +205,7 @@ describe("heart route (POST)", () => {
 
 		const result = await callHeart("post-1");
 
-		expect(result).toEqual(
-			expect.objectContaining({ count: 6, hearted: true }),
-		);
+		expect(result).toEqual(expect.objectContaining({ count: 6, hearted: true }));
 		// Count should be written
 		expect(ctx.kv.set).toHaveBeenCalledWith("heartpost:post-1:count", 6);
 	});
@@ -235,14 +221,9 @@ describe("heart route (POST)", () => {
 
 		const result = await callHeart("post-1");
 
-		expect(result).toEqual(
-			expect.objectContaining({ count: 10, hearted: true }),
-		);
+		expect(result).toEqual(expect.objectContaining({ count: 10, hearted: true }));
 		// Should NOT write new count
-		expect(ctx.kv.set).not.toHaveBeenCalledWith(
-			"heartpost:post-1:count",
-			expect.anything(),
-		);
+		expect(ctx.kv.set).not.toHaveBeenCalledWith("heartpost:post-1:count", expect.anything());
 	});
 
 	it("returns hearted: true when fingerprint already exists", async () => {
@@ -285,9 +266,7 @@ describe("heart route (POST)", () => {
 		};
 
 		const result = await route.handler(routeCtx, ctx);
-		expect(result).toEqual(
-			expect.objectContaining({ error: "missing_id" }),
-		);
+		expect(result).toEqual(expect.objectContaining({ error: "missing_id" }));
 	});
 
 	it("stores fingerprint in KV after successful heart", async () => {
@@ -301,6 +280,40 @@ describe("heart route (POST)", () => {
 
 		await callHeart("post-1");
 
+		expect(ctx.kv.set).toHaveBeenCalledWith(`heartpost:post-1:${fp}`, "1");
+	});
+
+	it("finds headers on a real SandboxedRequest with non-lowercase keys", async () => {
+		// SandboxedRequest.headers is a plain Record<string,string> with
+		// unspecified casing (see emdash's plugin-types.ts) - not a DOM
+		// Headers object, and not guaranteed lowercase. callHeart()/fakeRequest()
+		// wrap a real Request, whose Headers is already case-insensitive, so
+		// it can't catch a casing bug in getHeader's plain-object branch. Build
+		// the plain-object shape directly instead.
+		const ip = "1.2.3.4";
+		const ua = "TestAgent/1.0";
+		const fp = await generateFingerprint(ip, "TestAgent/1.0");
+
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
+			if (key === "heartpost:post-1:count") return Promise.resolve(0);
+			if (key === `heartpost:post-1:${fp}`) return Promise.resolve(null);
+			return Promise.resolve(null);
+		});
+
+		const plugin = await import("../src/sandbox-entry.ts");
+		const route = plugin.default.routes!.heart;
+		const routeCtx = {
+			input: { id: "post-1" },
+			request: {
+				url: "https://example.com/_emdash/api/plugins/heartpost/heart",
+				method: "POST",
+				headers: { "X-Forwarded-For": ip, "User-Agent": ua },
+			},
+		};
+
+		const result = await route.handler(routeCtx, ctx);
+
+		expect(result).toEqual(expect.objectContaining({ count: 1, hearted: true }));
 		expect(ctx.kv.set).toHaveBeenCalledWith(`heartpost:post-1:${fp}`, "1");
 	});
 });
@@ -374,9 +387,7 @@ describe("heart-status route (GET)", () => {
 		};
 
 		const result = await route.handler(routeCtx, ctx);
-		expect(result).toEqual(
-			expect.objectContaining({ error: "missing_id" }),
-		);
+		expect(result).toEqual(expect.objectContaining({ error: "missing_id" }));
 	});
 });
 

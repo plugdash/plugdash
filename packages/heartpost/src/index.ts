@@ -12,7 +12,7 @@ export function heartpostPlugin(_config?: HeartpostConfig): PluginDescriptor {
 		format: "standard",
 		entrypoint: "@plugdash/heartpost/sandbox",
 		options: {} as Record<string, unknown>,
-		capabilities: ["content:read", "content:write"],
+		capabilities: ["content:read"],
 		adminPages: [{ path: "/settings", label: "Heart Post", icon: "heart" }],
 	};
 }
