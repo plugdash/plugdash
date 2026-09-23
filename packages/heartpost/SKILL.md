@@ -14,8 +14,8 @@ Standard
 ## Capabilities declared
 
 ```
-read:content
-write:content
+content:read
+content:write
 ```
 
 ## Hooks

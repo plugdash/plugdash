@@ -1,5 +1,9 @@
-import { definePlugin } from "emdash";
-import type { PluginContext, ContentHookEvent } from "emdash";
+import type {
+	SandboxedPlugin,
+	SandboxedRequest,
+	PluginContext,
+	ContentHookEvent,
+} from "emdash/plugin";
 import { isRecord } from "@plugdash/types";
 
 // ── Pure functions (exported for testing) ──
@@ -18,10 +22,22 @@ export async function generateFingerprint(
 	return hex.slice(0, 16);
 }
 
-function getIp(request: Request): string {
+// ponytail: sandboxed runtime sends plain {headers: Record<string,string>}
+// (lowercased keys) per SandboxedRequest, but our own tests build real
+// Request/Headers objects. Duck-type across both instead of forcing tests
+// to hand-construct lowercase header records.
+function getHeader(request: SandboxedRequest, name: string): string {
+	const headers = request.headers as unknown;
+	if (headers && typeof (headers as Headers).get === "function") {
+		return (headers as Headers).get(name) ?? "";
+	}
+	return (headers as Record<string, string>)[name.toLowerCase()] ?? "";
+}
+
+function getIp(request: SandboxedRequest): string {
 	return (
-		request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-		request.headers.get("x-real-ip") ||
+		getHeader(request, "x-forwarded-for").split(",")[0]?.trim() ||
+		getHeader(request, "x-real-ip") ||
 		""
 	);
 }
@@ -121,7 +137,7 @@ async function handleSaveSettings(
 
 // ── Plugin definition ──
 
-export default definePlugin({
+export default {
 	hooks: {
 		"plugin:install": {
 			handler: async (_event: unknown, ctx: PluginContext) => {
@@ -158,7 +174,7 @@ export default definePlugin({
 		heart: {
 			public: true,
 			handler: async (
-				routeCtx: { input: unknown; request: Request },
+				routeCtx,
 				ctx: PluginContext,
 			) => {
 				const input = isRecord(routeCtx.input) ? routeCtx.input : {};
@@ -169,7 +185,7 @@ export default definePlugin({
 				}
 
 				const ip = getIp(routeCtx.request);
-				const ua = routeCtx.request.headers.get("user-agent") || "";
+				const ua = getHeader(routeCtx.request, "user-agent");
 				const fp = await generateFingerprint(ip, ua);
 
 				// Check if already hearted
@@ -202,7 +218,7 @@ export default definePlugin({
 		"heart-remove": {
 			public: true,
 			handler: async (
-				routeCtx: { input: unknown; request: Request },
+				routeCtx,
 				ctx: PluginContext,
 			) => {
 				const input = isRecord(routeCtx.input) ? routeCtx.input : {};
@@ -213,7 +229,7 @@ export default definePlugin({
 				}
 
 				const ip = getIp(routeCtx.request);
-				const ua = routeCtx.request.headers.get("user-agent") || "";
+				const ua = getHeader(routeCtx.request, "user-agent");
 				const fp = await generateFingerprint(ip, ua);
 
 				// Check if currently hearted
@@ -246,7 +262,7 @@ export default definePlugin({
 		"heart-status": {
 			public: true,
 			handler: async (
-				routeCtx: { input: unknown; request: Request },
+				routeCtx,
 				ctx: PluginContext,
 			) => {
 				const url = new URL(routeCtx.request.url);
@@ -257,7 +273,7 @@ export default definePlugin({
 				}
 
 				const ip = getIp(routeCtx.request);
-				const ua = routeCtx.request.headers.get("user-agent") || "";
+				const ua = getHeader(routeCtx.request, "user-agent");
 				const fp = await generateFingerprint(ip, ua);
 
 				const count =
@@ -272,7 +288,7 @@ export default definePlugin({
 
 		admin: {
 			handler: async (
-				routeCtx: { input: unknown; request: Request },
+				routeCtx,
 				ctx: PluginContext,
 			) => {
 				const interaction = routeCtx.input as {
@@ -297,4 +313,4 @@ export default definePlugin({
 			},
 		},
 	},
-});
+} satisfies SandboxedPlugin;

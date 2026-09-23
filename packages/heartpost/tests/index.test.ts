@@ -1,6 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { generateFingerprint, validateHeartpostSettings } from "../src/sandbox-entry.ts";
 import { makeContext, makeContentItem } from "@plugdash/testing";
+import type { SandboxedRequest } from "emdash/plugin";
+
+// ponytail: real sandboxed runtime sends a plain {headers: Record<string,string>}
+// (see SandboxedRequest); a real Request/Headers works fine at runtime (getHeader
+// duck-types both) but doesn't structurally match the type, so cast it once here
+// instead of `as any`-ing every routeCtx literal below.
+function fakeRequest(url: string, init?: RequestInit): SandboxedRequest {
+	return new Request(url, init) as unknown as SandboxedRequest;
+}
 
 // ── generateFingerprint ──
 
@@ -186,7 +195,7 @@ describe("heart route (POST)", () => {
 		const route = plugin.default.routes!.heart;
 		const routeCtx = {
 			input: { id },
-			request: new Request("https://example.com/_emdash/api/plugins/heartpost/heart", {
+			request: fakeRequest("https://example.com/_emdash/api/plugins/heartpost/heart", {
 				method: "POST",
 				headers: {
 					"x-forwarded-for": ip,
@@ -270,7 +279,7 @@ describe("heart route (POST)", () => {
 		const route = plugin.default.routes!.heart;
 		const routeCtx = {
 			input: {},
-			request: new Request("https://example.com/_emdash/api/plugins/heartpost/heart", {
+			request: fakeRequest("https://example.com/_emdash/api/plugins/heartpost/heart", {
 				method: "POST",
 			}),
 		};
@@ -310,7 +319,7 @@ describe("heart-status route (GET)", () => {
 		const route = plugin.default.routes!["heart-status"];
 		const routeCtx = {
 			input: undefined,
-			request: new Request(
+			request: fakeRequest(
 				`https://example.com/_emdash/api/plugins/heartpost/heart-status?id=${id}`,
 				{
 					headers: {
@@ -361,7 +370,7 @@ describe("heart-status route (GET)", () => {
 		const route = plugin.default.routes!["heart-status"];
 		const routeCtx = {
 			input: undefined,
-			request: new Request("https://example.com/_emdash/api/plugins/heartpost/heart-status"),
+			request: fakeRequest("https://example.com/_emdash/api/plugins/heartpost/heart-status"),
 		};
 
 		const result = await route.handler(routeCtx, ctx);
@@ -380,10 +389,13 @@ describe("admin page", () => {
 		ctx = makeContext();
 	});
 
-	async function invokeAdmin(input: unknown) {
+	// admin's return type is a union (blocks-only vs. blocks+toast); tests probe
+	// it dynamically like Block Kit JSON, so loosen to `any` here rather than
+	// threading a discriminated-union type through every assertion below.
+	async function invokeAdmin(input: unknown): Promise<any> {
 		const plugin = await import("../src/sandbox-entry.ts");
 		const handler = plugin.default.routes!.admin!.handler;
-		return handler({ input, request: new Request("http://localhost") } as any, ctx);
+		return handler({ input, request: fakeRequest("http://localhost") }, ctx);
 	}
 
 	it("page_load returns form with current config values", async () => {

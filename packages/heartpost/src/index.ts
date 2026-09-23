@@ -8,11 +8,11 @@ export interface HeartpostConfig {
 export function heartpostPlugin(_config?: HeartpostConfig): PluginDescriptor {
 	return {
 		id: "heartpost",
-		version: "0.1.0",
+		version: "0.2.1",
 		format: "standard",
 		entrypoint: "@plugdash/heartpost/sandbox",
 		options: {} as Record<string, unknown>,
-		capabilities: ["read:content", "write:content"],
+		capabilities: ["content:read", "content:write"],
 		adminPages: [{ path: "/settings", label: "Heart Post", icon: "heart" }],
 	};
 }

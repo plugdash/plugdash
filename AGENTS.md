@@ -207,6 +207,21 @@ route handler. No JSON.parse() needed in the handler - cast directly:
 `const { id } = routeCtx.input as Record<string, unknown>`
 Verified in emdash-source/packages/core/src/emdash-runtime.ts lines 1793-1800.
 
+// confirmed 2026-09-22 while running Track B fix-and-audit on @plugdash/heartpost
+cc-prompt-integration-fixes.md fixes 3 (unheart route), 4 (localStorage
+fallback), and 5 (post.id/post.data.id fallback) were already implemented
+and tested in current source before this pass started - do not
+re-investigate them. The Track C admin settings page (label + collections
+config) was also already fully built and tested. The only real work this
+package needed was the definePlugin() sandboxed-removal fix (same pattern
+as sharepost/autobuild) and the capability rename. One extra fix beyond
+the plan: real `SandboxedRequest.headers` (emdash 0.38.0) is a plain
+`Record<string, string>`, not a DOM `Headers` object - route handler
+param annotations that said `request: Request` had to drop to inferred
+`SandboxedRequest`, and `getIp()`/UA lookups needed a small `getHeader()`
+helper that duck-types between a real `Headers` (used by existing test
+mocks) and a plain record (the real sandboxed runtime shape).
+
 ### ctx.content.update() signature
 
 Three arguments: `ctx.content.update(collection, id, data)`
