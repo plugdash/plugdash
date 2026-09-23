@@ -19,9 +19,12 @@ function makeKv() {
 				store.set(key, value);
 			}),
 			delete: vi.fn(async (key: string) => {
-				store.delete(key);
+				return store.delete(key);
 			}),
 			list: vi.fn(async () => []),
+			getVersioned: vi.fn().mockResolvedValue(null),
+			compareAndSet: vi.fn().mockResolvedValue({ applied: true }),
+			compareAndDelete: vi.fn().mockResolvedValue({ applied: true }),
 		},
 	};
 }
@@ -44,14 +47,12 @@ describe("autobuild integration", () => {
 			http: { fetch: fetchMock },
 			kv: kvBacking.kv,
 		});
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ =
-			undefined;
+		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ =
-			undefined;
+		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
 	});
 
 	async function installAndGetHooks() {
@@ -61,8 +62,8 @@ describe("autobuild integration", () => {
 			debounceMs: 50,
 			collections: ["posts"],
 		});
-		expect(descriptor.capabilities).toContain("network:fetch");
-		expect(descriptor.capabilities).toContain("read:content");
+		expect(descriptor.capabilities).toContain("network:request");
+		expect(descriptor.capabilities).toContain("content:read");
 		expect(descriptor.allowedHosts).toEqual(["api.cloudflare.com"]);
 
 		// Run plugin:install to seed KV
@@ -80,16 +81,11 @@ describe("autobuild integration", () => {
 		expect(kvBacking.store.get("autobuild:config:debounceMs")).toBe(50);
 
 		const content = makeContentItem({ status: "published" });
-		await hooks["content:afterSave"]!.handler(
-			{ content, collection: "posts", isNew: false },
-			ctx,
-		);
+		await hooks["content:afterSave"]!.handler({ content, collection: "posts" }, ctx);
 		expect(webhookReceiver).toHaveLength(0); // debounced
 		await vi.advanceTimersByTimeAsync(60);
 		expect(webhookReceiver).toHaveLength(1);
-		expect(webhookReceiver[0]!.url).toBe(
-			"https://api.cloudflare.com/client/v4/pages/deploy/abc",
-		);
+		expect(webhookReceiver[0]!.url).toBe("https://api.cloudflare.com/client/v4/pages/deploy/abc");
 		expect(webhookReceiver[0]!.init.method).toBe("POST");
 	});
 
@@ -99,30 +95,18 @@ describe("autobuild integration", () => {
 		const c2 = makeContentItem({ id: "b", status: "published" });
 		const c3 = makeContentItem({ id: "c", status: "published" });
 
-		await hooks["content:afterSave"]!.handler(
-			{ content: c1, collection: "posts", isNew: false },
-			ctx,
-		);
+		await hooks["content:afterSave"]!.handler({ content: c1, collection: "posts" }, ctx);
 		await vi.advanceTimersByTimeAsync(10);
-		await hooks["content:afterSave"]!.handler(
-			{ content: c2, collection: "posts", isNew: false },
-			ctx,
-		);
+		await hooks["content:afterSave"]!.handler({ content: c2, collection: "posts" }, ctx);
 		await vi.advanceTimersByTimeAsync(10);
-		await hooks["content:afterSave"]!.handler(
-			{ content: c3, collection: "posts", isNew: false },
-			ctx,
-		);
+		await hooks["content:afterSave"]!.handler({ content: c3, collection: "posts" }, ctx);
 		await vi.advanceTimersByTimeAsync(60);
 		expect(webhookReceiver).toHaveLength(1);
 	});
 
 	it("delete of any collection item fires a webhook (no status filter)", async () => {
 		const hooks = await installAndGetHooks();
-		await hooks["content:afterDelete"]!.handler(
-			{ id: "deleted-1", collection: "posts" },
-			ctx,
-		);
+		await hooks["content:afterDelete"]!.handler({ id: "deleted-1", collection: "posts" }, ctx);
 		await vi.advanceTimersByTimeAsync(60);
 		expect(webhookReceiver).toHaveLength(1);
 	});
@@ -130,10 +114,7 @@ describe("autobuild integration", () => {
 	it("collection filter skips posts outside the allowlist", async () => {
 		const hooks = await installAndGetHooks();
 		const content = makeContentItem({ status: "published" });
-		await hooks["content:afterSave"]!.handler(
-			{ content, collection: "comments", isNew: false },
-			ctx,
-		);
+		await hooks["content:afterSave"]!.handler({ content, collection: "comments" }, ctx);
 		await vi.advanceTimersByTimeAsync(100);
 		expect(webhookReceiver).toHaveLength(0);
 	});
@@ -143,10 +124,7 @@ describe("autobuild integration", () => {
 		const hooks = await installAndGetHooks();
 		const content = makeContentItem({ status: "published" });
 		await expect(
-			hooks["content:afterSave"]!.handler(
-				{ content, collection: "posts", isNew: false },
-				ctx,
-			),
+			hooks["content:afterSave"]!.handler({ content, collection: "posts" }, ctx),
 		).resolves.toBeUndefined();
 		await vi.advanceTimersByTimeAsync(60);
 		await Promise.resolve();
@@ -167,10 +145,7 @@ describe("autobuild integration", () => {
 		kvBacking.store.set("autobuild:bootstrapHash", "stale");
 
 		const content = makeContentItem({ status: "published" });
-		await hooks["content:afterSave"]!.handler(
-			{ content, collection: "posts", isNew: false },
-			ctx,
-		);
+		await hooks["content:afterSave"]!.handler({ content, collection: "posts" }, ctx);
 		await vi.advanceTimersByTimeAsync(60);
 		await Promise.resolve();
 		await Promise.resolve();
@@ -187,10 +162,7 @@ describe("autobuild integration", () => {
 
 		// Subsequent afterSave is a no-op
 		const content = makeContentItem({ status: "published" });
-		await plugin.default.hooks!["content:afterSave"].handler(
-			{ content, collection: "posts", isNew: false },
-			ctx,
-		);
+		await plugin.default.hooks!["content:afterSave"].handler({ content, collection: "posts" }, ctx);
 		await vi.advanceTimersByTimeAsync(100);
 		expect(webhookReceiver).toHaveLength(0);
 	});
@@ -198,10 +170,7 @@ describe("autobuild integration", () => {
 	it("draft content does not trigger a webhook", async () => {
 		const hooks = await installAndGetHooks();
 		const draft = makeContentItem({ status: "draft" });
-		await hooks["content:afterSave"]!.handler(
-			{ content: draft, collection: "posts", isNew: false },
-			ctx,
-		);
+		await hooks["content:afterSave"]!.handler({ content: draft, collection: "posts" }, ctx);
 		await vi.advanceTimersByTimeAsync(100);
 		expect(webhookReceiver).toHaveLength(0);
 	});
@@ -211,9 +180,6 @@ describe("autobuild integration", () => {
 			hookUrl: "https://api.cloudflare.com/hook",
 			allowedHosts: ["deploy.example.com", "cdn.example.com"],
 		});
-		expect(descriptor.allowedHosts).toEqual([
-			"deploy.example.com",
-			"cdn.example.com",
-		]);
+		expect(descriptor.allowedHosts).toEqual(["deploy.example.com", "cdn.example.com"]);
 	});
 });

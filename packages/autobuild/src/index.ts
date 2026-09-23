@@ -2,11 +2,7 @@
 
 import type { PluginDescriptor } from "@plugdash/types";
 
-export type ContentStatus =
-	| "published"
-	| "draft"
-	| "archived"
-	| "scheduled";
+export type ContentStatus = "published" | "draft" | "archived" | "scheduled";
 
 export interface AutobuildConfig {
 	/** Deploy webhook URL (Cloudflare Pages, Netlify, Vercel). Required. */
@@ -55,18 +51,14 @@ export function autobuildPlugin(config?: AutobuildConfig): PluginDescriptor {
 
 	const explicitHosts = config?.allowedHosts;
 	const parsedHost = parseHookHostname(config?.hookUrl);
-	const allowedHosts = explicitHosts
-		? explicitHosts
-		: parsedHost
-			? [parsedHost]
-			: [];
+	const allowedHosts = explicitHosts ? explicitHosts : parsedHost ? [parsedHost] : [];
 
 	return {
 		id: "autobuild",
-		version: "0.1.0",
+		version: "0.2.1",
 		format: "standard",
 		entrypoint: "@plugdash/autobuild/sandbox",
-		capabilities: ["network:fetch", "read:content"],
+		capabilities: ["network:request", "content:read"],
 		allowedHosts,
 		options: config as Record<string, unknown> | undefined,
 		adminPages: [{ path: "/settings", label: "Autobuild", icon: "cloud-arrow-up" }],
