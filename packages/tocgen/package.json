@@ -24,7 +24,7 @@
 		"src/*.astro"
 	],
 	"scripts": {
-		"build": "tsdown src/index.ts src/sandbox-entry.ts src/utils.ts --dts.eager --external @portabletext/types",
+		"build": "tsdown src/index.ts --dts.eager --external @portabletext/types && tsdown src/sandbox-entry.ts --dts.eager --no-clean --external @portabletext/types && tsdown src/utils.ts --dts.eager --no-clean --external @portabletext/types",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},

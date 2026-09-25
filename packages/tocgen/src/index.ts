@@ -14,10 +14,10 @@ export interface TocgenConfig {
 export function tocgenPlugin(config?: TocgenConfig): PluginDescriptor {
 	return {
 		id: "tocgen",
-		version: "0.2.1",
+		version: "0.2.3",
 		format: "standard",
 		entrypoint: "@plugdash/tocgen/sandbox",
-		capabilities: ["read:content", "write:content"],
+		capabilities: ["content:read", "content:write"],
 		options: config as Record<string, unknown>,
 		adminPages: [{ path: "/settings", label: "Table of Contents", icon: "list" }],
 	};
