@@ -1,8 +1,7 @@
 // @plugdash/sharepost - sandbox entry (runs at request time)
 // Standard plugin: no Node.js built-ins, no direct fetch()
 
-import { definePlugin } from "emdash";
-import type { PluginContext, ContentHookEvent } from "emdash";
+import type { SandboxedPlugin, PluginContext, ContentHookEvent } from "emdash/plugin";
 import { isRecord } from "@plugdash/types";
 
 type Platform = "twitter" | "linkedin" | "whatsapp" | "bluesky" | "email";
@@ -21,9 +20,10 @@ export interface ShareUrlArgs {
 export function generateShareUrl(platform: Platform, args: ShareUrlArgs): string {
 	const { url, via, hashtags } = args;
 	// Twitter truncates title to 200 chars
-	const title = platform === "twitter" && args.title.length > 200
-		? args.title.slice(0, 200) + "..."
-		: args.title;
+	const title =
+		platform === "twitter" && args.title.length > 200
+			? args.title.slice(0, 200) + "..."
+			: args.title;
 
 	switch (platform) {
 		case "twitter": {
@@ -72,7 +72,13 @@ async function getConfig(ctx: PluginContext) {
 	const platforms = (await ctx.kv.get<Platform[]>("config:platforms")) ?? ALL_PLATFORMS;
 	const via = await ctx.kv.get<string>("config:via");
 	const hashtags = await ctx.kv.get<string[]>("config:hashtags");
-	return { platforms, via: via ?? undefined, hashtags: hashtags ?? undefined };
+	const collectionsRaw = await ctx.kv.get<string[] | null>("config:collections");
+	return {
+		platforms,
+		via: via ?? undefined,
+		hashtags: hashtags ?? undefined,
+		collections: Array.isArray(collectionsRaw) ? collectionsRaw : null,
+	};
 }
 
 // ── Admin page helpers ──
@@ -112,9 +118,7 @@ export function validateSharepostSettings(values: Record<string, unknown>): {
 	let platforms: Platform[];
 	const raw = values.platforms;
 	if (Array.isArray(raw)) {
-		platforms = raw.filter((p): p is Platform =>
-			ALL_PLATFORMS.includes(p as Platform),
-		);
+		platforms = raw.filter((p): p is Platform => ALL_PLATFORMS.includes(p as Platform));
 	} else if (typeof raw === "string" && raw.length > 0) {
 		platforms = raw
 			.split(",")
@@ -144,8 +148,7 @@ export function validateSharepostSettings(values: Record<string, unknown>): {
 }
 
 async function buildSettingsPage(ctx: PluginContext) {
-	const platforms =
-		(await ctx.kv.get<Platform[]>("config:platforms")) ?? ALL_PLATFORMS;
+	const platforms = (await ctx.kv.get<Platform[]>("config:platforms")) ?? ALL_PLATFORMS;
 	const via = (await ctx.kv.get<string>("config:via")) ?? "";
 	const hashtags = (await ctx.kv.get<string[]>("config:hashtags")) ?? [];
 	const collections = await ctx.kv.get<string[] | null>("config:collections");
@@ -204,10 +207,7 @@ async function buildSettingsPage(ctx: PluginContext) {
 	};
 }
 
-async function handleSaveSettings(
-	values: Record<string, unknown>,
-	ctx: PluginContext,
-) {
+async function handleSaveSettings(values: Record<string, unknown>, ctx: PluginContext) {
 	const result = validateSharepostSettings(values);
 	if (!result.ok) {
 		const page = await buildSettingsPage(ctx);
@@ -223,7 +223,7 @@ async function handleSaveSettings(
 
 // ── Plugin definition ──
 
-export default definePlugin({
+export default {
 	hooks: {
 		"plugin:install": {
 			handler: async (_event: unknown, ctx: PluginContext) => {
@@ -239,11 +239,15 @@ export default definePlugin({
 					// Only process published content
 					if (event.content.status !== "published") return;
 
+					const { platforms, via, hashtags, collections } = await getConfig(ctx);
+
+					if (collections && collections.length > 0 && !collections.includes(event.collection)) {
+						return;
+					}
+
 					// Guard: content capability required
 					if (!ctx.content) {
-						ctx.log.error(
-							"sharepost: content capability unavailable - check plugin capabilities",
-						);
+						ctx.log.error("sharepost: content capability unavailable - check plugin capabilities");
 						return;
 					}
 
@@ -254,15 +258,12 @@ export default definePlugin({
 						return;
 					}
 
-					const { platforms, via, hashtags } = await getConfig(ctx);
-
 					// Get title from data (confirmed: title is a custom data field, not system)
-					const contentData = isRecord(event.content.data)
-						? event.content.data
-						: {};
-					const title = typeof contentData.title === "string" && contentData.title.length > 0
-						? contentData.title
-						: event.collection;
+					const contentData = isRecord(event.content.data) ? event.content.data : {};
+					const title =
+						typeof contentData.title === "string" && contentData.title.length > 0
+							? contentData.title
+							: event.collection;
 
 					// Build absolute URL
 					const postUrl = ctx.url(`/${event.collection}/${slug}`);
@@ -279,9 +280,7 @@ export default definePlugin({
 					// Read existing content to merge metadata safely
 					const id = event.content.id as string;
 					const existing = await ctx.content.get(event.collection, id);
-					const existingData = isRecord(existing?.data)
-						? existing!.data
-						: {};
+					const existingData = isRecord(existing?.data) ? existing!.data : {};
 					const existingMetadata = isRecord(existingData.metadata)
 						? (existingData.metadata as Record<string, unknown>)
 						: {};
@@ -316,21 +315,14 @@ export default definePlugin({
 					action_id?: string;
 					values?: Record<string, unknown>;
 				};
-				if (
-					!interaction ||
-					interaction.type === "page_load" ||
-					interaction.type === undefined
-				) {
+				if (!interaction || interaction.type === "page_load" || interaction.type === undefined) {
 					return buildSettingsPage(ctx);
 				}
-				if (
-					interaction.type === "form_submit" &&
-					interaction.action_id === "save_settings"
-				) {
+				if (interaction.type === "form_submit" && interaction.action_id === "save_settings") {
 					return handleSaveSettings(interaction.values ?? {}, ctx);
 				}
 				return buildSettingsPage(ctx);
 			},
 		},
 	},
-});
+} satisfies SandboxedPlugin;

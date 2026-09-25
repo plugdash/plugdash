@@ -24,7 +24,7 @@
 		"src/*.astro"
 	],
 	"scripts": {
-		"build": "tsdown src/index.ts src/sandbox-entry.ts src/utils.ts --dts.eager",
+		"build": "tsdown src/index.ts --dts.eager && tsdown src/sandbox-entry.ts --dts.eager --no-clean && tsdown src/utils.ts --dts.eager --no-clean",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},

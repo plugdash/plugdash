@@ -13,15 +13,12 @@ describe("sharepost integration: full lifecycle", () => {
 	});
 
 	async function runInstall() {
-		const hook = plugin.default.hooks!["plugin:install"];
+		const hook = plugin.default.hooks!["plugin:install"]!;
 		await hook.handler({}, ctx);
 	}
 
-	async function runAfterSave(
-		content: Record<string, unknown>,
-		collection = "posts",
-	) {
-		const hook = plugin.default.hooks!["content:afterSave"];
+	async function runAfterSave(content: Record<string, unknown>, collection = "posts") {
+		const hook = plugin.default.hooks!["content:afterSave"]!;
 		const event = { content, collection, isNew: false };
 		await hook.handler(event, ctx);
 	}
@@ -29,13 +26,14 @@ describe("sharepost integration: full lifecycle", () => {
 	it("install seeds default platforms config in KV", async () => {
 		await runInstall();
 
-		expect(ctx.kv.set).toHaveBeenCalledWith(
-			"config:platforms",
-			["twitter", "linkedin", "whatsapp", "bluesky", "email"],
-		);
-		expect(ctx.log.info).toHaveBeenCalledWith(
-			expect.stringContaining("installed"),
-		);
+		expect(ctx.kv.set).toHaveBeenCalledWith("config:platforms", [
+			"twitter",
+			"linkedin",
+			"whatsapp",
+			"bluesky",
+			"email",
+		]);
+		expect(ctx.log.info).toHaveBeenCalledWith(expect.stringContaining("installed"));
 	});
 
 	it("full lifecycle: install -> publish -> metadata has shareUrls", async () => {
@@ -46,9 +44,7 @@ describe("sharepost integration: full lifecycle", () => {
 		const kvStore: Record<string, unknown> = {
 			"config:platforms": ["twitter", "linkedin", "whatsapp", "bluesky", "email"],
 		};
-		ctx.kv.get = vi.fn().mockImplementation((key: string) =>
-			Promise.resolve(kvStore[key] ?? null),
-		);
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => Promise.resolve(kvStore[key] ?? null));
 
 		// Step 3: Publish a post
 		const content = makeContentItem({
@@ -121,9 +117,7 @@ describe("sharepost integration: full lifecycle", () => {
 			"config:via": "abhinavs",
 			"config:hashtags": ["emdash", "cms"],
 		};
-		ctx.kv.get = vi.fn().mockImplementation((key: string) =>
-			Promise.resolve(kvStore[key] ?? null),
-		);
+		ctx.kv.get = vi.fn().mockImplementation((key: string) => Promise.resolve(kvStore[key] ?? null));
 
 		const content = makeContentItem({
 			status: "published",
@@ -232,7 +226,7 @@ describe("sharepost integration: full lifecycle", () => {
 			data: { title: "Test", body: [], metadata: {} },
 		});
 
-		const hook = plugin.default.hooks!["content:afterSave"];
+		const hook = plugin.default.hooks!["content:afterSave"]!;
 		await expect(
 			hook.handler({ content, collection: "posts", isNew: false }, noContentCtx),
 		).resolves.toBeUndefined();
