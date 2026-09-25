@@ -1,8 +1,8 @@
 // @plugdash/readtime - sandbox entry (runs at request time)
 // Standard plugin: no Node.js built-ins, no direct fetch()
 
-import { definePlugin } from "emdash";
-import type { PluginContext, ContentHookEvent } from "emdash";
+import type { SandboxedPlugin } from "emdash/plugin";
+import type { PluginContext } from "emdash/plugin";
 import type {
 	PortableTextBlock,
 	PortableTextSpan,
@@ -190,10 +190,10 @@ async function handleSaveSettings(
 
 // ── Plugin definition ──
 
-export default definePlugin({
+export default {
 	hooks: {
 		"plugin:install": {
-			handler: async (_event: unknown, ctx: PluginContext) => {
+			handler: async (_event, ctx) => {
 				try {
 					const bootstrap = globalThis.__plugdash_readtime_config__;
 					if (bootstrap) {
@@ -213,7 +213,7 @@ export default definePlugin({
 		},
 
 		"content:afterSave": {
-			handler: async (event: ContentHookEvent, ctx: PluginContext) => {
+			handler: async (event, ctx) => {
 				try {
 					// Reseed KV if the bootstrap config in code has changed since
 					// the last run (covers the case where a dev edits their
@@ -289,10 +289,7 @@ export default definePlugin({
 
 	routes: {
 		admin: {
-			handler: async (
-				routeCtx: { input: unknown; request: { url: string } },
-				ctx: PluginContext,
-			) => {
+			handler: async (routeCtx, ctx) => {
 				const interaction = routeCtx.input as {
 					type?: string;
 					page?: string;
@@ -316,4 +313,4 @@ export default definePlugin({
 			},
 		},
 	},
-});
+} satisfies SandboxedPlugin;
