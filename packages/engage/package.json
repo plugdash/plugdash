@@ -23,9 +23,9 @@
 		"directory": "packages/engage"
 	},
 	"peerDependencies": {
-		"@plugdash/heartpost": ">=0.2.0",
-		"@plugdash/sharepost": ">=0.2.2",
-		"@plugdash/shortlink": ">=0.2.2"
+		"@plugdash/heartpost": ">=0.2.1",
+		"@plugdash/sharepost": ">=0.2.3",
+		"@plugdash/shortlink": ">=0.2.3"
 	},
 	"devDependencies": {
 		"@plugdash/heartpost": "workspace:*",

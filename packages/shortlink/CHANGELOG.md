@@ -1,5 +1,11 @@
 # @plugdash/shortlink
 
+## 0.2.3
+
+### Patch Changes
+
+- 23613eb: Fix definePlugin() removal for current emdash, rename capabilities to canonical names, allow hyphens in custom shortlink codes.
+
 ## 0.2.2
 
 ### Patch Changes
