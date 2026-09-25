@@ -1,5 +1,11 @@
 # @plugdash/readtime
 
+## 0.2.1
+
+### Patch Changes
+
+- b503044: Fix definePlugin() removal crash against current emdash and rename capabilities to canonical content:read/content:write.
+
 ## 0.2.0
 
 ### Minor Changes

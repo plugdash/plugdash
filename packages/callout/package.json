@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/callout",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"description": "Callout blocks for EmDash - the block type WordPress themes always hacked with shortcodes",
 	"type": "module",
 	"main": "./dist/index.mjs",
