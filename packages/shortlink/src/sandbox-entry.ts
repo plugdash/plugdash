@@ -1,6 +1,5 @@
 import type { SandboxedPlugin, PluginContext } from "emdash/plugin";
-import { isRecord } from "@plugdash/types";
-import { isValidCode } from "./redirect-logic";
+import { isRecord, isValidCode } from "@plugdash/types";
 
 // ── Pure functions (exported for testing) ──
 

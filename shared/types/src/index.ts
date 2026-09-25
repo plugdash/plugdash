@@ -9,6 +9,21 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Short-code pattern shared between plugins that generate or validate
+ * shortlink-style codes. Alphanumeric and hyphens, at least one
+ * alphanumeric character, max 64. Lives here (not in a single plugin's
+ * source) because sandboxed plugin builds embed only the entry file -
+ * a cross-file import from another local module has nothing to load
+ * in sandboxed mode. @plugdash/types is copied into every plugin's
+ * bundle, so this stays resolvable there.
+ */
+export const CODE_PATTERN = /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9-]{1,64}$/;
+
+export function isValidCode(code: string): boolean {
+	return CODE_PATTERN.test(code);
+}
+
 // ── Capability ──
 
 export type PluginCapability =
