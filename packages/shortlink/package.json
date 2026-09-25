@@ -25,7 +25,7 @@
 		"src/*.astro"
 	],
 	"scripts": {
-		"build": "tsdown src/index.ts src/sandbox-entry.ts src/redirect-logic.ts --dts.eager",
+		"build": "tsdown src/index.ts --dts.eager && tsdown src/sandbox-entry.ts --dts.eager --no-clean && tsdown src/redirect-logic.ts --dts.eager --no-clean",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit",
 		"lint": "oxlint --ignore-pattern '*.astro' ."
