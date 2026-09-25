@@ -6,7 +6,7 @@ import type { PluginDescriptor } from "@plugdash/types";
 export function calloutPlugin(): PluginDescriptor {
 	return {
 		id: "callout",
-		version: "0.1.0",
+		version: "0.1.3",
 		format: "native",
 		entrypoint: "@plugdash/callout",
 		componentsEntry: "@plugdash/callout/astro",
@@ -17,7 +17,7 @@ export function calloutPlugin(): PluginDescriptor {
 export function createPlugin() {
 	return definePlugin({
 		id: "callout",
-		version: "0.1.0",
+		version: "0.1.3",
 		hooks: {},
 		admin: {
 			portableTextBlocks: [
