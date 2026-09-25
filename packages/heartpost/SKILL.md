@@ -15,7 +15,6 @@ Standard
 
 ```
 content:read
-content:write
 ```
 
 ## Hooks
