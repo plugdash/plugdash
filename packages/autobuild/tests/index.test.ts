@@ -26,9 +26,7 @@ describe("validateHookUrl", () => {
 	});
 
 	it("accepts https://api.vercel.com/v1/integrations/deploy/prj_abc/xyz", () => {
-		const result = validateHookUrl(
-			"https://api.vercel.com/v1/integrations/deploy/prj_abc/xyz",
-		);
+		const result = validateHookUrl("https://api.vercel.com/v1/integrations/deploy/prj_abc/xyz");
 		expect(result.ok).toBe(true);
 	});
 
@@ -166,9 +164,7 @@ describe("isPrivateHostname", () => {
 
 describe("parseHookHostname", () => {
 	it("returns hostname for valid https URL", () => {
-		expect(parseHookHostname("https://api.cloudflare.com/foo")).toBe(
-			"api.cloudflare.com",
-		);
+		expect(parseHookHostname("https://api.cloudflare.com/foo")).toBe("api.cloudflare.com");
 	});
 
 	it("returns null for empty string", () => {
@@ -206,9 +202,7 @@ describe("shouldTrigger", () => {
 
 	it("returns true when status matches custom statuses list", () => {
 		const event = { content: { status: "draft" }, collection: "posts" };
-		expect(
-			shouldTrigger(event, { statuses: ["published", "draft"] }),
-		).toBe(true);
+		expect(shouldTrigger(event, { statuses: ["published", "draft"] })).toBe(true);
 	});
 
 	it("returns true when collection is in collections list", () => {
@@ -328,9 +322,7 @@ describe("autobuild hook: content:afterSave", () => {
 
 	beforeEach(() => {
 		vi.useFakeTimers();
-		fetchMock = vi.fn().mockResolvedValue(
-			new Response("ok", { status: 200 }),
-		);
+		fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
 		ctx = makeContext({
 			http: { fetch: fetchMock },
 			kv: {
@@ -338,8 +330,7 @@ describe("autobuild hook: content:afterSave", () => {
 					if (key === "autobuild:config:hookUrl")
 						return Promise.resolve("https://api.cloudflare.com/hook");
 					if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-					if (key === "autobuild:config:statuses")
-						return Promise.resolve(["published"]);
+					if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
 					if (key === "autobuild:config:collections") return Promise.resolve(null);
 					if (key === "autobuild:config:method") return Promise.resolve("POST");
 					if (key === "autobuild:bootstrapHash") return Promise.resolve(null);
@@ -348,20 +339,19 @@ describe("autobuild hook: content:afterSave", () => {
 				set: vi.fn().mockResolvedValue(undefined),
 				delete: vi.fn().mockResolvedValue(undefined),
 				list: vi.fn().mockResolvedValue([]),
+				getVersioned: vi.fn().mockResolvedValue(null),
+				compareAndSet: vi.fn().mockResolvedValue({ applied: true }),
+				compareAndDelete: vi.fn().mockResolvedValue({ applied: true }),
 			},
 		});
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ =
-			undefined;
+		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
 	});
 
-	async function runSaveHook(
-		content: Record<string, unknown>,
-		collection = "posts",
-	) {
+	async function runSaveHook(content: Record<string, unknown>, collection = "posts") {
 		const plugin = await import("../src/sandbox-entry.ts");
 		const hook = plugin.default.hooks!["content:afterSave"];
 		const event = { content, collection, isNew: false };
@@ -403,10 +393,8 @@ describe("autobuild hook: content:afterSave", () => {
 			if (key === "autobuild:config:hookUrl")
 				return Promise.resolve("https://api.cloudflare.com/hook");
 			if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-			if (key === "autobuild:config:statuses")
-				return Promise.resolve(["published"]);
-			if (key === "autobuild:config:collections")
-				return Promise.resolve(["blog"]);
+			if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
+			if (key === "autobuild:config:collections") return Promise.resolve(["blog"]);
 			if (key === "autobuild:config:method") return Promise.resolve("POST");
 			if (key === "autobuild:bootstrapHash") return Promise.resolve(null);
 			return Promise.resolve(null);
@@ -421,8 +409,7 @@ describe("autobuild hook: content:afterSave", () => {
 		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
 			if (key === "autobuild:config:hookUrl") return Promise.resolve("");
 			if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-			if (key === "autobuild:config:statuses")
-				return Promise.resolve(["published"]);
+			if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
 			return Promise.resolve(null);
 		});
 		const content = makeContentItem({ status: "published" });
@@ -465,10 +452,7 @@ describe("autobuild hook: content:afterSave", () => {
 		fetchMock.mockImplementation(
 			() =>
 				new Promise((resolve) =>
-					setTimeout(
-						() => resolve(new Response("ok", { status: 200 })),
-						10_000,
-					),
+					setTimeout(() => resolve(new Response("ok", { status: 200 })), 10_000),
 				),
 		);
 		const content = makeContentItem({ status: "published" });
@@ -482,8 +466,7 @@ describe("autobuild hook: content:afterSave", () => {
 				return Promise.resolve("https://api.cloudflare.com/hook");
 			if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
 			if (key === "autobuild:config:timeout") return Promise.resolve(30);
-			if (key === "autobuild:config:statuses")
-				return Promise.resolve(["published"]);
+			if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
 			if (key === "autobuild:config:method") return Promise.resolve("POST");
 			if (key === "autobuild:bootstrapHash") return Promise.resolve(null);
 			return Promise.resolve(null);
@@ -512,21 +495,15 @@ describe("autobuild hook: content:afterSave", () => {
 		await Promise.resolve();
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(ctx.log.error).toHaveBeenCalled();
-		const errorMessages = (ctx.log.error as ReturnType<typeof vi.fn>).mock.calls.map(
-			(c) => c[0],
-		);
-		expect(
-			errorMessages.some((m) => typeof m === "string" && m.includes("failed")),
-		).toBe(true);
+		const errorMessages = (ctx.log.error as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+		expect(errorMessages.some((m) => typeof m === "string" && m.includes("failed"))).toBe(true);
 	});
 
 	it("rejects private-IP hookUrl and logs error", async () => {
 		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "autobuild:config:hookUrl")
-				return Promise.resolve("https://192.168.1.1/hook");
+			if (key === "autobuild:config:hookUrl") return Promise.resolve("https://192.168.1.1/hook");
 			if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-			if (key === "autobuild:config:statuses")
-				return Promise.resolve(["published"]);
+			if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
 			return Promise.resolve(null);
 		});
 		const content = makeContentItem({ status: "published" });
@@ -547,9 +524,7 @@ describe("autobuild hook: content:afterDelete", () => {
 
 	beforeEach(() => {
 		vi.useFakeTimers();
-		fetchMock = vi.fn().mockResolvedValue(
-			new Response("ok", { status: 200 }),
-		);
+		fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
 		ctx = makeContext({
 			http: { fetch: fetchMock },
 			kv: {
@@ -557,8 +532,7 @@ describe("autobuild hook: content:afterDelete", () => {
 					if (key === "autobuild:config:hookUrl")
 						return Promise.resolve("https://api.cloudflare.com/hook");
 					if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-					if (key === "autobuild:config:statuses")
-						return Promise.resolve(["published"]);
+					if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
 					if (key === "autobuild:config:collections") return Promise.resolve(null);
 					if (key === "autobuild:config:method") return Promise.resolve("POST");
 					if (key === "autobuild:bootstrapHash") return Promise.resolve(null);
@@ -567,10 +541,12 @@ describe("autobuild hook: content:afterDelete", () => {
 				set: vi.fn().mockResolvedValue(undefined),
 				delete: vi.fn().mockResolvedValue(undefined),
 				list: vi.fn().mockResolvedValue([]),
+				getVersioned: vi.fn().mockResolvedValue(null),
+				compareAndSet: vi.fn().mockResolvedValue({ applied: true }),
+				compareAndDelete: vi.fn().mockResolvedValue({ applied: true }),
 			},
 		});
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ =
-			undefined;
+		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
 	});
 
 	afterEach(() => {
@@ -595,10 +571,8 @@ describe("autobuild hook: content:afterDelete", () => {
 			if (key === "autobuild:config:hookUrl")
 				return Promise.resolve("https://api.cloudflare.com/hook");
 			if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-			if (key === "autobuild:config:statuses")
-				return Promise.resolve(["published"]);
-			if (key === "autobuild:config:collections")
-				return Promise.resolve(["blog"]);
+			if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
+			if (key === "autobuild:config:collections") return Promise.resolve(["blog"]);
 			if (key === "autobuild:config:method") return Promise.resolve("POST");
 			if (key === "autobuild:bootstrapHash") return Promise.resolve(null);
 			return Promise.resolve(null);
@@ -625,15 +599,16 @@ describe("autobuild hook: plugin:install", () => {
 				set: vi.fn().mockResolvedValue(undefined),
 				delete: vi.fn().mockResolvedValue(undefined),
 				list: vi.fn().mockResolvedValue([]),
+				getVersioned: vi.fn().mockResolvedValue(null),
+				compareAndSet: vi.fn().mockResolvedValue({ applied: true }),
+				compareAndDelete: vi.fn().mockResolvedValue({ applied: true }),
 			},
 		});
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ =
-			undefined;
+		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
 	});
 
 	afterEach(() => {
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ =
-			undefined;
+		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
 	});
 
 	async function runInstall() {
@@ -654,9 +629,7 @@ describe("autobuild hook: plugin:install", () => {
 			"https://api.cloudflare.com/hook",
 		);
 		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:debounceMs", 3000);
-		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:collections", [
-			"blog",
-		]);
+		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:collections", ["blog"]);
 	});
 
 	it("logs warning once when hookUrl is missing", async () => {
@@ -687,17 +660,13 @@ describe("bootstrap hash reseed on hook invocation", () => {
 
 	beforeEach(() => {
 		vi.useFakeTimers();
-		fetchMock = vi.fn().mockResolvedValue(
-			new Response("ok", { status: 200 }),
-		);
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ =
-			undefined;
+		fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
+		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ =
-			undefined;
+		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
 	});
 
 	it("reseeds KV when globalThis bootstrap hash differs from stored hash", async () => {
@@ -711,25 +680,23 @@ describe("bootstrap hash reseed on hook invocation", () => {
 					if (key === "autobuild:config:hookUrl")
 						return Promise.resolve("https://api.cloudflare.com/old-hook");
 					if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-					if (key === "autobuild:config:statuses")
-						return Promise.resolve(["published"]);
-					if (key === "autobuild:bootstrapHash")
-						return Promise.resolve("old-hash-value");
+					if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
+					if (key === "autobuild:bootstrapHash") return Promise.resolve("old-hash-value");
 					return Promise.resolve(null);
 				}),
 				set: vi.fn().mockResolvedValue(undefined),
 				delete: vi.fn().mockResolvedValue(undefined),
 				list: vi.fn().mockResolvedValue([]),
+				getVersioned: vi.fn().mockResolvedValue(null),
+				compareAndSet: vi.fn().mockResolvedValue({ applied: true }),
+				compareAndDelete: vi.fn().mockResolvedValue({ applied: true }),
 			},
 		});
 
 		const plugin = await import("../src/sandbox-entry.ts");
 		const hook = plugin.default.hooks!["content:afterSave"];
 		const content = makeContentItem({ status: "published" });
-		await hook.handler(
-			{ content, collection: "posts", isNew: false },
-			ctx,
-		);
+		await hook.handler({ content, collection: "posts" }, ctx);
 
 		expect(ctx.kv.set).toHaveBeenCalledWith(
 			"autobuild:config:hookUrl",
@@ -843,7 +810,7 @@ describe("admin page", () => {
 		ctx = makeContext();
 	});
 
-	async function invokeAdmin(input: unknown) {
+	async function invokeAdmin(input: unknown): Promise<any> {
 		const plugin = await import("../src/sandbox-entry.ts");
 		const handler = plugin.default.routes!.admin!.handler;
 		return handler({ input, request: { url: "http://localhost" } }, ctx);
@@ -903,10 +870,7 @@ describe("admin page", () => {
 		);
 		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:method", "POST");
 		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:debounceMs", 3000);
-		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:collections", [
-			"blog",
-			"docs",
-		]);
+		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:collections", ["blog", "docs"]);
 		expect(res.toast.type).toBe("success");
 	});
 

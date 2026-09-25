@@ -1,8 +1,7 @@
 // @plugdash/autobuild - sandbox entry (runs at request time)
 // Standard plugin: no Node.js built-ins, no direct fetch().
 
-import { definePlugin } from "emdash";
-import type { PluginContext } from "emdash";
+import type { SandboxedPlugin, PluginContext } from "emdash/plugin";
 import type { AutobuildConfig, ContentStatus } from "./index.ts";
 
 // ── Pure functions (exported for testing) ──
@@ -38,9 +37,7 @@ export function isPrivateHostname(hostname: string): boolean {
 	return false;
 }
 
-export type ValidateResult =
-	| { ok: true; url: URL }
-	| { ok: false; reason: string };
+export type ValidateResult = { ok: true; url: URL } | { ok: false; reason: string };
 
 export function validateHookUrl(input: unknown): ValidateResult {
 	if (typeof input !== "string" || input.length === 0) {
@@ -79,10 +76,7 @@ export interface ShouldTriggerConfig {
  * `event.content` being undefined (afterDelete case): a missing content
  * object passes the status check but the collection filter still applies.
  */
-export function shouldTrigger(
-	event: ShouldTriggerEvent,
-	config: ShouldTriggerConfig,
-): boolean {
+export function shouldTrigger(event: ShouldTriggerEvent, config: ShouldTriggerConfig): boolean {
 	// Collection filter
 	if (config.collections && !config.collections.includes(event.collection)) {
 		return false;
@@ -155,23 +149,13 @@ interface ResolvedConfig {
 
 async function getConfig(ctx: PluginContext): Promise<ResolvedConfig> {
 	const hookUrl = (await ctx.kv.get<string>("autobuild:config:hookUrl")) ?? "";
-	const method =
-		(await ctx.kv.get<"POST" | "GET">("autobuild:config:method")) ?? "POST";
-	const collections = await ctx.kv.get<string[] | null>(
-		"autobuild:config:collections",
-	);
-	const statuses = (await ctx.kv.get<string[]>("autobuild:config:statuses")) ?? [
-		"published",
-	];
-	const debounceMs =
-		(await ctx.kv.get<number>("autobuild:config:debounceMs")) ?? 5000;
+	const method = (await ctx.kv.get<"POST" | "GET">("autobuild:config:method")) ?? "POST";
+	const collections = await ctx.kv.get<string[] | null>("autobuild:config:collections");
+	const statuses = (await ctx.kv.get<string[]>("autobuild:config:statuses")) ?? ["published"];
+	const debounceMs = (await ctx.kv.get<number>("autobuild:config:debounceMs")) ?? 5000;
 	const timeout = (await ctx.kv.get<number>("autobuild:config:timeout")) ?? 5000;
-	const body = await ctx.kv.get<Record<string, unknown> | null>(
-		"autobuild:config:body",
-	);
-	const headers = await ctx.kv.get<Record<string, string> | null>(
-		"autobuild:config:headers",
-	);
+	const body = await ctx.kv.get<Record<string, unknown> | null>("autobuild:config:body");
+	const headers = await ctx.kv.get<Record<string, string> | null>("autobuild:config:headers");
 	return {
 		hookUrl,
 		method,
@@ -184,10 +168,7 @@ async function getConfig(ctx: PluginContext): Promise<ResolvedConfig> {
 	};
 }
 
-async function seedFromBootstrap(
-	ctx: PluginContext,
-	bootstrap: AutobuildConfig,
-): Promise<void> {
+async function seedFromBootstrap(ctx: PluginContext, bootstrap: AutobuildConfig): Promise<void> {
 	await ctx.kv.set("autobuild:config:hookUrl", bootstrap.hookUrl ?? "");
 	if (bootstrap.method !== undefined) {
 		await ctx.kv.set("autobuild:config:method", bootstrap.method);
@@ -224,10 +205,7 @@ async function checkAndReseedBootstrap(ctx: PluginContext): Promise<void> {
 
 // ── Webhook caller ──
 
-async function fireWebhook(
-	config: ResolvedConfig,
-	ctx: PluginContext,
-): Promise<void> {
+async function fireWebhook(config: ResolvedConfig, ctx: PluginContext): Promise<void> {
 	const check = validateHookUrl(config.hookUrl);
 	if (!check.ok) {
 		ctx.log.error("autobuild: invalid hook url", { reason: check.reason });
@@ -281,9 +259,7 @@ export function maskHookUrl(url: string): string {
 	try {
 		const parsed = new URL(url);
 		const pathSnippet =
-			parsed.pathname.length <= 8
-				? parsed.pathname
-				: parsed.pathname.slice(0, 8) + "...";
+			parsed.pathname.length <= 8 ? parsed.pathname : parsed.pathname.slice(0, 8) + "...";
 		return parsed.hostname + pathSnippet;
 	} catch {
 		return "(invalid)";
@@ -351,13 +327,9 @@ export function validateAutobuildSettings(
 
 async function buildSettingsPage(ctx: PluginContext) {
 	const hookUrl = (await ctx.kv.get<string>("autobuild:config:hookUrl")) ?? "";
-	const method =
-		(await ctx.kv.get<"POST" | "GET">("autobuild:config:method")) ?? "POST";
-	const debounceMs =
-		(await ctx.kv.get<number>("autobuild:config:debounceMs")) ?? 5000;
-	const collections = await ctx.kv.get<string[] | null>(
-		"autobuild:config:collections",
-	);
+	const method = (await ctx.kv.get<"POST" | "GET">("autobuild:config:method")) ?? "POST";
+	const debounceMs = (await ctx.kv.get<number>("autobuild:config:debounceMs")) ?? 5000;
+	const collections = await ctx.kv.get<string[] | null>("autobuild:config:collections");
 
 	const masked = maskHookUrl(hookUrl);
 
@@ -375,7 +347,7 @@ async function buildSettingsPage(ctx: PluginContext) {
 							type: "fields",
 							fields: [{ label: "Current hook URL", value: masked }],
 						},
-				  ]
+					]
 				: []),
 			{
 				type: "form",
@@ -385,8 +357,7 @@ async function buildSettingsPage(ctx: PluginContext) {
 						type: "text_input",
 						action_id: "hookUrl",
 						label: "Deploy hook URL",
-						placeholder:
-							"https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/...",
+						placeholder: "https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/...",
 						initial_value: "",
 						help_text:
 							"The webhook URL from your hosting provider. Kept private - leave blank to keep the existing value.",
@@ -409,18 +380,14 @@ async function buildSettingsPage(ctx: PluginContext) {
 						min: 500,
 						max: 30000,
 						initial_value: debounceMs,
-						help_text:
-							"Rapid publishes within this window are coalesced into one deploy.",
+						help_text: "Rapid publishes within this window are coalesced into one deploy.",
 					},
 					{
 						type: "text_input",
 						action_id: "collections",
 						label: "Collections (comma-separated, leave blank for all)",
 						placeholder: "blog, docs",
-						initial_value:
-							collections && collections.length > 0
-								? collections.join(", ")
-								: "",
+						initial_value: collections && collections.length > 0 ? collections.join(", ") : "",
 					},
 				],
 				submit: { label: "Save", action_id: "save_settings" },
@@ -429,12 +396,8 @@ async function buildSettingsPage(ctx: PluginContext) {
 	};
 }
 
-async function handleSaveSettings(
-	values: Record<string, unknown>,
-	ctx: PluginContext,
-) {
-	const currentHookUrl =
-		(await ctx.kv.get<string>("autobuild:config:hookUrl")) ?? "";
+async function handleSaveSettings(values: Record<string, unknown>, ctx: PluginContext) {
+	const currentHookUrl = (await ctx.kv.get<string>("autobuild:config:hookUrl")) ?? "";
 	const result = validateAutobuildSettings(values, currentHookUrl);
 	if (!result.ok) {
 		const page = await buildSettingsPage(ctx);
@@ -450,7 +413,7 @@ async function handleSaveSettings(
 
 // ── Plugin definition ──
 
-export default definePlugin({
+export default {
 	hooks: {
 		"plugin:install": {
 			handler: async (_event: unknown, ctx: PluginContext) => {
@@ -472,9 +435,7 @@ export default definePlugin({
 					}
 					const hookUrl = await ctx.kv.get<string>("autobuild:config:hookUrl");
 					if (!hookUrl) {
-						ctx.log.warn(
-							"autobuild: hookUrl not configured - plugin will no-op until configured",
-						);
+						ctx.log.warn("autobuild: hookUrl not configured - plugin will no-op until configured");
 					}
 				} catch (err) {
 					ctx.log.error("autobuild: install failed", { err: String(err) });
@@ -505,9 +466,7 @@ export default definePlugin({
 					) {
 						return;
 					}
-					debouncer.schedule(config.debounceMs, () =>
-						fireWebhook(config, ctx),
-					);
+					debouncer.schedule(config.debounceMs, () => fireWebhook(config, ctx));
 				} catch (err) {
 					ctx.log.error("autobuild: afterSave failed", { err: String(err) });
 				}
@@ -515,10 +474,7 @@ export default definePlugin({
 		},
 
 		"content:afterDelete": {
-			handler: async (
-				event: { id: string; collection: string },
-				ctx: PluginContext,
-			) => {
+			handler: async (event: { id: string; collection: string }, ctx: PluginContext) => {
 				try {
 					await checkAndReseedBootstrap(ctx);
 					const config = await getConfig(ctx);
@@ -534,9 +490,7 @@ export default definePlugin({
 					) {
 						return;
 					}
-					debouncer.schedule(config.debounceMs, () =>
-						fireWebhook(config, ctx),
-					);
+					debouncer.schedule(config.debounceMs, () => fireWebhook(config, ctx));
 				} catch (err) {
 					ctx.log.error("autobuild: afterDelete failed", {
 						err: String(err),
@@ -557,23 +511,16 @@ export default definePlugin({
 					action_id?: string;
 					values?: Record<string, unknown>;
 				};
-				if (
-					!interaction ||
-					interaction.type === "page_load" ||
-					interaction.type === undefined
-				) {
+				if (!interaction || interaction.type === "page_load" || interaction.type === undefined) {
 					return buildSettingsPage(ctx);
 				}
-				if (
-					interaction.type === "form_submit" &&
-					interaction.action_id === "save_settings"
-				) {
+				if (interaction.type === "form_submit" && interaction.action_id === "save_settings") {
 					return handleSaveSettings(interaction.values ?? {}, ctx);
 				}
 				return buildSettingsPage(ctx);
 			},
 		},
 	},
-});
+} satisfies SandboxedPlugin;
 
 export type { AutobuildConfig, ContentStatus };
