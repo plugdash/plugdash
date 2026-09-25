@@ -207,6 +207,9 @@ route handler. No JSON.parse() needed in the handler - cast directly:
 `const { id } = routeCtx.input as Record<string, unknown>`
 Verified in emdash-source/packages/core/src/emdash-runtime.ts lines 1793-1800.
 
+// confirmed 2026-09-22 while building @plugdash/heartpost
+Real `SandboxedRequest.headers` (emdash 0.38.0) is a plain `Record<string, string>`, not a DOM `Headers` object.
+
 ### ctx.content.update() signature
 
 Three arguments: `ctx.content.update(collection, id, data)`

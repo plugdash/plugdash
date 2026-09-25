@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { makeContext } from "@plugdash/testing";
+import type { SandboxedRequest } from "emdash/plugin";
+
+// ponytail: see tests/index.test.ts - real Request/Headers works at runtime
+// (getHeader duck-types both) but doesn't structurally match SandboxedRequest.
+function fakeRequest(url: string, init?: RequestInit): SandboxedRequest {
+	return new Request(url, init) as unknown as SandboxedRequest;
+}
 
 // ── Full lifecycle integration tests ──
 // These test the plugin through its public surface (hooks + routes)
@@ -75,7 +82,7 @@ describe("heartpost lifecycle", () => {
 		const route = plugin.default.routes!.heart;
 		const routeCtx = {
 			input: { id },
-			request: new Request(
+			request: fakeRequest(
 				"https://example.com/_emdash/api/plugins/heartpost/heart",
 				{
 					method: "POST",
@@ -91,7 +98,7 @@ describe("heartpost lifecycle", () => {
 		const route = plugin.default.routes!["heart-remove"];
 		const routeCtx = {
 			input: { id },
-			request: new Request(
+			request: fakeRequest(
 				"https://example.com/_emdash/api/plugins/heartpost/heart-remove",
 				{
 					method: "POST",
@@ -107,7 +114,7 @@ describe("heartpost lifecycle", () => {
 		const route = plugin.default.routes!["heart-status"];
 		const routeCtx = {
 			input: undefined,
-			request: new Request(
+			request: fakeRequest(
 				`https://example.com/_emdash/api/plugins/heartpost/heart-status?id=${id}`,
 				{
 					headers: { "x-forwarded-for": ip, "user-agent": ua },
@@ -273,7 +280,7 @@ describe("heartpost lifecycle", () => {
 		const result = await route.handler(
 			{
 				input: {},
-				request: new Request(
+				request: fakeRequest(
 					"https://example.com/_emdash/api/plugins/heartpost/heart-remove",
 					{ method: "POST" },
 				),
