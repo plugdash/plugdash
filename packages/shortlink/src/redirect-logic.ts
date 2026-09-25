@@ -1,6 +1,8 @@
 // Pure helpers for the RedirectPage companion component.
 // Extracted so they can be unit-tested without an Astro runtime.
 
+import { isValidCode } from "@plugdash/types";
+
 export type ResolveDecision =
 	| { kind: "redirect"; target: string }
 	| { kind: "expired" }
@@ -27,14 +29,16 @@ export function interpretResolveResponse(data: unknown): ResolveDecision {
 }
 
 /**
- * Validates a short code extracted from the URL path. Mirrors the
- * alphanumeric rule used by the admin `create_shortlink` form.
- * Returns null for invalid input (missing, empty, non-alphanumeric, too long).
+ * Validates a short code extracted from the URL path.
+ * Returns null for invalid input (missing, empty, disallowed characters, too long).
+ * Uses the same isValidCode as the admin `create_shortlink` form
+ * (sandbox-entry.ts, imported from @plugdash/types) so the two can
+ * never drift apart - a code accepted at creation time must always
+ * resolve at redirect time.
  */
 export function validateCode(code: unknown): string | null {
 	if (typeof code !== "string") return null;
-	if (code.length === 0 || code.length > 64) return null;
-	if (!/^[a-zA-Z0-9]+$/.test(code)) return null;
+	if (!isValidCode(code)) return null;
 	return code;
 }
 

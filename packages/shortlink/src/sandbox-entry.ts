@@ -1,6 +1,5 @@
-import { definePlugin } from "emdash";
-import type { PluginContext, ContentHookEvent } from "emdash";
-import { isRecord } from "@plugdash/types";
+import type { SandboxedPlugin, PluginContext } from "emdash/plugin";
+import { isRecord, isValidCode } from "@plugdash/types";
 
 // ── Pure functions (exported for testing) ──
 
@@ -12,10 +11,6 @@ export function generateCode(length: number): string {
 		code += CHARSET[Math.floor(Math.random() * CHARSET.length)];
 	}
 	return code;
-}
-
-function isAlphanumeric(str: string): boolean {
-	return /^[a-zA-Z0-9]+$/.test(str);
 }
 
 // ── Config from KV ──
@@ -196,10 +191,10 @@ async function renderAdminPage(ctx: PluginContext) {
 
 // ── Plugin definition ──
 
-export default definePlugin({
+export default {
 	hooks: {
 		"plugin:install": {
-			handler: async (_event: unknown, ctx: PluginContext) => {
+			handler: async (_event, ctx) => {
 				await ctx.kv.set("config:prefix", "/s/");
 				await ctx.kv.set("config:codeLength", 4);
 				await ctx.kv.set("config:autoCreate", true);
@@ -208,7 +203,7 @@ export default definePlugin({
 		},
 
 		"content:afterSave": {
-			handler: async (event: ContentHookEvent, ctx: PluginContext) => {
+			handler: async (event, ctx) => {
 				try {
 					if (event.content.status !== "published") return;
 
@@ -281,10 +276,7 @@ export default definePlugin({
 	routes: {
 		resolve: {
 			public: true,
-			handler: async (
-				routeCtx: { input: unknown; request: Request },
-				ctx: PluginContext,
-			) => {
+			handler: async (routeCtx, ctx) => {
 				const url = new URL(routeCtx.request.url);
 				const code = url.searchParams.get("code");
 
@@ -310,10 +302,7 @@ export default definePlugin({
 		},
 
 		admin: {
-			handler: async (
-				routeCtx: { input: unknown; request: Request },
-				ctx: PluginContext,
-			) => {
+			handler: async (routeCtx, ctx) => {
 				const interaction = routeCtx.input as Record<string, unknown>;
 
 				// Page load - render the admin page
@@ -358,12 +347,12 @@ export default definePlugin({
 					const code = String(values.code ?? "").trim();
 					const target = String(values.target ?? "").trim();
 
-					if (!code || !isAlphanumeric(code)) {
+					if (!code || !isValidCode(code)) {
 						const page = await renderAdminPage(ctx);
 						return {
 							...page,
 							toast: {
-								message: "Code must be alphanumeric only",
+								message: "Code must be alphanumeric with optional hyphens, up to 64 characters",
 								type: "error",
 							},
 						};
@@ -446,4 +435,4 @@ export default definePlugin({
 			},
 		},
 	},
-});
+} satisfies SandboxedPlugin;

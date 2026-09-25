@@ -122,6 +122,22 @@ it as undefined, and the admin Plugin Manager UI crashes on
 ResolvedPlugin fields with sensible defaults. This is the same pattern
 the emdash CLI scaffolding uses - match it for every native plugin.
 
+// confirmed 2026-09-25 while fixing @plugdash/shortlink sandboxed build
+A sandboxed plugin's `sandbox-entry.ts` must not import any other local
+file in the package (e.g. `import { isValidCode } from "./redirect-logic"`).
+emdash's `generateSandboxedPluginsModule` (astro integration) reads only
+the single entry file and embeds it as a string - it never resolves a
+sibling import, so the sandboxed plugin fails to load even though trusted
+(non-sandboxed) mode works fine and tests pass. Shared logic a sandboxed
+entry needs must live in a package dependency instead (e.g.
+`@plugdash/types`), which tsdown inlines into the bundle - the same way
+`isRecord` is already imported. Also: when a package builds multiple
+tsdown entries that share such a dependency, run tsdown once per entry
+(`tsdown src/a.ts && tsdown src/b.ts --no-clean`) rather than one
+invocation with multiple entries - a single multi-entry invocation makes
+tsdown split the shared code into its own chunk file and import it,
+which reintroduces the same cross-file-import problem.
+
 // confirmed 2026-04-05 during plugdash.dev integration fixes
 Never import a `.d.ts` / declaration file at runtime (e.g.
 `import "./globals.d.ts"`). tsdown bundles the import as a real module

@@ -84,12 +84,22 @@ describe("validateCode", () => {
 		expect(validateCode("a")).toBe("a");
 	});
 
+	it("accepts hyphenated codes", () => {
+		expect(validateCode("abc-1")).toBe("abc-1");
+		expect(validateCode("my-custom-slug")).toBe("my-custom-slug");
+		expect(validateCode("-abc-")).toBe("-abc-");
+	});
+
 	it("rejects empty string", () => {
 		expect(validateCode("")).toBe(null);
 	});
 
+	it("rejects a hyphen-only code (no alphanumeric character)", () => {
+		expect(validateCode("-")).toBe(null);
+		expect(validateCode("---")).toBe(null);
+	});
+
 	it("rejects codes with special characters", () => {
-		expect(validateCode("abc-1")).toBe(null);
 		expect(validateCode("abc/1")).toBe(null);
 		expect(validateCode("abc.1")).toBe(null);
 		expect(validateCode("abc 1")).toBe(null);

@@ -57,9 +57,11 @@ describe("shortlink integration", () => {
 		const route = plugin.default.routes!.resolve;
 		const routeCtx = {
 			input: undefined,
-			request: new Request(
-				`https://example.com/_emdash/api/plugins/shortlink/resolve?code=${code}`,
-			),
+			request: {
+				url: `https://example.com/_emdash/api/plugins/shortlink/resolve?code=${code}`,
+				method: "GET",
+				headers: {},
+			},
 		};
 		return route.handler(routeCtx, ctx);
 	}
@@ -69,9 +71,11 @@ describe("shortlink integration", () => {
 		const route = plugin.default.routes!.admin;
 		const routeCtx = {
 			input: interaction ?? { type: "page_load", page: "/shortlinks" },
-			request: new Request(
-				"https://example.com/_emdash/api/plugins/shortlink/admin",
-			),
+			request: {
+				url: "https://example.com/_emdash/api/plugins/shortlink/admin",
+				method: "GET",
+				headers: {},
+			},
 		};
 		return route.handler(routeCtx, ctx);
 	}
