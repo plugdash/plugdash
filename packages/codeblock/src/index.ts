@@ -7,6 +7,7 @@
 
 import { definePlugin } from "emdash";
 import type { PluginDescriptor } from "@plugdash/types";
+import pkg from "../package.json" with { type: "json" };
 
 export {
 	highlightCode,
@@ -28,7 +29,8 @@ export {
 
 import { setSiteConfig, type CodeblockConfig } from "./highlight.ts";
 
-const VERSION = "0.1.0";
+// Read from package.json so a changesets version bump cannot leave it stale.
+const VERSION = pkg.version;
 
 export function codeblockPlugin(
 	config: CodeblockConfig = {},
