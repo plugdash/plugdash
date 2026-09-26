@@ -59,6 +59,25 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9
 
+  packages/codeblock:
+    dependencies:
+      emdash:
+        specifier: '>=0.13.0'
+        version: 0.38.0(@astrojs/react@5.0.2(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tsx@4.21.0))(@atcute/cbor@2.3.7(@atcute/cid@2.4.2))(@atcute/cid@2.4.2)(@atcute/identity@2.0.2(@atcute/lexicons@2.1.0)(typescript@5.9.3))(@date-fns/tz@1.4.1)(@floating-ui/dom@1.8.0)(@tiptap/extensions@3.22.1(@tiptap/core@3.22.1(@tiptap/pm@3.22.1))(@tiptap/pm@3.22.1))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(astro@6.1.3(rollup@4.60.1)(tsx@4.21.0)(typescript@5.9.3))(date-fns@4.1.0)(echarts@6.0.0)(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+      shiki:
+        specifier: ^4.0.0
+        version: 4.0.2
+    devDependencies:
+      '@plugdash/testing':
+        specifier: workspace:*
+        version: link:../../shared/testing
+      '@plugdash/types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9
+
   packages/engage:
     devDependencies:
       '@plugdash/heartpost':
@@ -72,6 +91,22 @@ importers:
         version: link:../shortlink
       vitest:
         specifier: '*'
+        version: 2.1.9
+
+  packages/enrichkit:
+    dependencies:
+      emdash:
+        specifier: '>=0.13.0'
+        version: 0.38.0(@astrojs/react@5.0.2(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tsx@4.21.0))(@atcute/cbor@2.3.7(@atcute/cid@2.4.2))(@atcute/cid@2.4.2)(@atcute/identity@2.0.2(@atcute/lexicons@2.1.0)(typescript@5.9.3))(@date-fns/tz@1.4.1)(@floating-ui/dom@1.8.0)(@tiptap/extensions@3.22.1(@tiptap/core@3.22.1(@tiptap/pm@3.22.1))(@tiptap/pm@3.22.1))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(astro@6.1.3(rollup@4.60.1)(tsx@4.21.0)(typescript@5.9.3))(date-fns@4.1.0)(echarts@6.0.0)(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+    devDependencies:
+      '@plugdash/testing':
+        specifier: workspace:*
+        version: link:../../shared/testing
+      '@plugdash/types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      vitest:
+        specifier: ^2.0.0
         version: 2.1.9
 
   packages/fromghost:
@@ -142,6 +177,22 @@ importers:
         version: 2.1.9
 
   packages/shortlink:
+    dependencies:
+      emdash:
+        specifier: '>=0.13.0'
+        version: 0.38.0(@astrojs/react@5.0.2(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tsx@4.21.0))(@atcute/cbor@2.3.7(@atcute/cid@2.4.2))(@atcute/cid@2.4.2)(@atcute/identity@2.0.2(@atcute/lexicons@2.1.0)(typescript@5.9.3))(@date-fns/tz@1.4.1)(@floating-ui/dom@1.8.0)(@tiptap/extensions@3.22.1(@tiptap/core@3.22.1(@tiptap/pm@3.22.1))(@tiptap/pm@3.22.1))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(astro@6.1.3(rollup@4.60.1)(tsx@4.21.0)(typescript@5.9.3))(date-fns@4.1.0)(echarts@6.0.0)(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+    devDependencies:
+      '@plugdash/testing':
+        specifier: workspace:*
+        version: link:../../shared/testing
+      '@plugdash/types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9
+
+  packages/socialcard:
     dependencies:
       emdash:
         specifier: '>=0.13.0'
