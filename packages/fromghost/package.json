@@ -1,0 +1,38 @@
+{
+	"name": "@plugdash/fromghost",
+	"version": "0.1.0",
+	"description": "Import a Ghost JSON export into EmDash",
+	"type": "module",
+	"main": "./dist/index.mjs",
+	"types": "./dist/index.d.mts",
+	"exports": {
+		".": {
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.mts"
+		}
+	},
+	"files": ["dist"],
+	"scripts": {
+		"build": "tsdown src/index.ts --dts.eager",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit",
+		"lint": "oxlint ."
+	},
+	"keywords": ["emdash", "emdash-plugin", "fromghost", "ghost", "import"],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/fromghost"
+	},
+	"peerDependencies": {
+		"emdash": ">=0.13.0"
+	},
+	"dependencies": {
+		"@plugdash/html-to-portable-text": "workspace:*"
+	},
+	"devDependencies": {
+		"@plugdash/types": "workspace:*",
+		"vitest": "^2.0.0"
+	}
+}
