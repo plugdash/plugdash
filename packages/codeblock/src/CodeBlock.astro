@@ -1,0 +1,135 @@
+---
+import { highlightCode } from "./highlight.ts";
+
+export interface Props {
+	/** Block data from PortableText auto-wiring */
+	node?: {
+		code?: string;
+		language?: string;
+		filename?: string;
+	};
+	/** Direct-import props */
+	code?: string;
+	language?: string;
+	filename?: string;
+	theme?: string;
+	lightTheme?: string;
+	lineNumbers?: boolean;
+	class?: string;
+}
+
+const {
+	node,
+	code: codeProp,
+	language: languageProp,
+	filename: filenameProp,
+	theme,
+	lightTheme,
+	lineNumbers = false,
+	class: className,
+} = Astro.props;
+
+const code = codeProp ?? node?.code ?? "";
+const language = languageProp ?? node?.language;
+const filename = filenameProp ?? node?.filename;
+
+if (!code) return;
+
+const html = await highlightCode(code, language, { theme, lightTheme });
+
+const label = (language ?? "").trim().toLowerCase();
+const showHeader = Boolean(filename || label);
+
+const classes = [
+	"plugdash-codeblock",
+	lineNumbers ? "plugdash-codeblock--numbered" : "",
+	lightTheme ? "plugdash-codeblock--dual" : "",
+	className ?? "",
+].filter(Boolean).join(" ");
+---
+
+<figure class={classes} data-language={label || undefined}>
+	{showHeader && (
+		<figcaption class="plugdash-codeblock__header">
+			{filename && <span class="plugdash-codeblock__filename">{filename}</span>}
+			{label && <span class="plugdash-codeblock__language">{label}</span>}
+		</figcaption>
+	)}
+	<Fragment set:html={html} />
+</figure>
+
+<!--
+	Shiki's markup arrives through set:html, so Astro's scoped styles never
+	reach it. Everything below is scoped by the .plugdash-codeblock prefix
+	instead.
+-->
+<style is:global>
+	.plugdash-codeblock {
+		margin: 1.5rem 0;
+		border-radius: var(--plugdash-codeblock-radius, 6px);
+		overflow: hidden;
+		font-family: var(--plugdash-codeblock-font, var(--plugdash-font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace));
+		font-size: var(--plugdash-codeblock-size, 0.875rem);
+		line-height: var(--plugdash-codeblock-line-height, 1.6);
+	}
+
+	.plugdash-codeblock__header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 1rem;
+		padding: var(--plugdash-codeblock-header-padding, 0.5rem 1rem);
+		background: var(--plugdash-codeblock-header-bg, #1a1a1a);
+		color: var(--plugdash-codeblock-header-color, #9ca3af);
+		font-size: var(--plugdash-size-xs, 0.75rem);
+	}
+
+	.plugdash-codeblock__filename {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.plugdash-codeblock__language {
+		flex-shrink: 0;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.plugdash-codeblock .shiki {
+		margin: 0;
+		padding: var(--plugdash-codeblock-padding, 1rem);
+		overflow-x: auto;
+	}
+
+	.plugdash-codeblock .shiki code {
+		display: block;
+		font-family: inherit;
+	}
+
+	/* Line numbers are a CSS counter over Shiki's per-line spans, so they stay
+	   out of the copied text. */
+	.plugdash-codeblock--numbered .shiki code {
+		counter-reset: plugdash-line;
+	}
+
+	.plugdash-codeblock--numbered .shiki .line::before {
+		counter-increment: plugdash-line;
+		content: counter(plugdash-line);
+		display: inline-block;
+		width: var(--plugdash-codeblock-gutter-width, 2rem);
+		margin-right: 1rem;
+		text-align: right;
+		color: var(--plugdash-codeblock-gutter-color, #6b7280);
+		user-select: none;
+	}
+
+	/* Dual-theme output carries the light palette as CSS variables. */
+	@media (prefers-color-scheme: light) {
+		.plugdash-codeblock--dual .shiki,
+		.plugdash-codeblock--dual .shiki span {
+			color: var(--shiki-light);
+			background-color: var(--shiki-light-bg);
+		}
+	}
+</style>
