@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/socialcard",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "OG social card generation for EmDash - builds a share image on publish and writes it to metadata.ogImage",
 	"type": "module",
 	"main": "./dist/index.mjs",

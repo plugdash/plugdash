@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/enrichkit",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Enriches published EmDash content with an AI summary, key topics, auto-tags, reading level, and a tweet draft",
 	"type": "module",
 	"main": "./dist/index.mjs",

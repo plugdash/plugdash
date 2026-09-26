@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/fromghost",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Import a Ghost JSON export into EmDash",
 	"type": "module",
 	"main": "./dist/index.mjs",

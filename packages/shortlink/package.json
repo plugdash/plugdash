@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/shortlink",
-	"version": "0.2.3",
+	"version": "0.2.4",
 	"description": "Short URLs for EmDash posts - shareable links created on publish",
 	"type": "module",
 	"main": "./dist/index.mjs",
