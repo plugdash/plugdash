@@ -56,7 +56,7 @@ WASM one, because the WASM engine does not load inside a Cloudflare Worker.
 | Option        | Type       | Default       | Description                                                  |
 | ------------- | ---------- | ------------- | ------------------------------------------------------------ |
 | `theme`       | `string`   | `github-dark` | Shiki theme name. Unknown names fall back to the default.    |
-| `lightTheme`  | `string`   | -             | Second theme for light mode, emitted as CSS variables.       |
+| `lightTheme`  | `string`   | see below     | Second theme for light mode, emitted as CSS variables.       |
 | `langs`       | `string[]` | common set    | Languages loaded up front. Anything else loads on first use. |
 | `lineNumbers` | `boolean`  | `false`       | Render line numbers in the gutter.                           |
 
@@ -142,7 +142,10 @@ text colours, so they match any theme, light or dark.
 
 ## Light and dark mode
 
-Set both themes. Any [Shiki theme](https://shiki.style/themes) works:
+With no config, blocks render `github-dark` and switch to `github-light` in
+light mode. Setting `theme` turns that off, so a site that picks a dark theme
+stays dark. To switch with your own pair, set both. Any
+[Shiki theme](https://shiki.style/themes) works:
 
 ```js
 codeblockPlugin({ theme: "tokyo-night", lightTheme: "catppuccin-latte" })
@@ -151,6 +154,8 @@ codeblockPlugin({ theme: "tokyo-night", lightTheme: "catppuccin-latte" })
 The light theme is used when the OS prefers light, unless the site forces a
 mode on `<html>` with `data-theme="light"` / `data-theme="dark"` or a
 `.light` / `.dark` class. Both conventions are respected in either direction.
+If your site is dark by default with no marker on `<html>`, set
+`data-theme="dark"` explicitly, or light-OS visitors get light code blocks.
 
 Example override:
 
