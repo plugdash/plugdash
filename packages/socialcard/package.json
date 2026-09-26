@@ -1,0 +1,52 @@
+{
+	"name": "@plugdash/socialcard",
+	"version": "0.1.0",
+	"description": "OG social card generation for EmDash - builds a share image on publish and writes it to metadata.ogImage",
+	"type": "module",
+	"main": "./dist/index.mjs",
+	"types": "./dist/index.d.mts",
+	"exports": {
+		".": {
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.mts"
+		},
+		"./sandbox": {
+			"import": "./dist/sandbox-entry.mjs"
+		},
+		"./card": {
+			"import": "./dist/card.mjs",
+			"types": "./dist/card.d.mts"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsdown src/index.ts --dts.eager && tsdown src/sandbox-entry.ts --dts.eager --no-clean && tsdown src/card.ts --dts.eager --no-clean",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit",
+		"lint": "oxlint ."
+	},
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"socialcard",
+		"og-image",
+		"open-graph",
+		"social-sharing"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/socialcard"
+	},
+	"peerDependencies": {
+		"emdash": ">=0.13.0"
+	},
+	"devDependencies": {
+		"@plugdash/testing": "workspace:*",
+		"@plugdash/types": "workspace:*",
+		"vitest": "^2.0.0"
+	}
+}
