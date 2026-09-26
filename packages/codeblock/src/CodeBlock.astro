@@ -1,5 +1,5 @@
 ---
-import { highlightCode } from "./highlight.ts";
+import { getSiteConfig, highlightCode, themeColors } from "./highlight.ts";
 
 export interface Props {
 	/** Block data from PortableText auto-wiring */
@@ -23,11 +23,18 @@ const {
 	code: codeProp,
 	language: languageProp,
 	filename: filenameProp,
-	theme,
-	lightTheme,
-	lineNumbers = false,
+	theme: themeProp,
+	lightTheme: lightThemeProp,
+	lineNumbers: lineNumbersProp,
 	class: className,
 } = Astro.props;
+
+// Props win; otherwise use what the site passed to codeblockPlugin().
+const site = getSiteConfig();
+const theme = themeProp ?? site.theme;
+const lightTheme = lightThemeProp ?? site.lightTheme;
+const lineNumbers = lineNumbersProp ?? site.lineNumbers ?? false;
+const options = { theme, lightTheme, langs: site.langs };
 
 const code = codeProp ?? node?.code ?? "";
 const language = languageProp ?? node?.language;
@@ -35,10 +42,16 @@ const filename = filenameProp ?? node?.filename;
 
 if (!code) return;
 
-const html = await highlightCode(code, language, { theme, lightTheme });
+const html = await highlightCode(code, language, options);
+const colors = await themeColors(options);
+const style = [
+	`--plugdash-codeblock-theme-bg: ${colors.bg}`,
+	`--plugdash-codeblock-theme-fg: ${colors.fg}`,
+	colors.lightBg && `--plugdash-codeblock-theme-light-bg: ${colors.lightBg}`,
+	colors.lightFg && `--plugdash-codeblock-theme-light-fg: ${colors.lightFg}`,
+].filter(Boolean).join("; ");
 
 const label = (language ?? "").trim().toLowerCase();
-const showHeader = Boolean(filename || label);
 
 const classes = [
 	"plugdash-codeblock",
@@ -48,15 +61,37 @@ const classes = [
 ].filter(Boolean).join(" ");
 ---
 
-<figure class={classes} data-language={label || undefined}>
-	{showHeader && (
-		<figcaption class="plugdash-codeblock__header">
-			{filename && <span class="plugdash-codeblock__filename">{filename}</span>}
+<figure class={classes} style={style} data-language={label || undefined}>
+	<figcaption class="plugdash-codeblock__header">
+		{filename && <span class="plugdash-codeblock__filename">{filename}</span>}
+		<span class="plugdash-codeblock__meta">
 			{label && <span class="plugdash-codeblock__language">{label}</span>}
-		</figcaption>
-	)}
+			<button type="button" class="plugdash-codeblock__copy" title="Copy code" aria-live="polite">Copy</button>
+		</span>
+	</figcaption>
 	<Fragment set:html={html} />
 </figure>
+
+<script>
+	// One delegated listener covers every block on the page. Line numbers are
+	// CSS counters, so textContent is exactly the source.
+	document.addEventListener("click", async (event) => {
+		const button = (event.target as Element | null)?.closest(".plugdash-codeblock__copy");
+		if (!(button instanceof HTMLButtonElement)) return;
+		const code = button.closest(".plugdash-codeblock")?.querySelector("pre code")?.textContent ?? "";
+		try {
+			await navigator.clipboard.writeText(code);
+			button.textContent = "Copied";
+			button.dataset.copied = "";
+		} catch {
+			button.textContent = "Failed";
+		}
+		setTimeout(() => {
+			button.textContent = "Copy";
+			delete button.dataset.copied;
+		}, 2000);
+	});
+</script>
 
 <!--
 	Shiki's markup arrives through set:html, so Astro's scoped styles never
@@ -65,6 +100,8 @@ const classes = [
 -->
 <style is:global>
 	.plugdash-codeblock {
+		--_cb-bg: var(--plugdash-codeblock-theme-bg);
+		--_cb-fg: var(--plugdash-codeblock-theme-fg);
 		margin: 1.5rem 0;
 		border-radius: var(--plugdash-codeblock-radius, 6px);
 		overflow: hidden;
@@ -79,8 +116,10 @@ const classes = [
 		align-items: center;
 		gap: 1rem;
 		padding: var(--plugdash-codeblock-header-padding, 0.5rem 1rem);
-		background: var(--plugdash-codeblock-header-bg, #1a1a1a);
-		color: var(--plugdash-codeblock-header-color, #9ca3af);
+		/* Derived from the theme so the header matches the code below it. */
+		background: var(--plugdash-codeblock-header-bg, color-mix(in srgb, var(--_cb-fg) 8%, var(--_cb-bg)));
+		color: var(--plugdash-codeblock-header-color, color-mix(in srgb, var(--_cb-fg) 65%, var(--_cb-bg)));
+		border-bottom: 1px solid var(--plugdash-codeblock-header-border, color-mix(in srgb, var(--_cb-fg) 15%, var(--_cb-bg)));
 		font-size: var(--plugdash-size-xs, 0.75rem);
 	}
 
@@ -88,6 +127,39 @@ const classes = [
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	.plugdash-codeblock__meta {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		margin-left: auto;
+		flex-shrink: 0;
+	}
+
+	.plugdash-codeblock__copy {
+		padding: 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		cursor: pointer;
+		transition: color var(--plugdash-transition, 150ms ease);
+	}
+
+	.plugdash-codeblock__copy:hover {
+		color: var(--_cb-fg);
+	}
+
+	.plugdash-codeblock__copy:focus-visible {
+		outline: 2px solid currentColor;
+		outline-offset: 2px;
+	}
+
+	.plugdash-codeblock__copy[data-copied] {
+		color: var(--plugdash-copy-success-color, #22c55e);
 	}
 
 	.plugdash-codeblock__language {
@@ -120,16 +192,37 @@ const classes = [
 		width: var(--plugdash-codeblock-gutter-width, 2rem);
 		margin-right: 1rem;
 		text-align: right;
-		color: var(--plugdash-codeblock-gutter-color, #6b7280);
+		color: var(--plugdash-codeblock-gutter-color, color-mix(in srgb, var(--_cb-fg) 40%, var(--_cb-bg)));
 		user-select: none;
 	}
 
-	/* Dual-theme output carries the light palette as CSS variables. */
+	/* Dual-theme output carries the light palette as CSS variables. Light mode
+	   follows the OS unless the site forces a theme with the common
+	   data-theme="light|dark" attribute or .light/.dark class on <html>. */
 	@media (prefers-color-scheme: light) {
-		.plugdash-codeblock--dual .shiki,
-		.plugdash-codeblock--dual .shiki span {
+		:root:not([data-theme="dark"]):not(.dark) .plugdash-codeblock--dual {
+			--_cb-bg: var(--plugdash-codeblock-theme-light-bg);
+			--_cb-fg: var(--plugdash-codeblock-theme-light-fg);
+		}
+
+		:root:not([data-theme="dark"]):not(.dark) .plugdash-codeblock--dual .shiki,
+		:root:not([data-theme="dark"]):not(.dark) .plugdash-codeblock--dual .shiki span {
 			color: var(--shiki-light);
 			background-color: var(--shiki-light-bg);
 		}
+	}
+
+	:root[data-theme="light"] .plugdash-codeblock--dual,
+	:root.light .plugdash-codeblock--dual {
+		--_cb-bg: var(--plugdash-codeblock-theme-light-bg);
+		--_cb-fg: var(--plugdash-codeblock-theme-light-fg);
+	}
+
+	:root[data-theme="light"] .plugdash-codeblock--dual .shiki,
+	:root[data-theme="light"] .plugdash-codeblock--dual .shiki span,
+	:root.light .plugdash-codeblock--dual .shiki,
+	:root.light .plugdash-codeblock--dual .shiki span {
+		color: var(--shiki-light);
+		background-color: var(--shiki-light-bg);
 	}
 </style>

@@ -148,6 +148,18 @@ tsdown inlines them - listing one under `dependencies` makes it external
 and the published package uninstallable. Their own runtime deps (linkedom)
 go in the consuming plugin's `dependencies`.
 
+// confirmed 2026-09-26 while fixing @plugdash/codeblock theme config
+A native plugin's `componentsEntry` block components receive only the
+Portable Text `node` - descriptor `options` never reach them. EmDash's
+generated plugins module calls `createPlugin(options)` (options inlined as JSON)
+in the server runtime (virtual-modules.ts), so the bridge is: store the
+options on globalThis inside `createPlugin()`, read them in the
+component. Use globalThis, not a module variable - the component is
+imported from `src/` while createPlugin runs from bundled `dist/`, so
+they are different module instances. Setting globalThis in the
+descriptor factory does NOT work in production: astro.config runs in
+the build process, not the worker.
+
 // confirmed 2026-04-05 during plugdash.dev integration fixes
 Never import a `.d.ts` / declaration file at runtime (e.g.
 `import "./globals.d.ts"`). tsdown bundles the import as a real module
