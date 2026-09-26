@@ -32,7 +32,9 @@ const {
 // Props win; otherwise use what the site passed to codeblockPlugin().
 const site = getSiteConfig();
 const theme = themeProp ?? site.theme;
-const lightTheme = lightThemeProp ?? site.lightTheme;
+// With no theme configured at all, ship the GitHub pair so blocks follow
+// light/dark mode out of the box. Pick a theme and the light one is opt-in.
+const lightTheme = lightThemeProp ?? site.lightTheme ?? (theme ? undefined : "github-light");
 const lineNumbers = lineNumbersProp ?? site.lineNumbers ?? false;
 const options = { theme, lightTheme, langs: site.langs };
 
@@ -168,9 +170,14 @@ const classes = [
 		letter-spacing: 0.05em;
 	}
 
+	/* Reset whatever the site puts on a bare <pre> (borders, radius, decorative
+	   background images like terminal dots) so it cannot bleed into the block. */
 	.plugdash-codeblock .shiki {
 		margin: 0;
 		padding: var(--plugdash-codeblock-padding, 1rem);
+		border: 0;
+		border-radius: 0;
+		background-image: none;
 		overflow-x: auto;
 	}
 
@@ -205,10 +212,14 @@ const classes = [
 			--_cb-fg: var(--plugdash-codeblock-theme-light-fg);
 		}
 
-		:root:not([data-theme="dark"]):not(.dark) .plugdash-codeblock--dual .shiki,
+		/* !important because Shiki writes the dark colours as inline styles. */
+		:root:not([data-theme="dark"]):not(.dark) .plugdash-codeblock--dual .shiki {
+			color: var(--shiki-light) !important;
+			background-color: var(--shiki-light-bg) !important;
+		}
+
 		:root:not([data-theme="dark"]):not(.dark) .plugdash-codeblock--dual .shiki span {
-			color: var(--shiki-light);
-			background-color: var(--shiki-light-bg);
+			color: var(--shiki-light) !important;
 		}
 	}
 
@@ -219,10 +230,13 @@ const classes = [
 	}
 
 	:root[data-theme="light"] .plugdash-codeblock--dual .shiki,
+	:root.light .plugdash-codeblock--dual .shiki {
+		color: var(--shiki-light) !important;
+		background-color: var(--shiki-light-bg) !important;
+	}
+
 	:root[data-theme="light"] .plugdash-codeblock--dual .shiki span,
-	:root.light .plugdash-codeblock--dual .shiki,
 	:root.light .plugdash-codeblock--dual .shiki span {
-		color: var(--shiki-light);
-		background-color: var(--shiki-light-bg);
+		color: var(--shiki-light) !important;
 	}
 </style>

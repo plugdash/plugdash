@@ -92,7 +92,7 @@ Background and token colours come from the Shiki theme, not from these tokens.
 | Option       | Type       | Default        | Description                                        |
 | ------------ | ---------- | -------------- | -------------------------------------------------- |
 | `theme`      | `string`   | `github-dark`  | Shiki theme name. Unknown names fall back to the default. |
-| `lightTheme` | `string`   | none           | Second theme for light mode, emitted as CSS variables. |
+| `lightTheme` | `string`   | `github-light` if `theme` unset, else none | Second theme for light mode, emitted as CSS variables. |
 | `langs`      | `string[]` | common set     | Languages loaded up front. Anything else loads on first use. |
 | `lineNumbers`| `boolean`  | `false`        | Render line numbers in the gutter.                 |
 
@@ -135,12 +135,14 @@ After installing @plugdash/codeblock and registering it in astro.config.mjs:
    array (not `sandboxed`) in astro.config.mjs. Native plugins cannot run in
    sandboxed mode.
 
-6. For light and dark together, set both themes and let the CSS variables switch:
+6. With no config, blocks switch between github-dark and github-light. For a
+   custom pair, set both themes and let the CSS variables switch:
    ```
    codeblockPlugin({ theme: "tokyo-night", lightTheme: "catppuccin-latte" })
    ```
    Light mode follows prefers-color-scheme, overridden by `data-theme="light|dark"`
-   or a `.light` / `.dark` class on `<html>`.
+   or a `.light` / `.dark` class on `<html>`. A site that is dark with no marker
+   on `<html>` should set `data-theme="dark"`, or light-OS visitors get light blocks.
 
 7. Options passed to `codeblockPlugin()` apply to every block, auto-wired or
    imported. Props on `<CodeBlock>` override them per block.
