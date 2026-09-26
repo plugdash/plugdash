@@ -1,6 +1,7 @@
 // @plugdash/sharepost - descriptor factory (runs in Vite at build time)
 
 import type { PluginDescriptor } from "@plugdash/types";
+import pkg from "../package.json" with { type: "json" };
 
 export type Platform = "twitter" | "linkedin" | "whatsapp" | "bluesky" | "email";
 
@@ -16,7 +17,7 @@ export interface SharepostConfig {
 export function sharepostPlugin(config?: SharepostConfig): PluginDescriptor {
 	return {
 		id: "sharepost",
-		version: "0.2.2",
+		version: pkg.version,
 		format: "standard",
 		entrypoint: "@plugdash/sharepost/sandbox",
 		capabilities: ["content:read", "content:write"],

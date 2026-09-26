@@ -38,8 +38,9 @@ import type {
 	GhostTag,
 	GhostUser,
 } from "./ghost-export.ts";
+import pkg from "../package.json" with { type: "json" };
 
-const VERSION = "0.1.0";
+const VERSION = pkg.version;
 const SOURCE_ID = "ghost";
 
 export interface FromghostConfig {

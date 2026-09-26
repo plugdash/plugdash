@@ -1,5 +1,6 @@
 import type { PluginDescriptor } from "@plugdash/types";
 import { PROVIDER_HOSTS, type EnrichkitProvider, type EnrichmentFlags } from "./enrich-logic.ts";
+import pkg from "../package.json" with { type: "json" };
 
 export interface EnrichkitConfig {
 	/** Which LLM API to call. */
@@ -30,7 +31,7 @@ export function enrichkitPlugin(config?: EnrichkitConfig): PluginDescriptor {
 	}
 	return {
 		id: "enrichkit",
-		version: "0.1.0",
+		version: pkg.version,
 		format: "standard",
 		entrypoint: "@plugdash/enrichkit/sandbox",
 		capabilities: ["content:read", "content:write", "network:request"],
