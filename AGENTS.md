@@ -138,6 +138,16 @@ invocation with multiple entries - a single multi-entry invocation makes
 tsdown split the shared code into its own chunk file and import it,
 which reintroduces the same cross-file-import problem.
 
+// confirmed 2026-09-26 after the socialcard/fromghost/fromsubstack 0.1.0 publish
+Never `npm publish` a package by hand. dist/ is gitignored and no package
+has a prepack build, so a manual publish ships whatever local dist/ exists
+(nothing, or a stale build). `npm publish` also leaves `workspace:*`
+specifiers in place. Always `pnpm build && pnpm publish`. Private shared
+packages (`@plugdash/html-to-portable-text`) must be devDependencies so
+tsdown inlines them - listing one under `dependencies` makes it external
+and the published package uninstallable. Their own runtime deps (linkedom)
+go in the consuming plugin's `dependencies`.
+
 // confirmed 2026-04-05 during plugdash.dev integration fixes
 Never import a `.d.ts` / declaration file at runtime (e.g.
 `import "./globals.d.ts"`). tsdown bundles the import as a real module

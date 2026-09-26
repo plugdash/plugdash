@@ -29,9 +29,10 @@
 		"emdash": ">=0.13.0"
 	},
 	"dependencies": {
-		"@plugdash/html-to-portable-text": "workspace:*"
+		"linkedom": "^0.18.0"
 	},
 	"devDependencies": {
+		"@plugdash/html-to-portable-text": "workspace:*",
 		"@plugdash/types": "workspace:*",
 		"vitest": "^2.0.0"
 	}

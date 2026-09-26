@@ -42,7 +42,8 @@ read -rp "Press enter once that's done..." _
 for pkg in "${NEW_PKGS[@]}"; do
 	dir="packages/$pkg"
 	echo "==> First publish for $pkg (not on npm yet)"
-	(cd "$dir" && npm publish --access public)
+	# build first (dist/ is gitignored) and use pnpm so workspace:* deps get rewritten
+	(cd "$dir" && pnpm build && pnpm publish --access public --no-git-checks)
 	trust_package "$dir"
 done
 
