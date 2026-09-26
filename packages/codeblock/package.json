@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/codeblock",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "Shiki syntax highlighting for EmDash code blocks - rendered server-side, with a copy button",
 	"type": "module",
 	"main": "./dist/index.mjs",

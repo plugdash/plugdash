@@ -1,5 +1,11 @@
 # @plugdash/codeblock
 
+## 0.3.0
+
+### Minor Changes
+
+- 95a8377: Switch between github-dark and github-light by default when no theme is set, fix light mode leaving dark text on white span patches, and stop site pre styles (borders, background images) bleeding into blocks
+
 ## 0.2.0
 
 ### Minor Changes
