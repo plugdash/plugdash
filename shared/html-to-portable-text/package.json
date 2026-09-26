@@ -1,0 +1,16 @@
+{
+	"name": "@plugdash/html-to-portable-text",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"devDependencies": {
+		"emdash": ">=0.13.0",
+		"vitest": "^2.0.0"
+	},
+	"dependencies": {
+		"linkedom": "^0.18.0"
+	}
+}
