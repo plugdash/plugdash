@@ -1,13 +1,13 @@
 ---
 name: codeblock
-description: Shiki syntax highlighting for EmDash code blocks. Native plugin with an auto-wired Astro renderer, highlighted server-side with zero client JavaScript.
+description: Shiki syntax highlighting for EmDash code blocks. Native plugin with an auto-wired Astro renderer, highlighted server-side, with a copy button.
 ---
 
 # @plugdash/codeblock
 
 ## what it does
 
-Renders the code blocks EmDash already stores with Shiki syntax highlighting. Highlighting happens server-side at render time, so the browser gets plain coloured HTML and no JavaScript.
+Renders the code blocks EmDash already stores with Shiki syntax highlighting. Highlighting happens server-side at render time, so the browser gets plain coloured HTML. Every block has a header with the language and a copy button.
 
 Nothing is rewritten on save. Change the theme and every existing post picks it up on the next render.
 
@@ -80,6 +80,8 @@ const html = await highlightCode(block.code, block.language);
 | `--plugdash-codeblock-font`             | monospace stack | Font family                |
 | `--plugdash-codeblock-header-bg`        | theme bg, tinted | Filename/language bar background |
 | `--plugdash-codeblock-header-color`     | theme text, muted | Filename/language bar text |
+| `--plugdash-codeblock-header-border`    | theme text, faint | Line between header and code |
+| `--plugdash-copy-success-color`         | `#22c55e`     | Copy button after a copy     |
 | `--plugdash-codeblock-gutter-width`     | `2rem`        | Line number column width     |
 | `--plugdash-codeblock-gutter-color`     | theme text, faded | Line number colour       |
 
@@ -98,7 +100,7 @@ Preloaded by default: TypeScript, JavaScript, Python, Go, Rust, Shell, JSON, YAM
 
 ## what it does not do
 
-- No copy button, no line highlighting, no diff view
+- No line highlighting, no diff view
 - No client-side highlighting, so no runtime language switching
 - No new editor block type - it renders the `code` block EmDash already has
 - Does not rewrite stored content, so nothing to migrate when the theme changes

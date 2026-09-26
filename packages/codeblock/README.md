@@ -1,7 +1,8 @@
 # @plugdash/codeblock
 
 Shiki syntax highlighting for EmDash code blocks. Highlighting runs on the
-server at render time, so the page ships coloured HTML and no JavaScript.
+server at render time, so the page ships coloured HTML. The only client
+JavaScript is one small click listener for the copy button.
 Ships `CodeBlock.astro` for site-side rendering and exports `highlightCode`
 for themes that render code themselves.
 
@@ -131,6 +132,8 @@ code is overridable:
 | `--plugdash-codeblock-header-padding` | `0.5rem 1rem` | Header bar padding             |
 | `--plugdash-codeblock-header-bg`   | theme bg, tinted | Header bar background           |
 | `--plugdash-codeblock-header-color`| theme text, muted | Header bar text                |
+| `--plugdash-codeblock-header-border`| theme text, faint | Line between header and code  |
+| `--plugdash-copy-success-color`    | `#22c55e`       | Copy button after a copy         |
 | `--plugdash-codeblock-gutter-width`| `2rem`          | Line number column width         |
 | `--plugdash-codeblock-gutter-color`| theme text, faded | Line number colour             |
 
@@ -168,7 +171,7 @@ Example override:
 
 ## What it does not do
 
-- No copy button, line highlighting, or diff view
+- No line highlighting or diff view
 - No client-side highlighting. Light/dark switching is CSS only; changing to
   a different theme pair needs a re-render
 - No new editor block type

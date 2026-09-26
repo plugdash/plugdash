@@ -52,7 +52,6 @@ const style = [
 ].filter(Boolean).join("; ");
 
 const label = (language ?? "").trim().toLowerCase();
-const showHeader = Boolean(filename || label);
 
 const classes = [
 	"plugdash-codeblock",
@@ -63,14 +62,36 @@ const classes = [
 ---
 
 <figure class={classes} style={style} data-language={label || undefined}>
-	{showHeader && (
-		<figcaption class="plugdash-codeblock__header">
-			{filename && <span class="plugdash-codeblock__filename">{filename}</span>}
+	<figcaption class="plugdash-codeblock__header">
+		{filename && <span class="plugdash-codeblock__filename">{filename}</span>}
+		<span class="plugdash-codeblock__meta">
 			{label && <span class="plugdash-codeblock__language">{label}</span>}
-		</figcaption>
-	)}
+			<button type="button" class="plugdash-codeblock__copy" title="Copy code" aria-live="polite">Copy</button>
+		</span>
+	</figcaption>
 	<Fragment set:html={html} />
 </figure>
+
+<script>
+	// One delegated listener covers every block on the page. Line numbers are
+	// CSS counters, so textContent is exactly the source.
+	document.addEventListener("click", async (event) => {
+		const button = (event.target as Element | null)?.closest(".plugdash-codeblock__copy");
+		if (!(button instanceof HTMLButtonElement)) return;
+		const code = button.closest(".plugdash-codeblock")?.querySelector("pre code")?.textContent ?? "";
+		try {
+			await navigator.clipboard.writeText(code);
+			button.textContent = "Copied";
+			button.dataset.copied = "";
+		} catch {
+			button.textContent = "Failed";
+		}
+		setTimeout(() => {
+			button.textContent = "Copy";
+			delete button.dataset.copied;
+		}, 2000);
+	});
+</script>
 
 <!--
 	Shiki's markup arrives through set:html, so Astro's scoped styles never
@@ -98,6 +119,7 @@ const classes = [
 		/* Derived from the theme so the header matches the code below it. */
 		background: var(--plugdash-codeblock-header-bg, color-mix(in srgb, var(--_cb-fg) 8%, var(--_cb-bg)));
 		color: var(--plugdash-codeblock-header-color, color-mix(in srgb, var(--_cb-fg) 65%, var(--_cb-bg)));
+		border-bottom: 1px solid var(--plugdash-codeblock-header-border, color-mix(in srgb, var(--_cb-fg) 15%, var(--_cb-bg)));
 		font-size: var(--plugdash-size-xs, 0.75rem);
 	}
 
@@ -105,6 +127,39 @@ const classes = [
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	.plugdash-codeblock__meta {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		margin-left: auto;
+		flex-shrink: 0;
+	}
+
+	.plugdash-codeblock__copy {
+		padding: 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		cursor: pointer;
+		transition: color var(--plugdash-transition, 150ms ease);
+	}
+
+	.plugdash-codeblock__copy:hover {
+		color: var(--_cb-fg);
+	}
+
+	.plugdash-codeblock__copy:focus-visible {
+		outline: 2px solid currentColor;
+		outline-offset: 2px;
+	}
+
+	.plugdash-codeblock__copy[data-copied] {
+		color: var(--plugdash-copy-success-color, #22c55e);
 	}
 
 	.plugdash-codeblock__language {
