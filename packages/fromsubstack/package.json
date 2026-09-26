@@ -1,0 +1,48 @@
+{
+	"name": "@plugdash/fromsubstack",
+	"version": "0.1.0",
+	"description": "Import a Substack export into EmDash - posts, metadata, and images",
+	"type": "module",
+	"main": "./dist/index.mjs",
+	"types": "./dist/index.d.mts",
+	"exports": {
+		".": {
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.mts"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsdown src/index.ts --dts.eager",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit",
+		"lint": "oxlint ."
+	},
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"substack",
+		"import",
+		"migration"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/fromsubstack"
+	},
+	"peerDependencies": {
+		"emdash": ">=0.13.0"
+	},
+	"dependencies": {
+		"fflate": "^0.8.2",
+		"linkedom": "^0.18.0"
+	},
+	"devDependencies": {
+		"@plugdash/html-to-portable-text": "workspace:*",
+		"@plugdash/types": "workspace:*",
+		"vitest": "^2.0.0"
+	}
+}
