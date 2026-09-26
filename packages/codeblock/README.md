@@ -82,8 +82,11 @@ import CodeBlock from "@plugdash/codeblock/CodeBlock.astro"
 
 <CodeBlock code={source} language="typescript" />
 <CodeBlock code={source} language="python" filename="app.py" lineNumbers />
-<CodeBlock code={source} language="rust" theme="github-dark" lightTheme="github-light" />
+<CodeBlock code={source} language="rust" theme="tokyo-night" lightTheme="catppuccin-latte" />
 ```
+
+Props override the options passed to `codeblockPlugin()`. Leave them out and
+the component uses the site config.
 
 ### Props
 
@@ -92,9 +95,9 @@ import CodeBlock from "@plugdash/codeblock/CodeBlock.astro"
 | `code`        | `string`  | -       | Source to highlight (required to render) |
 | `language`    | `string`  | -       | Language name. Unknown ones render as plaintext. |
 | `filename`    | `string`  | -       | Shown in the header bar                  |
-| `theme`       | `string`  | `github-dark` | Shiki theme name                   |
-| `lightTheme`  | `string`  | -       | Second theme for light mode              |
-| `lineNumbers` | `boolean` | `false` | Show the line number gutter              |
+| `theme`       | `string`  | site config | Shiki theme name                   |
+| `lightTheme`  | `string`  | site config | Second theme for light mode        |
+| `lineNumbers` | `boolean` | site config | Show the line number gutter        |
 | `class`       | `string`  | -       | Additional CSS class                     |
 | `node`        | `object`  | -       | Block data from PortableText auto-wiring |
 
@@ -126,10 +129,25 @@ code is overridable:
 | `--plugdash-codeblock-line-height` | `1.6`           | Line height                      |
 | `--plugdash-codeblock-font`        | monospace stack | Font family                      |
 | `--plugdash-codeblock-header-padding` | `0.5rem 1rem` | Header bar padding             |
-| `--plugdash-codeblock-header-bg`   | `#1a1a1a`       | Header bar background            |
-| `--plugdash-codeblock-header-color`| `#9ca3af`       | Header bar text                  |
+| `--plugdash-codeblock-header-bg`   | theme bg, tinted | Header bar background           |
+| `--plugdash-codeblock-header-color`| theme text, muted | Header bar text                |
 | `--plugdash-codeblock-gutter-width`| `2rem`          | Line number column width         |
-| `--plugdash-codeblock-gutter-color`| `#6b7280`       | Line number colour               |
+| `--plugdash-codeblock-gutter-color`| theme text, faded | Line number colour             |
+
+The header and gutter defaults are mixed from the theme's own background and
+text colours, so they match any theme, light or dark.
+
+## Light and dark mode
+
+Set both themes. Any [Shiki theme](https://shiki.style/themes) works:
+
+```js
+codeblockPlugin({ theme: "tokyo-night", lightTheme: "catppuccin-latte" })
+```
+
+The light theme is used when the OS prefers light, unless the site forces a
+mode on `<html>` with `data-theme="light"` / `data-theme="dark"` or a
+`.light` / `.dark` class. Both conventions are respected in either direction.
 
 Example override:
 
@@ -151,7 +169,8 @@ Example override:
 ## What it does not do
 
 - No copy button, line highlighting, or diff view
-- No client-side highlighting, so no runtime theme or language switching
+- No client-side highlighting. Light/dark switching is CSS only; changing to
+  a different theme pair needs a re-render
 - No new editor block type
 - Does not rewrite stored content, so nothing to migrate
 - No hooks, metadata writes, or KV storage

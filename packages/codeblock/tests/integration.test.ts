@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { codeblockPlugin, createPlugin } from "../src/index.ts";
-import { highlightCode, resetHighlighter } from "../src/highlight.ts";
+import { getSiteConfig, highlightCode, resetHighlighter } from "../src/highlight.ts";
 
 // Integration tests for the codeblock plugin: registration, and rendering the
 // code blocks EmDash actually stores. No testbed is available, so the host's
@@ -82,12 +82,16 @@ describe("rendering the code blocks EmDash stores", () => {
 		expect(html.match(/class="line"/g) ?? []).toHaveLength(3);
 	}, SLOW);
 
-	it("applies the theme a site configures on the descriptor", async () => {
-		const descriptor = codeblockPlugin({ theme: "nord" });
-		const block = makeCodeBlock({ code: "const x = 1;", language: "typescript" });
-		const html = await highlightCode(block.code, block.language, {
-			theme: descriptor.options?.theme,
-		});
-		expect(html).toContain("nord");
-	}, SLOW);
+	it("hands the descriptor options to the auto-wired component", () => {
+		// EmDash calls createPlugin(descriptor.options) in the server runtime.
+		// The component only receives the block node, so it reads the rest here.
+		const descriptor = codeblockPlugin({ theme: "tokyo-night", lightTheme: "catppuccin-latte" });
+		createPlugin(descriptor.options);
+		expect(getSiteConfig()).toEqual({ theme: "tokyo-night", lightTheme: "catppuccin-latte" });
+	});
+
+	it("falls back to an empty config before createPlugin has run", () => {
+		(globalThis as Record<string, unknown>).__plugdash_codeblock_config__ = undefined;
+		expect(getSiteConfig()).toEqual({});
+	});
 });

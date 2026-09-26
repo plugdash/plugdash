@@ -78,10 +78,10 @@ const html = await highlightCode(block.code, block.language);
 | `--plugdash-codeblock-size`             | `0.875rem`    | Font size                    |
 | `--plugdash-codeblock-line-height`      | `1.6`         | Line height                  |
 | `--plugdash-codeblock-font`             | monospace stack | Font family                |
-| `--plugdash-codeblock-header-bg`        | `#1a1a1a`     | Filename/language bar background |
-| `--plugdash-codeblock-header-color`     | `#9ca3af`     | Filename/language bar text   |
+| `--plugdash-codeblock-header-bg`        | theme bg, tinted | Filename/language bar background |
+| `--plugdash-codeblock-header-color`     | theme text, muted | Filename/language bar text |
 | `--plugdash-codeblock-gutter-width`     | `2rem`        | Line number column width     |
-| `--plugdash-codeblock-gutter-color`     | `#6b7280`     | Line number colour           |
+| `--plugdash-codeblock-gutter-color`     | theme text, faded | Line number colour       |
 
 Background and token colours come from the Shiki theme, not from these tokens.
 
@@ -135,8 +135,13 @@ After installing @plugdash/codeblock and registering it in astro.config.mjs:
 
 6. For light and dark together, set both themes and let the CSS variables switch:
    ```
-   codeblockPlugin({ theme: "github-dark", lightTheme: "github-light" })
+   codeblockPlugin({ theme: "tokyo-night", lightTheme: "catppuccin-latte" })
    ```
+   Light mode follows prefers-color-scheme, overridden by `data-theme="light|dark"`
+   or a `.light` / `.dark` class on `<html>`.
+
+7. Options passed to `codeblockPlugin()` apply to every block, auto-wired or
+   imported. Props on `<CodeBlock>` override them per block.
 
 Metadata written: none
 Companion component: CodeBlock.astro

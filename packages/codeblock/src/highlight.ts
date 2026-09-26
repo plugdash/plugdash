@@ -62,6 +62,9 @@ const PLAINTEXT_ALIASES = new Set(["", "text", "txt", "plain", "plaintext", "non
 
 const cache = new Map<string, string>();
 
+/** Where createPlugin() leaves the site's config for the auto-wired component. */
+const CONFIG_KEY = "__plugdash_codeblock_config__";
+
 let highlighterPromise: Promise<Highlighter> | null = null;
 
 function getHighlighter(langs?: string[]): Promise<Highlighter> {
@@ -81,6 +84,22 @@ export function resetHighlighter(): void {
 	void highlighterPromise?.then((highlighter) => highlighter.dispose());
 	highlighterPromise = null;
 	cache.clear();
+}
+
+/**
+ * Stores the site's config for the auto-wired component. EmDash calls
+ * createPlugin(options) in the server runtime but hands the component only the
+ * block node, so this is the only way the options reach it. globalThis rather
+ * than a module variable because the component imports this file from src/
+ * while createPlugin runs from the bundled dist/, so they are separate modules.
+ */
+export function setSiteConfig(config: CodeblockConfig): void {
+	(globalThis as Record<string, unknown>)[CONFIG_KEY] = config;
+}
+
+export function getSiteConfig(): CodeblockConfig {
+	const config = (globalThis as Record<string, unknown>)[CONFIG_KEY];
+	return typeof config === "object" && config !== null ? (config as CodeblockConfig) : {};
 }
 
 /** Number of highlighted results currently held. Lets tests see the cache work. */
@@ -130,6 +149,37 @@ function cacheSet(key: string, html: string): void {
 	if (oldest !== undefined) cache.delete(oldest);
 }
 
+async function loadThemes(highlighter: Highlighter, names: BundledTheme[]): Promise<void> {
+	for (const name of names) {
+		if (!highlighter.getLoadedThemes().includes(name)) {
+			await highlighter.loadTheme(name);
+		}
+	}
+}
+
+export interface ThemeColors {
+	bg: string;
+	fg: string;
+	lightBg?: string;
+	lightFg?: string;
+}
+
+/**
+ * Background and text colours of the configured themes, so the component can
+ * paint the header to match the code instead of a fixed dark grey.
+ */
+export async function themeColors(options: HighlightOptions = {}): Promise<ThemeColors> {
+	const theme = resolveTheme(options.theme);
+	const lightTheme = options.lightTheme ? resolveTheme(options.lightTheme) : null;
+	const highlighter = await getHighlighter(options.langs);
+	await loadThemes(highlighter, lightTheme ? [theme, lightTheme] : [theme]);
+
+	const { bg, fg } = highlighter.getTheme(theme);
+	if (!lightTheme) return { bg, fg };
+	const light = highlighter.getTheme(lightTheme);
+	return { bg, fg, lightBg: light.bg, lightFg: light.fg };
+}
+
 /**
  * Highlights a code string and returns Shiki's `<pre>` HTML.
  *
@@ -159,11 +209,7 @@ export async function highlightCode(
 	if (!highlighter.getLoadedLanguages().includes(lang)) {
 		await highlighter.loadLanguage(lang);
 	}
-	for (const name of lightTheme ? [theme, lightTheme] : [theme]) {
-		if (!highlighter.getLoadedThemes().includes(name)) {
-			await highlighter.loadTheme(name);
-		}
-	}
+	await loadThemes(highlighter, lightTheme ? [theme, lightTheme] : [theme]);
 
 	const html = lightTheme
 		? highlighter.codeToHtml(source, {

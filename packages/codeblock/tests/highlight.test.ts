@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
 	highlightCode,
+	themeColors,
 	resolveLanguage,
 	resolveTheme,
 	truncate,
@@ -177,5 +178,20 @@ describe("highlightCode", () => {
 		const code = Array.from({ length: MAX_LINES + 3 }, () => "x").join("\n");
 		const html = await highlightCode(code, "text");
 		expect(html).toContain("truncated, 3 more lines not shown");
+	}, SLOW);
+});
+
+describe("themeColors", () => {
+	it("returns the background and foreground of a single theme", async () => {
+		const colors = await themeColors({ theme: "tokyo-night" });
+		expect(colors.bg).toMatch(/^#/);
+		expect(colors.fg).toMatch(/^#/);
+		expect(colors.lightBg).toBeUndefined();
+	}, SLOW);
+
+	it("adds the light theme's colours when one is configured", async () => {
+		const colors = await themeColors({ theme: "tokyo-night", lightTheme: "catppuccin-latte" });
+		expect(colors.lightBg).toMatch(/^#/);
+		expect(colors.lightBg).not.toBe(colors.bg);
 	}, SLOW);
 });

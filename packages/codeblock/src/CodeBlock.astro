@@ -1,5 +1,5 @@
 ---
-import { highlightCode } from "./highlight.ts";
+import { getSiteConfig, highlightCode, themeColors } from "./highlight.ts";
 
 export interface Props {
 	/** Block data from PortableText auto-wiring */
@@ -23,11 +23,18 @@ const {
 	code: codeProp,
 	language: languageProp,
 	filename: filenameProp,
-	theme,
-	lightTheme,
-	lineNumbers = false,
+	theme: themeProp,
+	lightTheme: lightThemeProp,
+	lineNumbers: lineNumbersProp,
 	class: className,
 } = Astro.props;
+
+// Props win; otherwise use what the site passed to codeblockPlugin().
+const site = getSiteConfig();
+const theme = themeProp ?? site.theme;
+const lightTheme = lightThemeProp ?? site.lightTheme;
+const lineNumbers = lineNumbersProp ?? site.lineNumbers ?? false;
+const options = { theme, lightTheme, langs: site.langs };
 
 const code = codeProp ?? node?.code ?? "";
 const language = languageProp ?? node?.language;
@@ -35,7 +42,14 @@ const filename = filenameProp ?? node?.filename;
 
 if (!code) return;
 
-const html = await highlightCode(code, language, { theme, lightTheme });
+const html = await highlightCode(code, language, options);
+const colors = await themeColors(options);
+const style = [
+	`--plugdash-codeblock-theme-bg: ${colors.bg}`,
+	`--plugdash-codeblock-theme-fg: ${colors.fg}`,
+	colors.lightBg && `--plugdash-codeblock-theme-light-bg: ${colors.lightBg}`,
+	colors.lightFg && `--plugdash-codeblock-theme-light-fg: ${colors.lightFg}`,
+].filter(Boolean).join("; ");
 
 const label = (language ?? "").trim().toLowerCase();
 const showHeader = Boolean(filename || label);
@@ -48,7 +62,7 @@ const classes = [
 ].filter(Boolean).join(" ");
 ---
 
-<figure class={classes} data-language={label || undefined}>
+<figure class={classes} style={style} data-language={label || undefined}>
 	{showHeader && (
 		<figcaption class="plugdash-codeblock__header">
 			{filename && <span class="plugdash-codeblock__filename">{filename}</span>}
@@ -65,6 +79,8 @@ const classes = [
 -->
 <style is:global>
 	.plugdash-codeblock {
+		--_cb-bg: var(--plugdash-codeblock-theme-bg);
+		--_cb-fg: var(--plugdash-codeblock-theme-fg);
 		margin: 1.5rem 0;
 		border-radius: var(--plugdash-codeblock-radius, 6px);
 		overflow: hidden;
@@ -79,8 +95,9 @@ const classes = [
 		align-items: center;
 		gap: 1rem;
 		padding: var(--plugdash-codeblock-header-padding, 0.5rem 1rem);
-		background: var(--plugdash-codeblock-header-bg, #1a1a1a);
-		color: var(--plugdash-codeblock-header-color, #9ca3af);
+		/* Derived from the theme so the header matches the code below it. */
+		background: var(--plugdash-codeblock-header-bg, color-mix(in srgb, var(--_cb-fg) 8%, var(--_cb-bg)));
+		color: var(--plugdash-codeblock-header-color, color-mix(in srgb, var(--_cb-fg) 65%, var(--_cb-bg)));
 		font-size: var(--plugdash-size-xs, 0.75rem);
 	}
 
@@ -120,16 +137,37 @@ const classes = [
 		width: var(--plugdash-codeblock-gutter-width, 2rem);
 		margin-right: 1rem;
 		text-align: right;
-		color: var(--plugdash-codeblock-gutter-color, #6b7280);
+		color: var(--plugdash-codeblock-gutter-color, color-mix(in srgb, var(--_cb-fg) 40%, var(--_cb-bg)));
 		user-select: none;
 	}
 
-	/* Dual-theme output carries the light palette as CSS variables. */
+	/* Dual-theme output carries the light palette as CSS variables. Light mode
+	   follows the OS unless the site forces a theme with the common
+	   data-theme="light|dark" attribute or .light/.dark class on <html>. */
 	@media (prefers-color-scheme: light) {
-		.plugdash-codeblock--dual .shiki,
-		.plugdash-codeblock--dual .shiki span {
+		:root:not([data-theme="dark"]):not(.dark) .plugdash-codeblock--dual {
+			--_cb-bg: var(--plugdash-codeblock-theme-light-bg);
+			--_cb-fg: var(--plugdash-codeblock-theme-light-fg);
+		}
+
+		:root:not([data-theme="dark"]):not(.dark) .plugdash-codeblock--dual .shiki,
+		:root:not([data-theme="dark"]):not(.dark) .plugdash-codeblock--dual .shiki span {
 			color: var(--shiki-light);
 			background-color: var(--shiki-light-bg);
 		}
+	}
+
+	:root[data-theme="light"] .plugdash-codeblock--dual,
+	:root.light .plugdash-codeblock--dual {
+		--_cb-bg: var(--plugdash-codeblock-theme-light-bg);
+		--_cb-fg: var(--plugdash-codeblock-theme-light-fg);
+	}
+
+	:root[data-theme="light"] .plugdash-codeblock--dual .shiki,
+	:root[data-theme="light"] .plugdash-codeblock--dual .shiki span,
+	:root.light .plugdash-codeblock--dual .shiki,
+	:root.light .plugdash-codeblock--dual .shiki span {
+		color: var(--shiki-light);
+		background-color: var(--shiki-light-bg);
 	}
 </style>

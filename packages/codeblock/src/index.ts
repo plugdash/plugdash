@@ -15,15 +15,18 @@ export {
 	truncate,
 	resetHighlighter,
 	cacheSize,
+	getSiteConfig,
+	themeColors,
 	DEFAULT_THEME,
 	DEFAULT_LANGS,
 	MAX_LINES,
 	CACHE_MAX,
 	type CodeblockConfig,
 	type HighlightOptions,
+	type ThemeColors,
 } from "./highlight.ts";
 
-import type { CodeblockConfig } from "./highlight.ts";
+import { setSiteConfig, type CodeblockConfig } from "./highlight.ts";
 
 const VERSION = "0.1.0";
 
@@ -41,7 +44,8 @@ export function codeblockPlugin(
 	};
 }
 
-export function createPlugin() {
+export function createPlugin(options: CodeblockConfig = {}) {
+	setSiteConfig(options);
 	return definePlugin({
 		id: "codeblock",
 		version: VERSION,
