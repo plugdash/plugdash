@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/fromsubstack",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Import a Substack export into EmDash - posts, metadata, and images",
 	"type": "module",
 	"main": "./dist/index.mjs",
