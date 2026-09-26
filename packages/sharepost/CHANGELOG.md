@@ -1,5 +1,11 @@
 # @plugdash/sharepost
 
+## 0.2.4
+
+### Patch Changes
+
+- 121bffa: Plugin version now comes from package.json, so the version reported to EmDash always matches the published package
+
 ## 0.2.3
 
 ### Patch Changes
