@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/codeblock",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Shiki syntax highlighting for EmDash code blocks - rendered server-side, with a copy button",
 	"type": "module",
 	"main": "./dist/index.mjs",
@@ -13,13 +13,24 @@
 		"./astro": "./src/astro/index.ts",
 		"./CodeBlock.astro": "./src/CodeBlock.astro"
 	},
-	"files": ["dist", "src/astro", "src/*.astro", "src/highlight.ts"],
+	"files": [
+		"dist",
+		"src/astro",
+		"src/*.astro",
+		"src/highlight.ts"
+	],
 	"scripts": {
 		"build": "tsdown src/index.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": ["emdash", "emdash-plugin", "codeblock", "shiki", "syntax-highlighting"],
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"codeblock",
+		"shiki",
+		"syntax-highlighting"
+	],
 	"license": "MIT",
 	"repository": {
 		"type": "git",
