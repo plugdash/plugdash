@@ -2,11 +2,12 @@
 
 import { definePlugin } from "emdash";
 import type { PluginDescriptor } from "@plugdash/types";
+import pkg from "../package.json" with { type: "json" };
 
 export function calloutPlugin(): PluginDescriptor {
 	return {
 		id: "callout",
-		version: "0.1.3",
+		version: pkg.version,
 		format: "native",
 		entrypoint: "@plugdash/callout",
 		componentsEntry: "@plugdash/callout/astro",
@@ -17,7 +18,7 @@ export function calloutPlugin(): PluginDescriptor {
 export function createPlugin() {
 	return definePlugin({
 		id: "callout",
-		version: "0.1.3",
+		version: pkg.version,
 		hooks: {},
 		admin: {
 			portableTextBlocks: [

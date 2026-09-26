@@ -1,6 +1,7 @@
 // @plugdash/tocgen - descriptor factory (runs in Vite at build time)
 
 import type { PluginDescriptor } from "@plugdash/types";
+import pkg from "../package.json" with { type: "json" };
 
 export interface TocgenConfig {
 	/** Minimum headings required to generate a TOC. Default: 3. */
@@ -14,7 +15,7 @@ export interface TocgenConfig {
 export function tocgenPlugin(config?: TocgenConfig): PluginDescriptor {
 	return {
 		id: "tocgen",
-		version: "0.2.3",
+		version: pkg.version,
 		format: "standard",
 		entrypoint: "@plugdash/tocgen/sandbox",
 		capabilities: ["content:read", "content:write"],

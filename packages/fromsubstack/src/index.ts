@@ -6,9 +6,10 @@
 import { definePlugin, registerSource } from "emdash";
 import type { PluginDescriptor } from "@plugdash/types";
 import { createSubstackSource, type FromsubstackConfig } from "./source.ts";
+import pkg from "../package.json" with { type: "json" };
 
 const ID = "fromsubstack";
-const VERSION = "0.1.0";
+const VERSION = pkg.version;
 
 export function fromsubstackPlugin(
 	config: FromsubstackConfig = {},

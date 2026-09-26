@@ -1,4 +1,5 @@
 import type { PluginDescriptor } from "@plugdash/types";
+import pkg from "../package.json" with { type: "json" };
 
 export interface ShortlinkConfig {
 	/** Route prefix for short URLs. Default: "/s/" */
@@ -14,7 +15,7 @@ export interface ShortlinkConfig {
 export function shortlinkPlugin(config?: ShortlinkConfig): PluginDescriptor {
 	return {
 		id: "shortlink",
-		version: "0.2.3",
+		version: pkg.version,
 		format: "standard",
 		entrypoint: "@plugdash/shortlink/sandbox",
 		capabilities: ["content:read", "content:write"],

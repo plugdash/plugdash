@@ -1,6 +1,7 @@
 // @plugdash/autobuild - descriptor factory (runs in Vite at build time)
 
 import type { PluginDescriptor } from "@plugdash/types";
+import pkg from "../package.json" with { type: "json" };
 
 export type ContentStatus = "published" | "draft" | "archived" | "scheduled";
 
@@ -55,7 +56,7 @@ export function autobuildPlugin(config?: AutobuildConfig): PluginDescriptor {
 
 	return {
 		id: "autobuild",
-		version: "0.2.0",
+		version: pkg.version,
 		format: "standard",
 		entrypoint: "@plugdash/autobuild/sandbox",
 		capabilities: ["network:request", "content:read"],

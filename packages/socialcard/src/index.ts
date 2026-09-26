@@ -1,6 +1,7 @@
 // @plugdash/socialcard - descriptor factory (runs in Vite at build time)
 
 import type { PluginDescriptor } from "@plugdash/types";
+import pkg from "../package.json" with { type: "json" };
 
 export interface SocialcardConfig {
 	/** Built-in card template. Default: "default". */
@@ -36,7 +37,7 @@ export function socialcardPlugin(config?: SocialcardConfig): PluginDescriptor {
 
 	return {
 		id: "socialcard",
-		version: "0.1.0",
+		version: pkg.version,
 		format: "standard",
 		entrypoint: "@plugdash/socialcard/sandbox",
 		// The spec's "network:storage" is not a real EmDash capability.

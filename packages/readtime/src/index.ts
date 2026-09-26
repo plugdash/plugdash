@@ -1,6 +1,7 @@
 // @plugdash/readtime - descriptor factory (runs in Vite at build time)
 
 import type { PluginDescriptor } from "@plugdash/types";
+import pkg from "../package.json" with { type: "json" };
 
 export interface ReadtimeConfig {
 	/** Words per minute for reading time calculation. Default: 238. */
@@ -19,7 +20,7 @@ export function readtimePlugin(config?: ReadtimeConfig): PluginDescriptor {
 
 	return {
 		id: "readtime",
-		version: "0.2.1",
+		version: pkg.version,
 		format: "standard",
 		entrypoint: "@plugdash/readtime/sandbox",
 		capabilities: ["content:read", "content:write"],

@@ -1,4 +1,5 @@
 import type { PluginDescriptor } from "@plugdash/types";
+import pkg from "../package.json" with { type: "json" };
 
 export interface HeartpostConfig {
 	collections?: string[];
@@ -8,7 +9,7 @@ export interface HeartpostConfig {
 export function heartpostPlugin(_config?: HeartpostConfig): PluginDescriptor {
 	return {
 		id: "heartpost",
-		version: "0.2.1",
+		version: pkg.version,
 		format: "standard",
 		entrypoint: "@plugdash/heartpost/sandbox",
 		options: {} as Record<string, unknown>,
