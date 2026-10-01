@@ -1,0 +1,63 @@
+{
+	"db": [
+		{
+			"meta": { "exported_on": 1700000000000, "version": "5.78.0" },
+			"data": {
+				"posts": [
+					{
+						"id": "p1",
+						"uuid": "uuid-p1",
+						"title": "Hello Ghost",
+						"slug": "hello-ghost",
+						"html": "<p>Read <a href=\"__GHOST_URL__/other/\">the other post</a>.</p><figure><img src=\"__GHOST_URL__/content/images/2024/01/a.png\" alt=\"A\"></figure>",
+						"feature_image": "__GHOST_URL__/content/images/2024/01/cover.jpg",
+						"published_at": "2024-01-15T10:00:00.000Z",
+						"status": "published",
+						"visibility": "public",
+						"type": "post"
+					},
+					{
+						"id": "p2",
+						"title": "Members Only",
+						"slug": "members-only",
+						"html": "<p>Paid body.</p>",
+						"published_at": "2024-02-01T10:00:00.000Z",
+						"status": "published",
+						"visibility": "paid",
+						"type": "post"
+					},
+					{
+						"id": "p3",
+						"title": "About",
+						"slug": "about",
+						"html": "<p>About <a href=\"__GHOST_URL__/\">home</a>.</p>",
+						"status": "published",
+						"visibility": "public",
+						"type": "page"
+					},
+					{
+						"id": "p4",
+						"title": "Lexical Draft",
+						"slug": "lexical-draft",
+						"html": null,
+						"lexical": "{\"root\":{\"children\":[{\"type\":\"paragraph\",\"children\":[{\"type\":\"text\",\"text\":\"Draft text\"}]}]}}",
+						"status": "draft",
+						"visibility": "public",
+						"type": "post"
+					}
+				],
+				"tags": [
+					{ "id": "t1", "name": "News", "slug": "news", "visibility": "public" },
+					{ "id": "t2", "name": "#internal", "slug": "hash-internal", "visibility": "internal" }
+				],
+				"users": [{ "id": "u1", "name": "Ada Lovelace", "slug": "ada", "email": "ada@example.com" }],
+				"posts_tags": [
+					{ "post_id": "p1", "tag_id": "t1", "sort_order": 0 },
+					{ "post_id": "p1", "tag_id": "t2", "sort_order": 1 }
+				],
+				"posts_authors": [{ "post_id": "p1", "author_id": "u1", "sort_order": 0 }],
+				"settings": [{ "key": "title", "value": "Ada's Blog" }]
+			}
+		}
+	]
+}
