@@ -273,12 +273,23 @@ function walkBlockLevel(root: Element, blocks: PortableTextBlock[]): void {
 	}
 }
 
+export interface HtmlToPortableTextOptions {
+	/** CSS selectors for elements to remove (with their contents) before converting. Default: none. */
+	dropSelectors?: string[];
+}
+
 /**
  * Converts an HTML fragment into EmDash Portable Text blocks.
  * Unknown tags are stripped, keeping their text content where possible.
  */
-export function htmlToPortableText(html: string): PortableTextBlock[] {
+export function htmlToPortableText(
+	html: string,
+	options: HtmlToPortableTextOptions = {},
+): PortableTextBlock[] {
 	const { document } = parseHTML(`<!doctype html><html><body>${html}</body></html>`);
+	for (const selector of options.dropSelectors ?? []) {
+		for (const el of Array.from(document.querySelectorAll(selector))) el.remove();
+	}
 	const blocks: PortableTextBlock[] = [];
 	walkBlockLevel(document.body as unknown as Element, blocks);
 	return blocks;

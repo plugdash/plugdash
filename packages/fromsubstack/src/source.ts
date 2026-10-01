@@ -8,8 +8,8 @@
 //
 // Everything here runs off the uploaded ZIP in memory. No fs, no temp dir.
 
-import { unzipSync, strFromU8 } from "fflate";
-import { htmlToPortableText } from "@plugdash/html-to-portable-text";
+// fflate and linkedom are loaded lazily (inside analyze/fetchContent) so that
+// registering the plugin at boot costs nothing.
 import { parseCsv } from "./csv.ts";
 import type {
 	AttachmentInfo,
@@ -32,13 +32,27 @@ export interface FromsubstackConfig {
 	importImages?: boolean;
 	/** Keep Substack's slugs instead of re-slugifying titles. Default: true. */
 	preserveSlugs?: boolean;
-	/** Where warnings go. Default: console.warn with a plugin prefix. */
-	onWarn?: (message: string) => void;
+	/** What to do with paid posts (only_paid, founding). Default: "draft", even when status is "published". */
+	paidPostsAs?: "draft" | "publish" | "skip";
 }
 
-interface ResolvedConfig extends Required<Omit<FromsubstackConfig, "onWarn">> {
-	onWarn: (message: string) => void;
-}
+/** ImportAnalysis plus the warnings (skipped rows, empty bodies) found while reading the export. */
+export type SubstackAnalysis = ImportAnalysis & { warnings: string[] };
+
+type ResolvedConfig = Required<FromsubstackConfig>;
+
+/** Elements Substack adds around a post that are not part of the writing. */
+const SUBSTACK_DROP_SELECTORS = [
+	".subscription-widget-wrap",
+	".subscription-widget",
+	".button-wrapper",
+	".share-dialog",
+	".post-ufi",
+	".footnote-anchor",
+];
+
+const utf8 = new TextDecoder();
+const text = (bytes: Uint8Array): string => utf8.decode(bytes);
 
 function resolveConfig(config: FromsubstackConfig): ResolvedConfig {
 	return {
@@ -46,9 +60,7 @@ function resolveConfig(config: FromsubstackConfig): ResolvedConfig {
 		status: config.status ?? "draft",
 		importImages: config.importImages ?? true,
 		preserveSlugs: config.preserveSlugs ?? true,
-		onWarn:
-			config.onWarn ??
-			((message: string) => console.warn(`[fromsubstack] ${message}`)),
+		paidPostsAs: config.paidPostsAs ?? "draft",
 	};
 }
 
@@ -92,6 +104,7 @@ async function readZip(input: SourceInput): Promise<ZipEntries> {
 
 	let entries: ZipEntries;
 	try {
+		const { unzipSync } = await import("fflate");
 		entries = unzipSync(new Uint8Array(await input.file.arrayBuffer()));
 	} catch {
 		throw new Error(
@@ -125,6 +138,7 @@ export interface SubstackExport {
 	siteTitle: string;
 	siteUrl: string;
 	posts: SubstackPost[];
+	warnings: string[];
 }
 
 /** Reads the first non-empty value among a set of candidate column names. */
@@ -197,9 +211,11 @@ async function readExport(
 	input: SourceInput,
 	config: ResolvedConfig,
 ): Promise<SubstackExport> {
+	const warnings: string[] = [];
+	const warn = (message: string) => warnings.push(message);
 	const entries = await readZip(input);
 	const csvPath = findPostsCsv(entries);
-	const rows = parseCsv(strFromU8(entries[csvPath]!));
+	const rows = parseCsv(text(entries[csvPath]!));
 	const html = indexHtmlEntries(entries);
 
 	const posts: SubstackPost[] = [];
@@ -212,7 +228,7 @@ async function readExport(
 		const type = (pick(row, "type") || "post").toLowerCase();
 
 		if (SKIPPED_TYPES.has(type)) {
-			config.onWarn(`Skipped "${title}": Substack type "${type}" has no article body.`);
+			warn(`Skipped "${title}": Substack type "${type}" has no article body.`);
 			continue;
 		}
 
@@ -225,27 +241,34 @@ async function readExport(
 			}
 		}
 
+		// Real exports: post_id is "140001.hello-world" and the file is posts/<post_id>.html.
+		// Older/hand-made exports: numeric id plus a url column.
 		const htmlPath =
+			(id ? html.byFilename.get(`${id}.html`.toLowerCase()) : undefined) ??
 			(id ? html.byId.get(id) : undefined) ??
+			(id ? html.byId.get(id.split(".")[0]!) : undefined) ??
 			(url ? html.byFilename.get(`${slugFromUrl(url)}.html`) : undefined);
 		if (!htmlPath) {
-			config.onWarn(`Skipped "${title}": no HTML file for it in the export.`);
+			warn(`Skipped "${title}": no HTML file for it in the export.`);
 			continue;
 		}
 
 		const exportedSlug =
-			(url ? slugFromUrl(url) : "") || slugFromFilename(htmlPath) || slugify(title);
+			(url ? slugFromUrl(url) : "") ||
+			(id.includes(".") ? id.slice(id.indexOf(".") + 1) : "") ||
+			slugFromFilename(htmlPath) ||
+			slugify(title);
 		const slug = config.preserveSlugs ? exportedSlug : slugify(title) || exportedSlug;
 
 		if (seenSlugs.has(slug)) {
-			config.onWarn(`Skipped "${title}": slug "${slug}" appears more than once in the export.`);
+			warn(`Skipped "${title}": slug "${slug}" appears more than once in the export.`);
 			continue;
 		}
 		seenSlugs.add(slug);
 
-		const body = strFromU8(entries[htmlPath]!);
+		const body = text(entries[htmlPath]!);
 		if (body.trim() === "") {
-			config.onWarn(`"${title}" has an empty body - importing it as an empty post.`);
+			warn(`"${title}" has an empty body - importing it as an empty post.`);
 		}
 
 		posts.push({
@@ -263,6 +286,7 @@ async function readExport(
 	}
 
 	return {
+		warnings,
 		siteTitle: siteUrl ? new URL(siteUrl).hostname : "Substack export",
 		siteUrl,
 		posts,
@@ -277,19 +301,17 @@ interface ConvertedPost {
 	imageUrls: string[];
 }
 
-function convert(post: SubstackPost, config: ResolvedConfig): ConvertedPost {
-	const blocks = htmlToPortableText(post.html);
+async function convert(post: SubstackPost, config: ResolvedConfig): Promise<ConvertedPost> {
+	const { htmlToPortableText } = await import("@plugdash/html-to-portable-text");
+	const blocks = htmlToPortableText(post.html, { dropSelectors: SUBSTACK_DROP_SELECTORS });
 	const imageUrls: string[] = [];
 	for (const block of blocks) {
 		if (block._type === "image" && block.asset.url) imageUrls.push(block.asset.url);
 	}
 
-	const isPaid = post.audience !== "everyone" && post.audience !== "";
-	const status = !post.isPublished
-		? "draft"
-		: config.status === "published"
-			? "publish"
-			: "draft";
+	const isPaid = isPaidAudience(post.audience);
+	const wanted = isPaid ? config.paidPostsAs : config.status === "published" ? "publish" : "draft";
+	const status = !post.isPublished || wanted === "skip" ? "draft" : wanted;
 
 	return {
 		item: {
@@ -315,6 +337,14 @@ function convert(post: SubstackPost, config: ResolvedConfig): ConvertedPost {
 		},
 		imageUrls: config.importImages ? imageUrls : [],
 	};
+}
+
+function isPaidAudience(audience: string): boolean {
+	return audience !== "everyone" && audience !== "";
+}
+
+function isSkippedPaid(post: SubstackPost, config: ResolvedConfig): boolean {
+	return config.paidPostsAs === "skip" && isPaidAudience(post.audience);
 }
 
 // ── Schema check ──
@@ -409,9 +439,13 @@ export function createSubstackSource(config: FromsubstackConfig = {}): ImportSou
 		icon: "upload",
 		requiresFile: true,
 
-		async analyze(input: SourceInput, context: ImportContext): Promise<ImportAnalysis> {
+		async analyze(
+			input: SourceInput,
+			context: ImportContext,
+		): Promise<SubstackAnalysis> {
 			const exported = await readExport(input, resolved);
-			const converted = exported.posts.map((post) => convert(post, resolved));
+			const posts = exported.posts.filter((post) => !isSkippedPaid(post, resolved));
+			const converted = await Promise.all(posts.map((post) => convert(post, resolved)));
 
 			const attachments = new Map<string, AttachmentInfo>();
 			for (const { imageUrls } of converted) {
@@ -427,6 +461,7 @@ export function createSubstackSource(config: FromsubstackConfig = {}): ImportSou
 
 			return {
 				sourceId: "substack",
+				warnings: exported.warnings,
 				site: { title: exported.siteTitle, url: exported.siteUrl },
 				postTypes: [
 					{
@@ -448,18 +483,21 @@ export function createSubstackSource(config: FromsubstackConfig = {}): ImportSou
 			if (options.postTypes.length > 0 && !options.postTypes.includes("post")) return;
 
 			const exported = await readExport(input, resolved);
+			// fetchContent has no return channel for warnings, so log them here.
+			for (const message of exported.warnings) console.warn(`[fromsubstack] ${message}`);
 			let yielded = 0;
 
 			for (const post of exported.posts) {
+				if (isSkippedPaid(post, resolved)) continue;
 				if (options.limit !== undefined && yielded >= options.limit) return;
 				if (!post.isPublished && options.includeDrafts !== true) continue;
 				try {
-					yield convert(post, resolved).item;
+					yield (await convert(post, resolved)).item;
 					yielded++;
 				} catch (error) {
 					// One unconvertible post should not sink the whole import.
-					resolved.onWarn(
-						`Skipped "${post.title}": ${error instanceof Error ? error.message : String(error)}`,
+					console.warn(
+						`[fromsubstack] Skipped "${post.title}": ${error instanceof Error ? error.message : String(error)}`,
 					);
 				}
 			}
