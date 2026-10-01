@@ -409,7 +409,7 @@ event.content.publishedAt; // ✅ top level
 
 // Custom fields — under event.content.data
 event.content.data.title; // ✅ nested under data — NOT a system field
-event.content.data.content; // ✅ nested under data — Portable Text array (templates name it `content`; see rule F)
+event.content.data.content; // ✅ nested under data - Portable Text array (templates name it `content`; see rule F)
 event.content.data.[any]; // ✅ all user-defined fields live here
 
 // Collection is on the event itself, not on content
@@ -417,7 +417,7 @@ event.collection; // ✅ on the event object
 
 // Common mistakes
 event.content.title; // ❌ WRONG — title is under data, not top level
-event.content.content; // ❌ WRONG — does not exist at top level
+event.content.content; // ❌ WRONG - does not exist at top level
 ```
 
 // confirmed 2026-04-05 while building @plugdash/sharepost
