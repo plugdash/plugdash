@@ -1,4 +1,6 @@
 ---
+import TocList from "./TocList.astro";
+
 interface TocEntry {
 	id: string;
 	text: string;
@@ -24,16 +26,6 @@ const data = post?.data as Record<string, unknown> | undefined;
 const metadata = data?.metadata as Record<string, unknown> | undefined;
 const tocgen = metadata?.tocgen as { entries: TocEntry[] } | undefined;
 const entries = tocgen?.entries ?? [];
-
-function renderEntries(items: TocEntry[], depth: number): string {
-	if (depth > maxDepth || items.length === 0) return "";
-	return `<ul>${items
-		.map(
-			(e) =>
-				`<li><a href="#${e.id}">${e.text}</a>${e.children.length ? renderEntries(e.children, depth + 1) : ""}</li>`,
-		)
-		.join("")}</ul>`;
-}
 ---
 
 {
@@ -41,8 +33,9 @@ function renderEntries(items: TocEntry[], depth: number): string {
 		<nav
 			class={`plugdash-toc ${sticky ? "plugdash-toc--sticky" : ""} ${className}`.trim()}
 			aria-label="Table of contents"
-			set:html={renderEntries(entries, 2)}
-		/>
+		>
+			<TocList items={entries} depth={2} maxDepth={maxDepth} />
+		</nav>
 	)
 }
 
@@ -60,27 +53,27 @@ function renderEntries(items: TocEntry[], depth: number): string {
 		overflow-y: auto;
 	}
 
-	.plugdash-toc ul {
+	.plugdash-toc :global(ul) {
 		list-style: none;
 		padding-left: var(--plugdash-toc-indent, 1rem);
 		margin: 0;
 	}
 
-	.plugdash-toc > ul {
+	.plugdash-toc > :global(ul) {
 		padding-left: 0;
 	}
 
-	.plugdash-toc li {
+	.plugdash-toc :global(li) {
 		margin: 0;
 	}
 
-	.plugdash-toc a {
+	.plugdash-toc :global(a) {
 		color: var(--plugdash-toc-color, inherit);
 		text-decoration: none;
 		transition: color var(--plugdash-transition, 150ms ease);
 	}
 
-	.plugdash-toc a:hover {
+	.plugdash-toc :global(a:hover) {
 		color: var(--plugdash-toc-hover, var(--plugdash-accent, #6366f1));
 	}
 </style>

@@ -1,0 +1,33 @@
+---
+import TocList from "./TocList.astro";
+
+interface TocEntry {
+	id: string;
+	text: string;
+	level: 2 | 3 | 4;
+	children: TocEntry[];
+}
+
+interface Props {
+	items: TocEntry[];
+	depth: number;
+	maxDepth: number;
+}
+
+const { items, depth, maxDepth } = Astro.props;
+---
+
+{
+	depth <= maxDepth && items.length > 0 && (
+		<ul>
+			{items.map((e) => (
+				<li>
+					<a href={`#${e.id}`}>{e.text}</a>
+					{e.children.length > 0 && (
+						<TocList items={e.children} depth={depth + 1} maxDepth={maxDepth} />
+					)}
+				</li>
+			))}
+		</ul>
+	)
+}
