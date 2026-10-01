@@ -31,6 +31,7 @@ export function createPlugin() {
 							type: "select",
 							action_id: "variant",
 							label: "Type",
+							initial_value: "info",
 							options: [
 								{ label: "Info", value: "info" },
 								{ label: "Warning", value: "warning" },
