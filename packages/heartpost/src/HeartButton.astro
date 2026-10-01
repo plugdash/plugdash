@@ -80,6 +80,8 @@ const id =
 )}
 
 <script>
+	import { parseHeartResponse } from "./client";
+
 	document.querySelectorAll(".plugdash-heart").forEach(async (btn) => {
 		const id = btn.getAttribute("data-post-id");
 		if (!id) return;
@@ -101,9 +103,9 @@ const id =
 		try {
 			const res = await fetch(`/_emdash/api/plugins/heartpost/heart-status?id=${encodeURIComponent(id)}`);
 			if (res.ok) {
-				const data = await res.json();
-				countEl.textContent = String(data.count ?? 0);
-				if (data.hearted) {
+				const data = parseHeartResponse(await res.json());
+				if (data && data.count !== undefined) countEl.textContent = String(data.count);
+				if (data?.hearted) {
 					btn.setAttribute("data-hearted", "true");
 					setLabel(true);
 				} else {
@@ -148,10 +150,8 @@ const id =
 					body: JSON.stringify({ id }),
 				});
 				if (res.ok) {
-					const data = await res.json();
-					countEl.textContent = String(
-						data.count ?? (isHearted ? Math.max(0, current - 1) : current + 1),
-					);
+					const data = parseHeartResponse(await res.json());
+					if (data && data.count !== undefined) countEl.textContent = String(data.count);
 				}
 			} catch {
 				// Keep optimistic state - better UX than reverting

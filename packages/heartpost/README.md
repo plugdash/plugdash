@@ -16,7 +16,7 @@ pnpm add @plugdash/heartpost
 ```js
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import emdash from "emdash";
+import emdash from "emdash/astro";
 import { heartpostPlugin } from "@plugdash/heartpost";
 
 export default defineConfig({
