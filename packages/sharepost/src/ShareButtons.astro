@@ -1,7 +1,17 @@
 ---
+import { generateAllShareUrls, resolveShareUrl, type Platform } from "@plugdash/sharepost/utils"
+
 interface Props {
-	post: Record<string, unknown>
-	platforms?: Array<"twitter" | "linkedin" | "whatsapp" | "bluesky" | "email">
+	post?: Record<string, unknown>
+	/** Absolute URL to share. Default: the current page. */
+	url?: string
+	/** Share text. Default: post.data.title. */
+	title?: string
+	/** Twitter/X handle without the @. */
+	via?: string
+	/** Twitter/X hashtags without the #. */
+	hashtags?: string[]
+	platforms?: Platform[]
 	variant?: "circle" | "pill" | "ghost" | "filled"
 	size?: "sm" | "md" | "lg"
 	theme?: "auto" | "dark" | "light"
@@ -10,6 +20,10 @@ interface Props {
 }
 const {
 	post,
+	url,
+	title,
+	via,
+	hashtags,
 	platforms = ["twitter", "linkedin", "bluesky"],
 	variant = "circle",
 	size = "md",
@@ -18,8 +32,9 @@ const {
 	class: className = "",
 } = Astro.props
 const data = post?.data as Record<string, unknown> | undefined
-const metadata = data?.metadata as Record<string, unknown> | undefined
-const shareUrls = metadata?.shareUrls as Record<string, string> | undefined
+const shareTitle = title ?? (typeof data?.title === "string" ? data.title : "")
+const shareUrl = resolveShareUrl(url, Astro.url.pathname, Astro.site, Astro.url.origin)
+const shareUrls = generateAllShareUrls({ title: shareTitle, url: shareUrl, platforms, via, hashtags })
 
 // Human-friendly display names for each platform.
 const labels: Record<string, string> = {
@@ -39,7 +54,7 @@ const icons: Record<string, string> = {
 	email: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`,
 }
 ---
-{shareUrls && (
+{(
 	<div
 		class={`plugdash-share plugdash-share--${variant} plugdash-share--${size} plugdash-theme--${theme} ${className}`}
 		data-theme={theme}
