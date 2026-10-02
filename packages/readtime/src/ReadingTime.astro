@@ -2,22 +2,26 @@
 /**
  * @plugdash/readtime - ReadingTime.astro
  *
- * Renders estimated reading time from post metadata written by the readtime plugin.
- * Renders nothing if readingTimeMinutes is not present (plugin not installed or
- * content not yet published).
+ * Computes reading time from the post body at render time. No plugin
+ * registration, hooks or stored data. Renders nothing when the post has no
+ * body (falls back to post.data.metadata.readingTimeMinutes from older
+ * readtime versions if that exists).
  *
  * Usage:
  *   import ReadingTime from "@plugdash/readtime/ReadingTime.astro"
  *   <ReadingTime post={post} />
  *
  * Props:
- *   post      - EmDash content item (required)
- *   label     - text after the number, default "min read"
- *   variant   - "badge" | "pill" | "inline" | "minimal", default "badge"
- *   size      - "sm" | "md" | "lg", default "md"
- *   theme     - "auto" | "dark" | "light", default "auto"
- *   showWords - also show word count, default false
- *   class     - additional CSS class
+ *   post           - EmDash content item (required)
+ *   wordsPerMinute - reading speed for space-separated scripts, default 238
+ *   field          - Portable Text field name, default content, then body
+ *   label          - text after the number, default "min read"
+ *   variant        - "badge" | "pill" | "inline" | "minimal", default "inline"
+ *   size           - "sm" | "md" | "lg", default "md"
+ *   theme          - "auto" | "dark" | "light", default "auto"
+ *   showWords      - also show word count, default false
+ *   attribution    - show a "plugdash" link, default false
+ *   class          - additional CSS class
  *
  * Customisation via CSS custom properties:
  *   --plugdash-rt-color       text colour (default: --plugdash-muted)
@@ -29,8 +33,12 @@
  *   --plugdash-rt-padding     padding (badge/pill)
  */
 
+import { getBodyBlocks, getReadingTime } from "@plugdash/readtime/utils"
+
 interface Props {
 	post: Record<string, unknown>
+	wordsPerMinute?: number
+	field?: string
 	label?: string
 	variant?: "badge" | "pill" | "inline" | "minimal"
 	size?: "sm" | "md" | "lg"
@@ -42,6 +50,8 @@ interface Props {
 
 const {
 	post,
+	wordsPerMinute,
+	field,
 	label = "min read",
 	variant = "inline",
 	size = "md",
@@ -51,15 +61,13 @@ const {
 	class: className = "",
 } = Astro.props
 
-// safely navigate post.data.metadata
 const data = (post as Record<string, unknown>)?.data as Record<string, unknown> | undefined
-const metadata = data?.metadata as Record<string, unknown> | undefined
-const minutes = typeof metadata?.readingTimeMinutes === "number"
-	? metadata.readingTimeMinutes
-	: null
-const wordCount = typeof metadata?.wordCount === "number"
-	? metadata.wordCount
-	: null
+const legacy = data?.metadata as Record<string, unknown> | undefined
+const computed = getBodyBlocks(post, field) ? getReadingTime(post, { wordsPerMinute, field }) : null
+const minutes = computed?.minutes
+	?? (typeof legacy?.readingTimeMinutes === "number" ? legacy.readingTimeMinutes : null)
+const wordCount = computed?.wordCount
+	?? (typeof legacy?.wordCount === "number" ? legacy.wordCount : null)
 ---
 
 {minutes !== null && (
