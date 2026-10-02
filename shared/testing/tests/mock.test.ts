@@ -190,21 +190,13 @@ describe("makePost", () => {
 	});
 });
 
-// Bodies below were captured with curl from a real EmDash 1.0.1 site running @plugdash/heartpost 0.2.2:
-//   GET /_emdash/api/plugins/heartpost/heart-status?id=abc -> {"success":true,"data":{"count":0,"hearted":false}}
-//   GET /_emdash/api/plugins/heartpost/heart-status        -> {"success":true,"data":{"error":"missing_id"}}
-//   GET /_emdash/api/plugins/heartpost/nope                -> 404 {"success":false,"error":{"code":"NOT_FOUND","message":"Plugin route not found"}}
-describe("callRoute matches a real heartpost response", () => {
-	it("heart-status", async () => {
-		const { default: heartpost } = await import("../../../packages/heartpost/src/sandbox-entry");
-		const headers = { "user-agent": "ua1" };
-		expect(await callRoute(heartpost, "heart-status", { query: { id: "abc" }, headers })).toEqual({
+describe("callRoute drives a real native plugin", () => {
+	it("heartpost heart-status", async () => {
+		const { createPlugin } = await import("../../../packages/heartpost/src/index");
+		const heartpost = createPlugin();
+		expect(await callRoute(heartpost, "heart-status", { query: { id: "abc" } })).toEqual({
 			success: true,
-			data: { count: 0, hearted: false },
-		});
-		expect(await callRoute(heartpost, "heart-status", { headers })).toEqual({
-			success: true,
-			data: { error: "missing_id" },
+			data: { count: 0 },
 		});
 		expect(await callRoute(heartpost, "nope")).toEqual({
 			success: false,

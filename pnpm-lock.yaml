@@ -147,6 +147,9 @@ importers:
       '@plugdash/types':
         specifier: workspace:*
         version: link:../../shared/types
+      '@types/node':
+        specifier: ^22.20.4
+        version: 22.20.5
       vitest:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@22.20.5)

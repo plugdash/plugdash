@@ -17,7 +17,7 @@ pnpm add @plugdash/fromsubstack
 ```js
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import emdash from "emdash";
+import emdash from "emdash/astro";
 import { fromsubstackPlugin } from "@plugdash/fromsubstack";
 
 export default defineConfig({
@@ -29,8 +29,10 @@ export default defineConfig({
 });
 ```
 
-That's it - "Substack" now appears as a source in EmDash's import UI. Upload
-the export ZIP there; there's no separate CLI step.
+The plugin registers a Substack import source (`createSubstackSource()`).
+EmDash 0.41 and 1.0 have no import screen for sources other than WordPress,
+so drive the source from your own script until the admin UI supports it.
+Remove the plugin after the import.
 
 ## Configuration
 
@@ -42,6 +44,7 @@ fromsubstackPlugin({
   status: "published",
   importImages: true,
   preserveSlugs: true,
+  paidPostsAs: "draft",
 });
 ```
 
@@ -51,7 +54,10 @@ fromsubstackPlugin({
 | status           | `"draft" \| "published"`  | `"draft"` | Status for posts Substack had marked published        |
 | importImages     | `boolean`                 | `true`    | Report body images so EmDash imports them              |
 | preserveSlugs    | `boolean`                 | `true`    | Keep the slug from the Substack post URL                |
-| onWarn           | `(message: string) => void` | `console.warn` | Where per-post warnings (skips, empty bodies) go |
+| paidPostsAs      | `"draft" \| "publish" \| "skip"` | `"draft"` | What to do with paid posts (`only_paid`, `founding`). Applied even when `status` is `"published"` |
+
+Warnings (skipped rows, empty bodies) are returned as `warnings` on the
+`analyze()` result and logged with `console.warn` during `fetchContent()`.
 
 `status` defaults to draft on purpose - review imported posts before they go
 live. A post that was still a draft on Substack always imports as a draft,
@@ -66,6 +72,8 @@ From each row in `posts.csv` with a matching HTML file:
 - The body, converted from HTML to Portable Text - headings, bold/italic,
   links, images, blockquotes, fenced code with language detection, and lists
 - The first body image as the featured image
+- Substack boilerplate is dropped: the subscribe widget, subscribe buttons,
+  share and comment bars, and footnote anchors (footnote text stays)
 - Paid/subscriber-only status, recorded in metadata (`meta.substackPaid`,
   `meta.substackAudience`) rather than hidden - EmDash doesn't have a native
   concept of a Substack paywall, so this is left for you to act on
