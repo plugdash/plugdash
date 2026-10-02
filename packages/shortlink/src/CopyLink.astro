@@ -1,6 +1,11 @@
 ---
+// Computes the short link from the entry id. No database or network call.
+import { shortPath } from "./code.ts";
+
 interface Props {
 	post: Record<string, unknown>;
+	/** Must match the plugin's `prefix` option. Default "/s/". */
+	prefix?: string;
 	showUrl?: boolean;
 	variant?: "circle" | "pill" | "ghost" | "inline";
 	size?: "sm" | "md" | "lg";
@@ -9,18 +14,19 @@ interface Props {
 }
 const {
 	post,
+	prefix = "/s/",
 	showUrl = false,
 	variant = "circle",
 	size = "md",
 	theme = "auto",
 	class: className = "",
 } = Astro.props;
+// post.data.id is the ULID. post.id is the slug (getEmDashEntry), so it is not used.
 const data = post?.data as Record<string, unknown> | undefined;
-const metadata = data?.metadata as Record<string, unknown> | undefined;
-const shortlink = metadata?.shortlink as
-	| { url?: string; code?: string; fullUrl?: string }
-	| undefined;
-const url = shortlink?.fullUrl ?? shortlink?.url;
+const entryId = typeof data?.id === "string" ? data.id : "";
+const url = entryId
+	? new URL(shortPath(entryId, prefix), Astro.site ?? Astro.url.origin).href
+	: undefined;
 ---
 
 {
