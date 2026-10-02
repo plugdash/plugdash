@@ -167,6 +167,44 @@ function makeImageBlock(imgEl: Element): PortableTextImageBlock | null {
 	};
 }
 
+/**
+ * Portable Text has no inline images, so a paragraph like
+ * `<p>before <img> after</p>` becomes a text block, an image block and
+ * another text block, in source order. Images wrapped in inline elements
+ * (`<a><img></a>`) are split out the same way.
+ */
+function splitAroundImages(el: Element, blocks: PortableTextBlock[]): void {
+	if (!el.querySelector("img")) {
+		const block = makeTextBlock(el, "normal");
+		if (block) blocks.push(block);
+		return;
+	}
+
+	let run = el.ownerDocument.createElement("p");
+	const flush = () => {
+		if ((run.textContent ?? "").trim().length > 0) {
+			const block = makeTextBlock(run, "normal");
+			if (block) blocks.push(block);
+		}
+		run = el.ownerDocument.createElement("p");
+	};
+
+	for (const child of Array.from(el.childNodes)) {
+		const childEl = child.nodeType === 1 ? (child as unknown as Element) : null;
+		if (childEl?.tagName.toLowerCase() === "img") {
+			flush();
+			const image = makeImageBlock(childEl);
+			if (image) blocks.push(image);
+		} else if (childEl?.querySelector("img")) {
+			flush();
+			splitAroundImages(childEl, blocks);
+		} else {
+			run.appendChild(child.cloneNode(true));
+		}
+	}
+	flush();
+}
+
 function walkBlockLevel(root: Element, blocks: PortableTextBlock[]): void {
 	for (const child of Array.from(root.childNodes)) {
 		if (child.nodeType === 3 /* TEXT_NODE */) {
@@ -221,8 +259,7 @@ function walkBlockLevel(root: Element, blocks: PortableTextBlock[]): void {
 		}
 
 		if (tag === "p") {
-			const block = makeTextBlock(el, "normal");
-			if (block) blocks.push(block);
+			splitAroundImages(el, blocks);
 			continue;
 		}
 
@@ -248,9 +285,7 @@ function walkBlockLevel(root: Element, blocks: PortableTextBlock[]): void {
 
 		if (tag === "ul" || tag === "ol") {
 			const listId = nextKey();
-			const items = Array.from(el.children).filter(
-				(li) => li.tagName.toLowerCase() === "li",
-			);
+			const items = Array.from(el.children).filter((li) => li.tagName.toLowerCase() === "li");
 			for (const li of items) {
 				const { spans, markDefs } = collectInline(li, []);
 				if (spans.length === 0) continue;

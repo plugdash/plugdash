@@ -1,8 +1,8 @@
 // @plugdash/fromghost - import a Ghost JSON export into EmDash.
 //
-// Plugs into EmDash's own import-source registry, so the Ghost export shows up
-// next to the WordPress importers in the admin import screen and reuses the
-// runtime's media download, taxonomy and content-creation pipeline.
+// Plugs into EmDash's import-source registry (registered in createPlugin, so
+// config reaches the production runtime) and reuses the runtime's media
+// download, taxonomy and content-creation pipeline.
 
 import { definePlugin, registerSource, slugify } from "emdash";
 import type {
@@ -17,7 +17,6 @@ import type {
 	SourceInput,
 } from "emdash";
 import type { PluginDescriptor } from "@plugdash/types";
-import { htmlToPortableText } from "@plugdash/html-to-portable-text";
 import type { PortableTextBlock } from "@plugdash/html-to-portable-text";
 import {
 	buildJoinIndex,
@@ -58,9 +57,23 @@ export interface FromghostConfig {
 	 * resolve to a site-relative path, which the importer cannot download.
 	 */
 	siteUrl?: string;
-	/** Called for every recoverable problem. Default: discard. */
+	/**
+	 * What to do with Ghost posts whose visibility is not public (members, paid,
+	 * tiers). Their full body is in the export, so the default keeps them out of
+	 * the public site. Default "draft".
+	 */
+	paidPostsAs?: "draft" | "publish" | "skip";
+	/**
+	 * Programmatic use only. Functions do not survive astro.config options, so
+	 * read `analysis.warnings` instead.
+	 */
 	onWarn?: (message: string) => void;
 }
+
+type HtmlConverter = (html: string) => PortableTextBlock[];
+
+/** `ImportAnalysis` has no warnings field in emdash 1.0.1, so it is added here. */
+export type GhostImportAnalysis = ImportAnalysis & { warnings: string[] };
 
 interface ResolvedConfig {
 	targetCollection: string;
@@ -68,6 +81,7 @@ interface ResolvedConfig {
 	importImages: boolean;
 	importTags: boolean;
 	siteUrl: string;
+	paidPostsAs: "draft" | "publish" | "skip";
 	warn: (message: string) => void;
 }
 
@@ -78,11 +92,30 @@ function resolveConfig(config: FromghostConfig): ResolvedConfig {
 		importImages: config.importImages ?? true,
 		importTags: config.importTags ?? true,
 		siteUrl: config.siteUrl ?? "",
+		paidPostsAs: config.paidPostsAs ?? "draft",
 		warn: config.onWarn ?? (() => {}),
 	};
 }
 
 // ── Body conversion ──
+
+const GHOST_URL_PLACEHOLDER = "__GHOST_URL__";
+
+/** Swaps every `__GHOST_URL__` in the HTML for the real site URL. */
+function resolveHtmlUrls(html: string, siteUrl: string): string {
+	if (!html.includes(GHOST_URL_PLACEHOLDER)) return html;
+	return html.replaceAll(GHOST_URL_PLACEHOLDER, siteUrl.replace(/\/+$/, ""));
+}
+
+/** Loaded on first use: the converter pulls in linkedom (~90 ms), and an import runs once. */
+async function loadConverter(): Promise<HtmlConverter> {
+	const { htmlToPortableText } = await import("@plugdash/html-to-portable-text");
+	return htmlToPortableText;
+}
+
+function isRestricted(post: GhostPost): boolean {
+	return !!post.visibility && post.visibility !== "public";
+}
 
 type ImportBlock = NormalizedItem["content"][number];
 
@@ -115,8 +148,9 @@ function resolveBody(
 	post: GhostPost,
 	title: string,
 	config: ResolvedConfig,
+	convert: HtmlConverter,
 ): PortableTextBlock[] {
-	const blocks = convertBody(post, title, config);
+	const blocks = convertBody(post, title, config, convert);
 	if (config.importImages) return blocks;
 	return blocks.filter((block) => block._type !== "image");
 }
@@ -125,9 +159,10 @@ function convertBody(
 	post: GhostPost,
 	title: string,
 	config: ResolvedConfig,
+	convert: HtmlConverter,
 ): PortableTextBlock[] {
 	const html = post.html?.trim();
-	if (html) return htmlToPortableText(html);
+	if (html) return convert(resolveHtmlUrls(html, config.siteUrl));
 
 	if (post.lexical) {
 		const recovered = lexicalToHtml(post.lexical);
@@ -135,7 +170,7 @@ function convertBody(
 			config.warn(
 				`"${title}": no rendered HTML, recovered plain text from the Lexical draft`,
 			);
-			return htmlToPortableText(recovered);
+			return convert(recovered);
 		}
 		config.warn(
 			`"${title}": Lexical content could not be converted, body left empty`,
@@ -155,6 +190,7 @@ function convertBody(
 
 interface MappingContext {
 	config: ResolvedConfig;
+	convert: HtmlConverter;
 	tags: Map<string, GhostTag>;
 	users: Map<string, GhostUser>;
 	tagsByPost: Map<string, string[]>;
@@ -164,9 +200,11 @@ interface MappingContext {
 function buildMappingContext(
 	data: GhostData,
 	config: ResolvedConfig,
+	convert: HtmlConverter,
 ): MappingContext {
 	return {
 		config,
+		convert,
 		tags: buildTagLookup(data.tags),
 		users: buildUserLookup(data.users),
 		tagsByPost: buildJoinIndex(data.posts_tags, "tag_id"),
@@ -212,6 +250,14 @@ function resolveSlug(post: GhostPost, title: string, index: number, config: Reso
 	return slugify(title) || `ghost-${post.id ?? index}`;
 }
 
+function itemStatus(post: GhostPost, config: ResolvedConfig): NormalizedItem["status"] {
+	const status = mapGhostStatus(post.status);
+	if (status === "publish" && isRestricted(post) && config.paidPostsAs === "draft") {
+		return "draft";
+	}
+	return status;
+}
+
 /** Maps one Ghost post onto EmDash's normalized import item. */
 export function toNormalizedItem(
 	post: GhostPost,
@@ -241,10 +287,10 @@ export function toNormalizedItem(
 	return {
 		sourceId: postId || slug,
 		postType: ghostPostType(post),
-		status: mapGhostStatus(post.status),
+		status: itemStatus(post, config),
 		slug,
 		title,
-		content: toImportContent(resolveBody(post, title, config)),
+		content: toImportContent(resolveBody(post, title, config, ctx.convert)),
 		excerpt: (post.custom_excerpt ?? post.excerpt) || undefined,
 		date:
 			parseGhostDate(post.published_at) ??
@@ -346,7 +392,20 @@ export function analyzeGhostExport(
 	data: GhostData,
 	existingCollections: ExistingCollections,
 	config: ResolvedConfig,
-): ImportAnalysis {
+	convert: HtmlConverter,
+): GhostImportAnalysis {
+	const warnings: string[] = [];
+	const mapping = buildMappingContext(
+		data,
+		{
+			...config,
+			warn: (message) => {
+				warnings.push(message);
+				config.warn(message);
+			},
+		},
+		convert,
+	);
 	const counts = new Map<"post" | "page", number>();
 	const typesWithFeatureImage = new Set<string>();
 	const images = new Map<string, AttachmentInfo>();
@@ -371,6 +430,15 @@ export function analyzeGhostExport(
 				caption: post.feature_image_caption ?? undefined,
 				...describeImageUrl(featureImage),
 			});
+		}
+
+		if (config.importImages) {
+			const item = toNormalizedItem(post, post.slug ?? "", mapping);
+			for (const block of item.content) {
+				const url = block._type === "image" ? block.asset?.url : undefined;
+				if (!url || images.has(url)) continue;
+				images.set(url, { url, ...describeImageUrl(url) });
+			}
 		}
 
 		for (const authorId of authorsByPost.get(post.id ?? "") ?? []) {
@@ -406,6 +474,7 @@ export function analyzeGhostExport(
 		site: { title: siteTitle(data), url: config.siteUrl },
 		postTypes,
 		attachments: { count: images.size, items: [...images.values()] },
+		warnings,
 		// Ghost has no category taxonomy - tags are the only one.
 		categories: 0,
 		tags: config.importTags ? publicTags.length : 0,
@@ -449,12 +518,13 @@ export function createGhostSource(config: FromghostConfig = {}): ImportSource {
 		async analyze(
 			input: SourceInput,
 			context: ImportContext,
-		): Promise<ImportAnalysis> {
+		): Promise<GhostImportAnalysis> {
 			const { data } = await readExport(input);
+			const convert = await loadConverter();
 			const existing = context.getExistingCollections
 				? await context.getExistingCollections()
 				: (new Map() as ExistingCollections);
-			return analyzeGhostExport(data, existing, resolved);
+			return analyzeGhostExport(data, existing, resolved, convert);
 		},
 
 		async *fetchContent(
@@ -462,7 +532,7 @@ export function createGhostSource(config: FromghostConfig = {}): ImportSource {
 			options: FetchOptions,
 		): AsyncGenerator<NormalizedItem> {
 			const { data } = await readExport(input);
-			const ctx = buildMappingContext(data, resolved);
+			const ctx = buildMappingContext(data, resolved, await loadConverter());
 			const seen = new Set<string>();
 			let emitted = 0;
 
@@ -480,7 +550,16 @@ export function createGhostSource(config: FromghostConfig = {}): ImportSource {
 					resolved.warn(`"${title}": duplicate slug "${slug}", skipping`);
 					continue;
 				}
-				seen.add(seenKey);
+			seen.add(seenKey);
+
+			if (
+				resolved.paidPostsAs === "skip" &&
+				isRestricted(post) &&
+				mapGhostStatus(post.status) === "publish"
+			) {
+				resolved.warn(`"${title}": ${post.visibility} post, skipping`);
+				continue;
+			}
 
 				yield toNormalizedItem(post, slug, ctx);
 
@@ -491,21 +570,14 @@ export function createGhostSource(config: FromghostConfig = {}): ImportSource {
 	};
 }
 
-/** The zero-config source registered when this module loads. */
+/** A zero-config source. Not registered anywhere: createPlugin registers the configured one. */
 export const ghostSource: ImportSource = createGhostSource();
 
 // ── Plugin ──
 
-/**
- * Registers the Ghost import source with EmDash.
- *
- * Passing config re-registers the source with it: the registry is keyed by
- * source id, so this replaces the zero-config one registered at module load.
- */
 export function fromghostPlugin(
 	config: FromghostConfig = {},
 ): PluginDescriptor<FromghostConfig> {
-	registerSource(createGhostSource(config));
 	return {
 		id: "fromghost",
 		version: VERSION,
@@ -516,7 +588,12 @@ export function fromghostPlugin(
 	};
 }
 
-export function createPlugin() {
+/**
+ * Runs in the server runtime with the descriptor options inlined as JSON, so
+ * this is where the configured source has to be registered.
+ */
+export function createPlugin(options: FromghostConfig = {}) {
+	registerSource(createGhostSource(options));
 	return definePlugin({
 		id: "fromghost",
 		version: VERSION,
@@ -545,7 +622,3 @@ export {
 	parseGhostExport,
 	resolveGhostUrl,
 } from "./ghost-export.ts";
-
-// Mirrors how EmDash registers its own WXR and WordPress sources: at module
-// load, so importing the package is enough to make the source available.
-registerSource(ghostSource);

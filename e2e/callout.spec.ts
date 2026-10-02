@@ -64,6 +64,31 @@ test.describe("callout block rendering", () => {
 	});
 });
 
+// Real-site checks (EmDash blog template). Set CALLOUT_SITE to the site URL
+// and CALLOUT_COOKIE to the admin session cookie value. Plain Playwright
+// until the e2e harness (card #04) lands.
+const SITE = process.env.CALLOUT_SITE;
+
+test.describe("callout editor and multi-line body", () => {
+	test.skip(!SITE, "set CALLOUT_SITE to run against a real EmDash site");
+
+	test("new callout dialog has Info selected", async ({ page, context }) => {
+		await context.addCookies([
+			{ name: "astro-session", value: process.env.CALLOUT_COOKIE ?? "", url: SITE! },
+		]);
+		await page.goto(`${SITE}/_emdash/admin/content/posts/new`);
+		await page.locator("[contenteditable=true]").last().click();
+		await page.keyboard.type("/call");
+		await page.keyboard.press("Enter");
+		await expect(page.getByRole("combobox", { name: "Type" })).toContainText("Info");
+	});
+
+	test("published multi-line callout shows 2 paragraphs", async ({ page }) => {
+		await page.goto(`${SITE}/posts/${process.env.CALLOUT_SLUG ?? "callout-multiline"}`);
+		await expect(page.locator(".plugdash-callout__body")).toHaveCount(2);
+	});
+});
+
 test.describe("callout CSS custom properties", () => {
 	test("accent color can be overridden via custom property", async ({ page }) => {
 		await page.goto(`${BASE_URL}/callout-test-custom`);

@@ -4,3 +4,6 @@ dist/
 .DS_Store
 .env
 .claude/
+.real-emdash/
+test-results/
+playwright-report/

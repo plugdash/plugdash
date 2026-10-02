@@ -1,8 +1,8 @@
 # @plugdash/readtime
 
-Word count and reading time for EmDash content.
-Writes `readingTimeMinutes` and `wordCount` to post metadata on publish.
-The EmDash equivalent of [Reading Time WP](https://wordpress.org/plugins/reading-time-wp/).
+Most sites either skip reading time or store it in a database field that goes stale.
+This package works it out from the post body each time the page renders, so there is nothing to store or keep in sync.
+Ships `ReadingTime.astro`, a drop-in label for "6 min read". The EmDash equivalent of [Reading Time WP](https://wordpress.org/plugins/reading-time-wp/).
 
 ## Install
 
@@ -10,83 +10,67 @@ The EmDash equivalent of [Reading Time WP](https://wordpress.org/plugins/reading
 pnpm add @plugdash/readtime
 ```
 
-## Register
-
-```js
-// astro.config.mjs
-import { defineConfig } from "astro/config";
-import emdash from "emdash";
-import { readtimePlugin } from "@plugdash/readtime";
-
-export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [readtimePlugin()],
-      // or sandboxed: [readtimePlugin()]
-    }),
-  ],
-});
-```
-
-## Configuration
-
-### Admin dashboard
-
-After installing, open the EmDash admin and go to Plugins - Reading Time
-- Settings. All configuration options are available there. Changes take
-effect on the next publish - no code changes required.
-
-### astro.config.mjs
-
-Pass config at register time. Values are seeded into KV on install and
-reseeded automatically when the config in code changes.
-
-```js
-readtimePlugin({
-  wordsPerMinute: 250,
-  collections: ["blog", "articles"],
-});
-```
-
-| Option           | Type       | Default | Description                                       |
-| ---------------- | ---------- | ------- | ------------------------------------------------- |
-| wordsPerMinute   | `number`   | `238`   | Average reading speed used for the calculation    |
-| collections      | `string[]` | all     | Limit processing to specific collection slugs     |
-
-**Set `collections` whenever your site has collections without a
-`metadata` field** (e.g. EmDash's built-in `plugins` collection).
-Without an allowlist, readtime tries to write metadata on every content
-save and will log (but not throw) a "no such column: metadata" error
-when the target collection lacks one.
-
-## Astro theme usage
-
-Access reading time values from the content metadata in your Astro templates:
+No plugin registration is needed. Import the component and pass the post:
 
 ```astro
 ---
-const post = await emdash.content.get("posts", Astro.params.id);
-const { wordCount, readingTimeMinutes } = post.data.metadata ?? {};
+import ReadingTime from "@plugdash/readtime/ReadingTime.astro";
 ---
 
-{readingTimeMinutes && <span>{readingTimeMinutes} min read</span>}
-{wordCount && <span>{wordCount.toLocaleString()} words</span>}
+<ReadingTime post={post} />
 ```
 
-## What it does
+`readtimePlugin()` is still exported so old `astro.config.mjs` files keep working. It does nothing and is deprecated: remove it. Its `wordsPerMinute` and `collections` options are ignored; pass `wordsPerMinute` to the component instead.
 
-- Ships `ReadingTime.astro` - drop-in companion component with four variants
-- Fires on `content:afterSave` when status is `published`
-- Extracts plain text from Portable Text body blocks
-- Counts words (splits on whitespace)
-- Calculates reading time with a configurable WPM rate
-- Writes `wordCount` and `readingTimeMinutes` to content metadata
-- Preserves existing metadata keys from other plugins
+## Props
+
+| Prop             | Type                                         | Default      | Description                                                         |
+| ---------------- | -------------------------------------------- | ------------ | ------------------------------------------------------------------- |
+| `post`           | EmDash entry                                 | required     | The entry from `getEmDashEntry()`                                   |
+| `wordsPerMinute` | `number`                                     | `238`        | Reading speed for space-separated scripts                           |
+| `field`          | `string`                                     | auto         | Portable Text field name. Auto: `content`, then `body`, then the first Portable Text array in `data` |
+| `label`          | `string`                                     | `"min read"` | Text after the number                                               |
+| `variant`        | `"badge" \| "pill" \| "inline" \| "minimal"` | `"inline"`   | Look of the label                                                   |
+| `size`           | `"sm" \| "md" \| "lg"`                       | `"md"`       | Font size                                                           |
+| `theme`          | `"auto" \| "dark" \| "light"`                | `"auto"`     | Colour scheme                                                       |
+| `showWords`      | `boolean`                                    | `false`      | Also show the word count                                            |
+| `attribution`    | `boolean`                                    | `false`      | Show a small "plugdash" link                                        |
+| `class`          | `string`                                     | -            | Extra CSS class                                                     |
+
+Style it with `--plugdash-rt-color`, `--plugdash-rt-size`, `--plugdash-rt-font`, `--plugdash-rt-bg`, `--plugdash-rt-border`, `--plugdash-rt-radius` and `--plugdash-rt-padding`.
+
+The component renders nothing when the post has no body.
+
+## Use it in code
+
+```ts
+import { getReadingTime } from "@plugdash/readtime/utils";
+
+const { minutes, wordCount } = getReadingTime(post, { wordsPerMinute: 200 });
+```
+
+`getReadingTime` also accepts a Portable Text array. Options: `wordsPerMinute`, `cjkCharsPerMinute` (default 500), `field`.
+
+## Replacing the blog template's reading time
+
+The blog template computes its own reading time in `src/pages/posts/[slug].astro` with `getReadingTime(post.data.content)` and prints `{readingTime} min read`. To use this component instead, import it and swap the span:
+
+```astro
+<!-- before -->
+<span>{readingTime} min read</span>
+<!-- after -->
+<ReadingTime post={post} />
+```
+
+## How it counts
+
+- Words in text blocks, plus the `title` and `body` of `callout` nodes
+- Code blocks, images and embeds are not counted
+- Han, Hangul, Hiragana and Katakana characters are counted one by one at 500 per minute. Other scripts, including Devanagari, count as space-separated words
+- `minutes = max(1, ceil(words / wordsPerMinute + cjkChars / 500))`
 
 ## What it does not do
 
-- Does not calculate reading time for drafts, archived, or scheduled content
-- Does not count words in images, embeds, or other non-text block types
-- Does not provide server-side rendering of the component - it is a client Astro component
-- Does not support per-post WPM overrides
-- Does not account for code blocks or block quotes differently
+- No hooks, no stored data, no `metadata` writes
+- No per-post speed override
+- Posts written by an older readtime that have `data.metadata.readingTimeMinutes` and no body still show that stored value

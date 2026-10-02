@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { htmlToPortableText, resetKeyCounter } from "../src/index.ts";
-import type {
-	PortableTextTextBlock,
-	PortableTextImageBlock,
-	PortableTextCodeBlock,
-} from "emdash";
+import type { PortableTextTextBlock, PortableTextImageBlock, PortableTextCodeBlock } from "emdash";
 
 describe("htmlToPortableText", () => {
 	beforeEach(() => {
@@ -15,9 +11,7 @@ describe("htmlToPortableText", () => {
 		const blocks = htmlToPortableText("<h2>Title</h2><h3>Subtitle</h3>");
 		expect(blocks).toHaveLength(2);
 		expect((blocks[0] as PortableTextTextBlock).style).toBe("h2");
-		expect((blocks[0] as PortableTextTextBlock).children[0]?.text).toBe(
-			"Title",
-		);
+		expect((blocks[0] as PortableTextTextBlock).children[0]?.text).toBe("Title");
 		expect((blocks[1] as PortableTextTextBlock).style).toBe("h3");
 	});
 
@@ -31,9 +25,7 @@ describe("htmlToPortableText", () => {
 	});
 
 	it("marks strong and em text", () => {
-		const blocks = htmlToPortableText(
-			"<p>plain <strong>bold</strong> and <em>italic</em></p>",
-		);
+		const blocks = htmlToPortableText("<p>plain <strong>bold</strong> and <em>italic</em></p>");
 		const block = blocks[0] as PortableTextTextBlock;
 		const bold = block.children.find((s) => s.text === "bold");
 		const italic = block.children.find((s) => s.text === "italic");
@@ -48,9 +40,7 @@ describe("htmlToPortableText", () => {
 		expect(span.text).toBe("link text");
 		expect(span.marks).toHaveLength(1);
 		const markDef = block.markDefs?.find((m) => m._key === span.marks![0]);
-		expect(markDef).toEqual(
-			expect.objectContaining({ _type: "link", href: "/foo" }),
-		);
+		expect(markDef).toEqual(expect.objectContaining({ _type: "link", href: "/foo" }));
 	});
 
 	it("converts img tags into image blocks", () => {
@@ -69,15 +59,27 @@ describe("htmlToPortableText", () => {
 		expect(block.caption).toBe("Caption text");
 	});
 
+	it("splits a paragraph around an inline image", () => {
+		const blocks = htmlToPortableText(
+			'<p>Before <strong>bold</strong> <img src="https://x.com/a.png" alt="A"> after</p><p><img src="https://x.com/b.png"></p><p><a href="/x"><img src="https://x.com/c.png"></a></p>',
+		);
+		expect(blocks.map((b) => b._type)).toEqual(["block", "image", "block", "image", "image"]);
+		const before = blocks[0] as PortableTextTextBlock;
+		expect(before.children.map((c) => c.text).join("")).toBe("Before bold ");
+		expect(before.children[1]?.marks).toEqual(["strong"]);
+		expect((blocks[1] as PortableTextImageBlock).alt).toBe("A");
+		expect((blocks[2] as PortableTextTextBlock).children[0]?.text).toBe(" after");
+		expect((blocks[3] as PortableTextImageBlock).asset.url).toBe("https://x.com/b.png");
+		expect((blocks[4] as PortableTextImageBlock).asset.url).toBe("https://x.com/c.png");
+	});
+
 	it("converts blockquote paragraphs into blockquote-style blocks", () => {
 		const blocks = htmlToPortableText("<blockquote><p>Quoted</p></blockquote>");
 		expect((blocks[0] as PortableTextTextBlock).style).toBe("blockquote");
 	});
 
 	it("converts pre/code into a code block with detected language", () => {
-		const blocks = htmlToPortableText(
-			'<pre><code class="language-js">const x = 1;</code></pre>',
-		);
+		const blocks = htmlToPortableText('<pre><code class="language-js">const x = 1;</code></pre>');
 		const block = blocks[0] as PortableTextCodeBlock;
 		expect(block._type).toBe("code");
 		expect(block.code).toBe("const x = 1;");
@@ -108,13 +110,9 @@ describe("htmlToPortableText", () => {
 	});
 
 	it("skips script and style tags entirely", () => {
-		const blocks = htmlToPortableText(
-			"<p>visible</p><script>evil()</script><style>.x{}</style>",
-		);
+		const blocks = htmlToPortableText("<p>visible</p><script>evil()</script><style>.x{}</style>");
 		expect(blocks).toHaveLength(1);
-		expect((blocks[0] as PortableTextTextBlock).children[0]?.text).toBe(
-			"visible",
-		);
+		expect((blocks[0] as PortableTextTextBlock).children[0]?.text).toBe("visible");
 	});
 
 	it("returns an empty array for empty input", () => {
