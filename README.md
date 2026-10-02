@@ -6,35 +6,43 @@ Each plugin does one thing, ships a companion Astro component that works with no
 
 ## Plugins
 
-| Package | What it does |
-| --- | --- |
-| [@plugdash/readtime](./packages/readtime) | Word count and reading time, written to post metadata on publish |
-| [@plugdash/callout](./packages/callout) | Info, warning, tip, and danger callout blocks in the editor |
-| [@plugdash/tocgen](./packages/tocgen) | Nested table of contents from Portable Text headings |
-| [@plugdash/shortlink](./packages/shortlink) | Short URLs for posts, with resolver route and admin page |
-| [@plugdash/sharepost](./packages/sharepost) | Share button URLs for Twitter, LinkedIn, WhatsApp, Bluesky, email |
-| [@plugdash/heartpost](./packages/heartpost) | Heart button with KV-backed per-post counter and fingerprint dedup |
-| [@plugdash/engage](./packages/engage) | Heart, share, and copy-link composed into one component |
-| [@plugdash/autobuild](./packages/autobuild) | Fires a Cloudflare Pages, Netlify, or Vercel build hook on every publish |
+| Package                                           | What it does                                                       | Status                                   |
+| ------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------- |
+| [@plugdash/readtime](./packages/readtime)         | Word count and reading time for posts                              | Being reworked to compute at render time |
+| [@plugdash/callout](./packages/callout)           | Info, warning, tip, and danger callout blocks in the editor        | Published                                |
+| [@plugdash/codeblock](./packages/codeblock)       | Shiki syntax highlighting for code blocks, with a copy button      | Published                                |
+| [@plugdash/tocgen](./packages/tocgen)             | Nested table of contents from Portable Text headings               | Being reworked to compute at render time |
+| [@plugdash/shortlink](./packages/shortlink)       | Short URLs for posts, stored as native EmDash redirects            | Being reworked                           |
+| [@plugdash/sharepost](./packages/sharepost)       | Share button URLs for Twitter, LinkedIn, WhatsApp, Bluesky, email  | Being reworked to compute at render time |
+| [@plugdash/heartpost](./packages/heartpost)       | Heart button with a per-post count in plugin KV                    | Being reworked                           |
+| [@plugdash/engage](./packages/engage)             | Heart, share, and copy-link composed into one component            | Follows heartpost, sharepost, shortlink  |
+| [@plugdash/autobuild](./packages/autobuild)       | Fires a Cloudflare Pages, Netlify, or Vercel build hook on publish | Being reworked to fire on publish only   |
+| [@plugdash/socialcard](./packages/socialcard)     | OG social card image generated on publish                          | Being reworked                           |
+| [@plugdash/enrichkit](./packages/enrichkit)       | AI summary, topics, tags, and tweet draft for published posts      | Being reworked                           |
+| [@plugdash/fromghost](./packages/fromghost)       | Import a Ghost JSON export                                         | Being reworked                           |
+| [@plugdash/fromsubstack](./packages/fromsubstack) | Import a Substack export                                           | Being reworked                           |
+
+"Being reworked" means the package passes its unit tests but did not do its job on a real EmDash blog-template site in testing on 2026-09-27. The shared pattern for plugins with hooks is in [docs/plugin-pattern.md](./docs/plugin-pattern.md).
 
 ## Install
 
 ```bash
-pnpm add @plugdash/readtime
+pnpm add @plugdash/heartpost
 ```
 
 Register in your EmDash config:
 
 ```js
 // astro.config.mjs
-import { readtimePlugin } from "@plugdash/readtime";
+import emdash from "emdash/astro";
+import { heartpostPlugin } from "@plugdash/heartpost";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [readtimePlugin()],
-    }),
-  ],
+	integrations: [
+		emdash({
+			plugins: [heartpostPlugin()],
+		}),
+	],
 });
 ```
 
@@ -42,12 +50,12 @@ Import the companion component where you want it to render:
 
 ```astro
 ---
-import ReadingTime from "@plugdash/readtime/ReadingTime.astro";
+import HeartButton from "@plugdash/heartpost/HeartButton.astro";
 ---
-<ReadingTime post={post} />
+<HeartButton post={post} />
 ```
 
-Each plugin's README covers its own config options and component variants.
+Render-time plugins (readtime, tocgen, sharepost) need no registration: import the component and pass `post`. Each plugin's README covers its own config options and component variants.
 
 ## Development
 
@@ -79,4 +87,4 @@ A "Version Packages" PR opens automatically on main. Merging it bumps versions, 
 
 ## Contributing
 
-Read [AGENTS.md](./AGENTS.md) before adding a new plugin. It covers the two-file plugin structure, the stage system, and confirmed EmDash API behavior learned while building these plugins.
+Read [AGENTS.md](./AGENTS.md) before adding a new plugin. It covers the two-file plugin structure, the stage system, the design rules, and EmDash behavior confirmed on a real site. Plugins must pass `pnpm e2e` and `pnpm e2e:prod` on the blog template.
