@@ -62,6 +62,16 @@ pnpm smoke      # verify each built package exports a valid descriptor
 
 The full smoke gate (`lint -> build -> typecheck -> test -> smoke`) runs on every push via GitHub Actions. Nothing publishes to npm unless all five pass.
 
+### End-to-end tests against real EmDash
+
+```bash
+pnpm exec playwright install chromium   # once
+pnpm e2e        # build a real EmDash blog with every plugin, run all e2e specs on astro dev
+pnpm e2e:prod   # same site, production build, only specs tagged @prod
+```
+
+`pnpm e2e:setup` (run by both) clones the pinned EmDash blog template into `.real-emdash/site`, packs every package into a tarball, installs them and registers every plugin with no options. It takes a couple of minutes the first time. Set `E2E_PORT` / `E2E_PROD_PORT` if 4321 / 4400 are taken. The `Real EmDash` workflow runs both modes on every PR. See [e2e/harness/README.md](./e2e/harness/README.md) for writing specs.
+
 ## Releasing
 
 Versioning and publishing use [changesets](https://github.com/changesets/changesets).
