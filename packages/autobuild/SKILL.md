@@ -1,129 +1,88 @@
 ---
 name: autobuild
-description: Fires a Cloudflare Pages, Netlify, or Vercel build hook on every publish from EmDash. Triggers a rebuild of the live site when content is published or deleted.
+description: Fires a Cloudflare Pages, Netlify, or Vercel build hook when content is published or unpublished. For static or prerendered sites only.
 ---
 
-# @plugdash/autobuild
+# skill: autobuild
 
-Triggers a deploy webhook on every EmDash publish. Posts to a Cloudflare
-Pages, Netlify, or Vercel build hook URL. Fire-and-forget: debounces rapid
-publishes into one deploy, logs the result, never blocks the publish event.
+## what it does
 
-## Plugin type
+Calls a deploy hook (Cloudflare Pages, Netlify, Vercel) after a publish, an unpublish, or the delete of a published entry. Use it only when a static or prerendered site reads EmDash content at build time. A server-rendered EmDash site (`output: "server"`) shows new content at once and needs no rebuild.
 
-Standard
+## plugin type
 
-## Capabilities
+Native
+
+## capabilities declared
 
 ```
-network:fetch
-read:content
+content:read
+network:request
 ```
 
-`read:content` is required to register `content:afterSave` and
-`content:afterDelete` hooks, even though the plugin does not call
-`ctx.content.get()`. `network:fetch` is required to call `ctx.http.fetch()`.
-The `allowedHosts` array is auto-populated from `hookUrl`'s hostname.
+`allowedHosts`: `api.cloudflare.com`, `api.netlify.com`, `api.vercel.com`, the host of `hookUrl`, plus the `allowedHosts` option.
 
-## Hooks
+## hooks
 
-- `plugin:install` - seeds KV config from the `autobuildPlugin({...})` options passed at build time
-- `content:afterSave` - schedules a debounced webhook fire when a published post is saved
-- `content:afterDelete` - schedules a debounced webhook fire on any delete
+- `content:afterPublish` - schedules a debounced deploy
+- `content:afterUnpublish` - schedules a debounced deploy
+- `content:beforeDelete` - notes in KV whether the entry was published
+- `content:afterDelete` - schedules a deploy only if it was published
 
-## Install
+No `content:afterSave`: autosaves never trigger a deploy.
+
+## install
 
 ```bash
 pnpm add @plugdash/autobuild
 ```
 
-## Register
+## register
 
 ```js
 // astro.config.mjs
-import { defineConfig } from "astro/config";
-import emdash from "emdash";
+import emdash from "emdash/astro";
 import { autobuildPlugin } from "@plugdash/autobuild";
 
-export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [
-        autobuildPlugin({
-          hookUrl: import.meta.env.CF_PAGES_DEPLOY_HOOK,
-          collections: ["posts"],
-          debounceMs: 5000,
-        }),
-      ],
-    }),
-  ],
+emdash({
+	plugins: [autobuildPlugin({ hookUrl: process.env.DEPLOY_HOOK_URL, collections: ["posts"] })],
 });
 ```
 
-## Config options
+## companion component
 
-| Option         | Type                      | Default         |
-| -------------- | ------------------------- | --------------- |
-| `hookUrl`      | `string`                  | required        |
-| `method`       | `"POST" \| "GET"`         | `"POST"`        |
-| `collections`  | `string[]`                | all             |
-| `statuses`     | `ContentStatus[]`         | `["published"]` |
-| `debounceMs`   | `number`                  | `5000`          |
-| `timeout`      | `number`                  | `5000`          |
-| `body`         | `Record<string, unknown>` | none            |
-| `headers`      | `Record<string, string>`  | none            |
-| `allowedHosts` | `string[]`                | auto            |
+None. Pure infrastructure.
 
-## No companion component
+## configuration
 
-autobuild has no UI. It is pure infrastructure. Nothing to import, nothing
-to render.
+| option         | type              | default  | description                                                      |
+| -------------- | ----------------- | -------- | ---------------------------------------------------------------- |
+| `hookUrl`      | `string`          | none     | Deploy hook URL, https only. Admin secret setting `hookUrl` wins |
+| `method`       | `"POST" \| "GET"` | `"POST"` | HTTP method                                                      |
+| `collections`  | `string[]`        | all      | Collections that trigger a deploy                                |
+| `debounceMs`   | `number`          | `5000`   | Triggers inside this window make one deploy                      |
+| `timeout`      | `number`          | `5000`   | Request timeout in ms                                            |
+| `body`         | `object`          | none     | Optional JSON body                                               |
+| `headers`      | `object`          | none     | Optional extra headers                                           |
+| `allowedHosts` | `string[]`        | defaults | Extra allowed hosts                                              |
 
-## What it does not do
+## what it does not do
 
-- Does not retry failed deploys. The next publish retries.
-- Does not verify that the deploy succeeded.
-- Does not sign requests.
-- Does not persist debounce state across process restarts.
-- Does not allow `http://`, `localhost`, or private-IP hook URLs (SSRF protection).
+- Does not retry failed deploys
+- Does not verify the deploy succeeded
+- Does not sign requests
+- Does not allow `http://`, localhost, or private-IP hook URLs
 
-## For agents
+## for agents
 
 After installing @plugdash/autobuild and registering it in astro.config.mjs:
 
-0. To configure without code: navigate to EmDash admin - Plugins -
-   Autobuild - Settings. Hook URL, method, debounce window, and
-   collections are available in the dashboard. The current hook URL is
-   masked; leave the field blank on save to keep it unchanged.
+1. Confirm the site is static or prerendered. If it is `output: "server"`, do not install autobuild.
+2. Get a deploy hook URL from the host and put it in an env var, for example `DEPLOY_HOOK_URL`.
+3. Pass it: `autobuildPlugin({ hookUrl: process.env.DEPLOY_HOOK_URL })`. Or set the secret "Deploy hook URL" in the plugin settings (needs `EMDASH_ENCRYPTION_KEY`).
+4. Publish a test post and wait `debounceMs` plus a few seconds. The server log shows `webhook fired` (or `webhook non-2xx` / `webhook failed`, which still means a request was attempted).
+5. If nothing fires: look for `no hook URL configured, deploys are off`, `hook host not allowed` (add the host to the `allowedHosts` option) or `invalid hook url` in the log. Autosaves and draft edits never fire.
 
-1. Get a deploy hook URL from the hosting provider:
-   - **Cloudflare Pages:** Project -> Settings -> Builds & deployments -> Deploy hooks
-   - **Netlify:** Site settings -> Build & deploy -> Build hooks
-   - **Vercel:** Project Settings -> Git -> Deploy Hooks
-
-2. Store the URL in an environment variable. Example `.env`:
-   ```
-   CF_PAGES_DEPLOY_HOOK=https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/...
-   ```
-
-3. Pass it to autobuildPlugin in astro.config.mjs:
-   ```js
-   autobuildPlugin({ hookUrl: import.meta.env.CF_PAGES_DEPLOY_HOOK })
-   ```
-
-4. Publish a test post in the admin. Wait `debounceMs` + a few seconds.
-   Check the hosting provider's dashboard for a new deploy triggered within
-   that window.
-
-5. If no deploy fires:
-   - Confirm `hookUrl` is set (check admin logs for `autobuild: hookUrl not configured`).
-   - Confirm the URL is `https://` and not a private IP (SSRF protection rejects these).
-   - Check admin logs for `autobuild: webhook non-2xx` or `autobuild: webhook failed`.
-
-The plugin writes no metadata to content. Its only observable effect is
-the POST to the configured hook URL and log entries under the `autobuild:`
-prefix.
-
-Capabilities declared: `network:fetch`, `read:content`
-Hooks: `plugin:install`, `content:afterSave`, `content:afterDelete`
-KV keys written: `autobuild:config:*`, `autobuild:bootstrapHash`
+Metadata written: none
+Companion component: none
+KV keys: `gen` (debounce token), `live:<id>` (delete marker)
