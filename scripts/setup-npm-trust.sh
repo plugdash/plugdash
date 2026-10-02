@@ -11,7 +11,7 @@ WORKFLOW="release.yml"
 # EXISTING_PKGS=()
 
 # Packages not on npm yet — need one manual publish first, then trust.
-NEW_PKGS=(codeblock enrichkit fromghost fromsubstack socialcard)
+NEW_PKGS=(import-cli)
 
 require_npm_version() {
 	local min="11.15.0"
