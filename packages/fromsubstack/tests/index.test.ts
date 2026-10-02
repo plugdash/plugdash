@@ -1,6 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { zipSync, strToU8 } from "fflate";
-import { createSubstackSource } from "../src/source.ts";
+import { createSubstackSource, type SubstackAnalysis } from "../src/source.ts";
 import { parseCsv, parseCsvRows } from "../src/csv.ts";
 import type { ImportContext, NormalizedItem, SourceInput } from "emdash";
 import type {
@@ -71,9 +73,13 @@ async function collect(
 	return items;
 }
 
+afterEach(() => vi.restoreAllMocks());
+
 function makeSource(overrides: Parameters<typeof createSubstackSource>[0] = {}) {
 	const warnings: string[] = [];
-	const source = createSubstackSource({ onWarn: (m) => warnings.push(m), ...overrides });
+	// fetchContent logs warnings through console.warn; analyze() returns them.
+	vi.spyOn(console, "warn").mockImplementation((m: string) => void warnings.push(m));
+	const source = createSubstackSource(overrides);
 	return { source, warnings };
 }
 
@@ -170,8 +176,8 @@ describe("export reading", () => {
 
 describe("analyze", () => {
 	it("reports the importable posts and the site behind them", async () => {
-		const { source, warnings } = makeSource();
-		const analysis = await source.analyze(makeInput(), EMPTY_CONTEXT);
+		const { source } = makeSource();
+		const analysis = (await source.analyze(makeInput(), EMPTY_CONTEXT)) as SubstackAnalysis;
 
 		expect(analysis.sourceId).toBe("substack");
 		expect(analysis.site).toEqual({
@@ -181,8 +187,8 @@ describe("analyze", () => {
 		// 7 CSV rows, minus the podcast and the one with no HTML file.
 		expect(analysis.postTypes[0]?.count).toBe(5);
 		expect(analysis.authors[0]?.postCount).toBe(5);
-		expect(warnings.join(" ")).toMatch(/Episode one/);
-		expect(warnings.join(" ")).toMatch(/Lost body/);
+		expect(analysis.warnings.join(" ")).toMatch(/Episode one/);
+		expect(analysis.warnings.join(" ")).toMatch(/Lost body/);
 	});
 
 	it("collects every distinct image as an attachment", async () => {
@@ -296,7 +302,10 @@ describe("fetchContent", () => {
 
 		const { source: publishing } = makeSource({ status: "published" });
 		const published = await collect(publishing.fetchContent(makeInput(), allTypes));
-		expect(published.every((i) => i.status === "publish")).toBe(true);
+		// Paid posts stay drafts unless paidPostsAs says otherwise.
+		const free = published.filter((i) => !i.meta?.substackPaid);
+		expect(free.every((i) => i.status === "publish")).toBe(true);
+		expect(published.filter((i) => i.meta?.substackPaid).every((i) => i.status === "draft")).toBe(true);
 	});
 
 	it("keeps an unpublished post as a draft even when status is published", async () => {
@@ -411,6 +420,66 @@ describe("fetchContent", () => {
 		const items = await collect(source.fetchContent(makeInput(duped), allTypes));
 		expect(items).toHaveLength(1);
 		expect(warnings.join(" ")).toMatch(/appears more than once/);
+	});
+});
+
+// ── Real export format ──
+
+// tests/fixtures/real-export mirrors Substack's export: no url column,
+// post_id is "<id>.<slug>", bodies live at posts/<post_id>.html.
+const REAL_DIR = join(import.meta.dirname, "fixtures/real-export");
+const REAL_FIXTURE_FILES: Record<string, string> = {
+	"posts.csv": readFileSync(join(REAL_DIR, "posts.csv"), "utf8"),
+	...Object.fromEntries(
+		readdirSync(join(REAL_DIR, "posts")).map((f) => [
+			`posts/${f}`,
+			readFileSync(join(REAL_DIR, "posts", f), "utf8"),
+		]),
+	),
+};
+const ALL = { postTypes: [], includeDrafts: true };
+
+describe("real Substack export", () => {
+	it("imports every article row, paid posts as drafts, and skips the podcast", async () => {
+		const { source, warnings } = makeSource({ status: "published" });
+		const input = makeInput(REAL_FIXTURE_FILES);
+		const analysis = await source.analyze(input, EMPTY_CONTEXT);
+		expect(analysis.postTypes[0]?.count).toBe(3);
+		const items = await collect(source.fetchContent(input, ALL));
+		expect(items.map((i) => [i.slug, i.status])).toEqual([
+			["hello-world", "publish"],
+			["members-only", "draft"],
+			["work-in-progress", "draft"],
+		]);
+		expect(items[1]!.meta?.substackPaid).toBe(true);
+		expect(warnings.join(" ")).toMatch(/Episode one.*podcast/);
+		expect(warnings.join(" ")).not.toMatch(/no HTML file/);
+	});
+
+	it("honours paidPostsAs publish and skip", async () => {
+		const input = makeInput(REAL_FIXTURE_FILES);
+		const pub = makeSource({ status: "published", paidPostsAs: "publish" }).source;
+		const pubItems = await collect(pub.fetchContent(input, ALL));
+		expect(pubItems.find((i) => i.slug === "members-only")?.status).toBe("publish");
+		const skip = makeSource({ paidPostsAs: "skip" }).source;
+		const skipItems = await collect(skip.fetchContent(input, ALL));
+		expect(skipItems.map((i) => i.slug)).toEqual(["hello-world", "work-in-progress"]);
+		expect((await skip.analyze(input, EMPTY_CONTEXT)).postTypes[0]?.count).toBe(2);
+	});
+
+	it("drops the subscribe widget and buttons but keeps footnote text", async () => {
+		const { source } = makeSource();
+		const items = await collect(source.fetchContent(makeInput(REAL_FIXTURE_FILES), ALL));
+		const text = JSON.stringify(items[0]!.content);
+		expect(text).toContain("Real body.");
+		expect(text).toContain("Footnote text stays.");
+		expect(text).not.toMatch(/Subscribe/);
+	});
+
+	it("returns warnings in the analysis", async () => {
+		const { source } = makeSource();
+		const analysis = (await source.analyze(makeInput(REAL_FIXTURE_FILES), EMPTY_CONTEXT)) as SubstackAnalysis;
+		expect(analysis.warnings.join(" ")).toMatch(/podcast/);
 	});
 });
 

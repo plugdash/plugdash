@@ -43,6 +43,7 @@
 	"devDependencies": {
 		"@plugdash/html-to-portable-text": "workspace:*",
 		"@plugdash/types": "workspace:*",
+		"@types/node": "^22.20.4",
 		"vitest": "^2.0.0"
 	}
 }
