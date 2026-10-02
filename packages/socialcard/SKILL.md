@@ -1,15 +1,17 @@
 ---
 name: socialcard
-description: OG social card generator for EmDash. Builds a share image on publish and writes it to content metadata as ogImage.
+description: Share image generator for EmDash. Renders a PNG card on publish and sets it as the entry's SEO image, which og:image already reads.
 ---
 
 # @plugdash/socialcard
 
-Generates an Open Graph share image for EmDash content on publish. Writes `metadata.ogImage` with the uploaded image URL. Three built-in templates, no external image service.
+## What it does
+
+On publish, draws a 1200x630 PNG card with the title, author and date, uploads it to media, and sets it as the entry's `seo.image`. The template's `getSeoMeta()` turns that into the `og:image` and `twitter:image` tags.
 
 ## Plugin type
 
-Standard
+Native
 
 ## Capabilities declared
 
@@ -17,12 +19,12 @@ Standard
 content:read
 content:write
 media:write
+schema:read
 ```
 
 ## Hooks
 
-- `plugin:install` - seeds config to KV (template, width, height, colours, fonts, logo)
-- `content:afterSave` - renders and uploads a card on publish, skips drafts
+- `content:afterPublish` (timeout 30000) - renders, uploads and sets `seo.image`. Skips when nothing changed since the last card, when `seo.image` was set by hand, and for collections without SEO support.
 
 ## Install
 
@@ -35,73 +37,61 @@ pnpm add @plugdash/socialcard
 ```js
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import emdash from "emdash";
+import emdash from "emdash/astro";
 import { socialcardPlugin } from "@plugdash/socialcard";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [socialcardPlugin()],
-    }),
-  ],
+	integrations: [
+		emdash({
+			plugins: [socialcardPlugin()],
+		}),
+	],
 });
 ```
 
+## Companion component
+
+None. The card is the visual output, and the site's existing SEO head tags show it.
+
 ## Configuration
 
-| Option        | Type                                 | Default     | Description                          |
-| ------------- | ------------------------------------- | ----------- | ------------------------------------- |
-| template      | `"default"` \| `"minimal"` \| `"bold"` | `"default"` | Card layout                           |
-| width         | `number`                              | `1200`      | Card width in pixels                  |
-| height        | `number`                              | `630`       | Card height in pixels                 |
-| background    | `string` (hex)                        | `"#0f172a"` | Background colour                     |
-| foreground    | `string` (hex)                        | `"#f8fafc"` | Text (and, on `minimal`, paper) colour |
-| logo          | `string` (URL)                        | none        | Logo drawn in the top-left corner     |
-| fonts.title   | `string` (CSS font stack)             | system sans | Font for the title line               |
-| fonts.body    | `string` (CSS font stack)             | system sans | Font for the byline                   |
+| Option            | Type                                   | Default     | Description                              |
+| ----------------- | -------------------------------------- | ----------- | ---------------------------------------- |
+| template          | `"default"` \| `"minimal"` \| `"bold"` | `"default"` | Card layout                              |
+| width             | `number`                               | `1200`      | Card width in pixels                     |
+| height            | `number`                               | `630`       | Card height in pixels                    |
+| background        | `string` (hex)                         | `"#0f172a"` | Background colour                        |
+| foreground        | `string` (hex)                         | `"#f8fafc"` | Text colour                              |
+| logo              | `string`                               | none        | http(s) URL or file path (Node)          |
+| fontFiles         | `string[]`                             | none        | Extra TTF/OTF fonts for non-Latin titles |
+| overwriteSeoImage | `boolean`                              | `false`     | Replace an SEO image someone set by hand |
 
 ## What it does not do
 
-- Does not rasterize to PNG - ships an `image/svg+xml` card (see below)
-- Does not fail the publish if rendering or upload fails - logs and moves on
-- Does not generate cards for drafts, archived, or scheduled content
-- Does not delete a previously uploaded card when content is unpublished
-
-### Why SVG, not PNG
-
-The spec called for `satori` + `resvg-js` to rasterize to PNG. Neither ships
-a Workers-safe build that a sandboxed plugin bundle can load (both need a
-font binary or a `.wasm` blob at runtime, and a sandboxed plugin ships one
-JS file with no network capability). Every other plugin in this repo has
-zero runtime dependencies for the same reason. The card is built as a plain
-SVG string instead - deterministic, dependency-free, testable with `expect().toContain()`.
-
-Some OG consumers (Twitter/X, Facebook) do not accept `image/svg+xml` for
-`og:image`, so treat this as the interim output. Upgrade path: once a
-sandboxed plugin can ship a binary asset alongside its entry bundle, swap
-`renderCard`'s return in `src/card.ts` for a satori → resvg → PNG pipeline
-and update `CARD_MIME`. The layout math (wrapping, positions, templates)
-carries over unchanged.
+- Does not write `metadata.ogImage` (0.1.x did)
+- Does not render on autosave or draft save
+- Does not delete the card when a post is unpublished
+- Has no admin page
 
 ## For agents
 
-After installing @plugdash/socialcard and registering it in astro.config.mjs:
+After installing @plugdash/socialcard and registering it in `plugins` (not `sandboxed`) in astro.config.mjs:
 
-1. Publish a test post and verify `post.data.metadata.ogImage` is populated
-   with a URL ending in `.svg`.
+1. Make sure the post collection has SEO enabled (the blog template's `posts` does).
 
-2. Reference it in your post layout's `<head>`:
-   ```astro
-   ---
-   const { ogImage } = post.data.metadata ?? {};
-   ---
-   {ogImage && <meta property="og:image" content={ogImage} />}
-   ```
+2. Make sure the post page builds SEO tags the way the blog template does: `getSeoMeta(post, { siteUrl: Astro.url.origin, ... })` in `src/pages/posts/[slug].astro`, rendered by `<EmDashHead>` in the layout. Passing `Astro.url.origin` is what makes the stored root-relative URL absolute.
 
-3. If no `ogImage` appears, confirm:
-   - Post status is "published" (not draft)
-   - The plugin declares `content:read`, `content:write`, and `media:write`
-   - The post was saved after the plugin was installed (existing posts need a re-publish)
+3. Publish a post. The server log shows `[plugin:socialcard] card generated { id, url, bytes, renderMs }`.
 
-Metadata written:
-- `post.data.metadata.ogImage` - string, URL to the generated card image
+4. Load the post page and check that `<meta property="og:image">` points to a URL that returns `200` with `content-type: image/png`.
+
+5. If there is no card:
+   - The log says `has no SEO support`: enable SEO on that collection.
+   - The log says `SEO image was set by hand`: clear `seo.image` or pass `overwriteSeoImage: true`.
+   - The log says `card unchanged, skipping render`: nothing changed since the last card, so this is expected.
+
+Fields written:
+
+- `entry.seo.image` - string, root-relative media URL like `/_emdash/api/media/file/<key>.png`
+
+KV keys: `hash:<id>` (last card hash), `media:<id>` (`{ mediaId, url }` of the current card).

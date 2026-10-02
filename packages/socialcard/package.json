@@ -1,7 +1,26 @@
 {
 	"name": "@plugdash/socialcard",
 	"version": "0.1.2",
-	"description": "OG social card generation for EmDash - builds a share image on publish and writes it to metadata.ogImage",
+	"description": "Share images for EmDash posts - renders a PNG card on publish and sets it as the post's SEO image",
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"og-image",
+		"open-graph",
+		"png",
+		"social-sharing",
+		"socialcard"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/socialcard"
+	},
+	"files": [
+		"dist",
+		"OFL-Lexend.txt"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
@@ -10,43 +29,28 @@
 			"import": "./dist/index.mjs",
 			"types": "./dist/index.d.mts"
 		},
-		"./sandbox": {
-			"import": "./dist/sandbox-entry.mjs"
-		},
 		"./card": {
 			"import": "./dist/card.mjs",
 			"types": "./dist/card.d.mts"
 		}
 	},
-	"files": [
-		"dist"
-	],
 	"scripts": {
-		"build": "tsdown src/index.ts --dts.eager && tsdown src/sandbox-entry.ts --dts.eager --no-clean && tsdown src/card.ts --dts.eager --no-clean",
+		"build": "tsdown src/index.ts src/card.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit",
 		"lint": "oxlint ."
 	},
-	"keywords": [
-		"emdash",
-		"emdash-plugin",
-		"socialcard",
-		"og-image",
-		"open-graph",
-		"social-sharing"
-	],
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/plugdash/plugdash.git",
-		"directory": "packages/socialcard"
-	},
-	"peerDependencies": {
-		"emdash": ">=0.13.0"
+	"dependencies": {
+		"@resvg/resvg-wasm": "^2.6.2"
 	},
 	"devDependencies": {
 		"@plugdash/testing": "workspace:*",
 		"@plugdash/types": "workspace:*",
+		"@types/node": "^22.20.5",
+		"emdash": "^1.0.1",
 		"vitest": "^2.0.0"
+	},
+	"peerDependencies": {
+		"emdash": ">=1.0.0"
 	}
 }

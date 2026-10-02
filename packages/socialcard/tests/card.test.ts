@@ -77,7 +77,6 @@ describe("resolveConfig", () => {
 			background: "#000000",
 			foreground: "#ffffff",
 			logo: "https://example.com/logo.png",
-			fonts: { title: "Georgia, serif", body: "Verdana, sans-serif" },
 		});
 		expect(c).toMatchObject({
 			template: "bold",
@@ -86,8 +85,6 @@ describe("resolveConfig", () => {
 			background: "#000000",
 			foreground: "#ffffff",
 			logo: "https://example.com/logo.png",
-			titleFont: "Georgia, serif",
-			bodyFont: "Verdana, sans-serif",
 		});
 	});
 
@@ -128,11 +125,7 @@ describe("wrapText", () => {
 	});
 
 	it("gives an oversized word its own line", () => {
-		expect(wrapText("hi supercalifragilistic go", 6)).toEqual([
-			"hi",
-			"supercalifragilistic",
-			"go",
-		]);
+		expect(wrapText("hi supercalifragilistic go", 6)).toEqual(["hi", "supercalifragilistic", "go"]);
 	});
 
 	it("returns an empty list for empty input", () => {
@@ -210,7 +203,7 @@ describe("template rendering", () => {
 
 	it("default template paints a gradient over the background colour", () => {
 		const svg = renderCard(input, { background: "#123456" });
-		expect(svg).toContain("<linearGradient id=\"sc-bg\"");
+		expect(svg).toContain('<linearGradient id="sc-bg"');
 		expect(svg).toContain('fill="#123456"');
 		expect(svg).toContain('fill="url(#sc-bg)"');
 	});
@@ -230,9 +223,7 @@ describe("template rendering", () => {
 
 	it("bold template renders a colour block and offsets the text past it", () => {
 		const svg = renderCard(input, { template: "bold" });
-		expect(svg).toContain(
-			'<rect x="0" y="0" width="120" height="630" fill="#f8fafc"/>',
-		);
+		expect(svg).toContain('<rect x="0" y="0" width="120" height="630" fill="#f8fafc"/>');
 		// Text starts after the 120px block plus the 80px gutter.
 		expect(svg).toContain('<tspan x="200"');
 		expect(cardText(svg)).toContain("Ada Lovelace");
@@ -282,17 +273,17 @@ describe("template rendering", () => {
 });
 
 describe("cardFilename", () => {
-	it("is stable for a given content id so republishing overwrites", () => {
-		expect(cardFilename("content-001")).toBe("og-content-001.svg");
+	it("is stable for a given content id", () => {
+		expect(cardFilename("content-001")).toBe("og-content-001.png");
 		expect(cardFilename("content-001")).toBe(cardFilename("content-001"));
 	});
 
 	it("strips characters that are not filename-safe", () => {
-		expect(cardFilename("a/b c:d")).toBe("og-a-b-c-d.svg");
+		expect(cardFilename("a/b c:d")).toBe("og-a-b-c-d.png");
 	});
 
 	it("matches the declared media type", () => {
-		expect(CARD_MIME).toBe("image/svg+xml");
-		expect(cardFilename("x").endsWith(".svg")).toBe(true);
+		expect(CARD_MIME).toBe("image/png");
+		expect(cardFilename("x").endsWith(".png")).toBe(true);
 	});
 });
