@@ -94,7 +94,7 @@ These supersede anything in plugin specs if there is a conflict.
 
 ### confirmed 2026-09-27 on EmDash 0.41
 
-Being rechecked against EmDash 1.0 in docs/emdash-1.0-recheck.md (card #25).
+Rechecked against EmDash 1.0.1 in docs/emdash-1.0-recheck.md (card #25). Facts that changed on 1.0.1 are marked below, and the extra 1.0.1 facts are listed after fact 17.
 
 Measured by running all 13 packages on a real site from the official blog
 template, in dev and in a production build. The unit-test mocks do not model
@@ -154,11 +154,31 @@ below, this section wins.
 15. The admin import screen supports only WordPress. Sources registered with
     `registerSource()` have no UI or API entry point.
 16. The blog template has no page cache and no `site` in `astro.config.mjs`.
-    Each page view renders on the server. `ctx.url()` and `ctx.site.url` return
-    a relative path when `site` is not set.
+    Each page view renders on the server. CHANGED on 1.0.1: `ctx.url()` and
+    `ctx.site.url` are absolute after setup. They come from the
+    `emdash:site_url` option, written once from the setup request origin
+    (`astro/routes/api/setup/index.ts:118`, `dev-bypass.ts:136`,
+    `emdash-runtime.ts:1598-1617`, `plugins/context.ts:1406-1418`). Before
+    setup they are empty or relative. The stored value can be stale (a
+    production run on a copied dev DB returned the dev host), so rule E still
+    holds: build URLs at render time from the request.
 17. Cloudflare limits: Workers Free = 10 ms CPU per request and 100,000
     requests/day. D1 Free = 5 M rows read/day and 100,000 rows written/day. D1
     bills every row a query scans.
+
+Added on 1.0.1 (card #25):
+
+18. Unknown data fields (e.g. `metadata`) throw `EmDashValidationError`
+    "Unknown field 'metadata' in collection 'posts'"
+    (`database/repositories/content.ts:1261-1264`), not a SqliteError.
+19. Secret settings need the `EMDASH_ENCRYPTION_KEY` env var
+    (`plugins/settings.ts:85-98`).
+20. Plugin media uploads reject SVG (`GLOBAL_UPLOAD_ALLOWLIST`,
+    `api/handlers/media-allowlist.ts:11-28`).
+21. Standard plugin routes get `(routeCtx, ctx)`; native routes get one full
+    `ctx` with a real `Request` (`plugins/adapt-sandbox-entry.ts:222-280`). A
+    thrown error that is not a `PluginRouteError` reaches the client as 500
+    `INTERNAL_ERROR` "Plugin route error".
 
 **Design rules**
 
@@ -295,8 +315,9 @@ plugins with hooks use native `createPlugin(options)` (rule D).
 
 // confirmed 2026-04-05 during readtime collections-bug fix
 `ctx.content.update()` can crash with
-`SqliteError: no such column: <field>` when the target collection lacks the
-field being written (e.g. system collections like `plugins`). Wrap
+`SqliteError: no such column: <field>` on 0.41 (on 1.0.1 it is an
+`EmDashValidationError` "Unknown field", fact 18) when the target collection
+lacks the field being written (e.g. system collections like `plugins`). Wrap
 `ctx.content.update()` calls in try/catch (rule H: hooks never throw) and use a
 collections allowlist to avoid the crash in the first place.
 
