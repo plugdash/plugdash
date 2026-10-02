@@ -19,8 +19,9 @@ describe("codeblockPlugin() descriptor", () => {
 		expect(codeblockPlugin().componentsEntry).toBe("@plugdash/codeblock/astro");
 	});
 
-	it("declares only the content:read capability", () => {
-		expect(codeblockPlugin().capabilities).toEqual(["content:read"]);
+	// content:beforeSave is only registered for plugins holding content:write.
+	it("declares only the content:write capability", () => {
+		expect(codeblockPlugin().capabilities).toEqual(["content:write"]);
 	});
 
 	it("defaults to empty options", () => {
@@ -69,15 +70,19 @@ describe("createPlugin() native definition", () => {
 	// must fill these in.
 	it("returns a fully normalized ResolvedPlugin shape", () => {
 		const definition = createPlugin();
-		expect(definition.capabilities).toEqual([]);
+		// definePlugin adds content:read, which content:write implies.
+		expect(definition.capabilities).toEqual(["content:write", "content:read"]);
 		expect(definition.allowedHosts).toEqual([]);
 		expect(definition.storage).toEqual({});
 		expect(definition.routes).toEqual({});
 	});
 
-	// codeblock changes how existing code blocks render; it never runs on save.
-	it("registers no hooks", () => {
-		expect(createPlugin().hooks).toEqual({});
+	it("registers only content:beforeSave, with a long timeout that never aborts the save", () => {
+		const hooks = createPlugin().hooks;
+		expect(Object.keys(hooks)).toEqual(["content:beforeSave"]);
+		const hook = hooks["content:beforeSave"]!;
+		expect(hook.timeout).toBe(30_000);
+		expect(hook.errorPolicy).toBe("continue");
 	});
 
 	// The `code` block type ships with EmDash, so this plugin must not add
@@ -93,6 +98,10 @@ describe("createPlugin() native definition", () => {
 describe("descriptor and definition consistency", () => {
 	it("share the same id", () => {
 		expect(codeblockPlugin().id).toBe(createPlugin().id);
+	});
+
+	it("share the same capabilities", () => {
+		expect(createPlugin().capabilities).toEqual(expect.arrayContaining(codeblockPlugin().capabilities ?? []));
 	});
 
 	it("share the same version", () => {

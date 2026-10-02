@@ -7,9 +7,7 @@ description: Shiki syntax highlighting for EmDash code blocks. Native plugin wit
 
 ## what it does
 
-Renders the code blocks EmDash already stores with Shiki syntax highlighting. Highlighting happens server-side at render time, so the browser gets plain coloured HTML. Every block has a header with the language and a copy button.
-
-Nothing is rewritten on save. Change the theme and every existing post picks it up on the next render.
+Renders the code blocks EmDash already stores with Shiki syntax highlighting. Each block is highlighted once on save and the HTML is stored on the block, so page views never load Shiki. Every block has a header with the language and a copy button.
 
 ## plugin type
 
@@ -18,12 +16,14 @@ Native
 ## capabilities declared
 
 ```
-content:read
+content:write
 ```
+
+Required for `content:beforeSave`; EmDash silently skips that hook without it.
 
 ## hooks
 
-None. codeblock exports a transform function that runs at render time, not a plugin that runs on save.
+`content:beforeSave` (timeout 30 s, errorPolicy `continue`). Highlights every `code` node in the saved data and stores `pdHighlight: { key, html, bg, fg, lightBg?, lightFg? }` on it. Skips nodes whose key already matches, does not store HTML over 100,000 characters, and never fails a save. The key hashes code, language, theme, lightTheme, lineNumbers and plugin version; on a mismatch the component highlights at render time instead.
 
 ## install
 
@@ -36,7 +36,7 @@ pnpm add @plugdash/codeblock
 ```js
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import emdash from "emdash";
+import emdash from "emdash/astro";
 import { codeblockPlugin } from "@plugdash/codeblock";
 
 export default defineConfig({
@@ -103,8 +103,8 @@ Preloaded by default: TypeScript, JavaScript, Python, Go, Rust, Shell, JSON, YAM
 - No line highlighting, no diff view
 - No client-side highlighting, so no runtime language switching
 - No new editor block type - it renders the `code` block EmDash already has
-- Does not rewrite stored content, so nothing to migrate when the theme changes
-- No hooks, metadata writes, or KV storage
+- No migration step: posts saved before this version, or before a theme change, render at request time until saved again
+- No metadata writes or KV storage
 - Cannot be sandboxed or published to the marketplace
 
 ## for agents
@@ -131,11 +131,16 @@ After installing @plugdash/codeblock and registering it in astro.config.mjs:
 4. If code renders unhighlighted, check the block's language. Unknown languages
    fall back to plaintext on purpose rather than throwing.
 
-5. If nothing renders differently at all, confirm the plugin is in the `plugins`
+5. To verify pre-highlighting, save the post, then read it back through the
+   content API: each `code` node should carry `pdHighlight.key` and
+   `pdHighlight.html`. If it does not, check that the plugin is registered and
+   look for a "codeblock: pre-highlight failed" warning in the server log.
+
+6. If nothing renders differently at all, confirm the plugin is in the `plugins`
    array (not `sandboxed`) in astro.config.mjs. Native plugins cannot run in
    sandboxed mode.
 
-6. With no config, blocks switch between github-dark and github-light. For a
+7. With no config, blocks switch between github-dark and github-light. For a
    custom pair, set both themes and let the CSS variables switch:
    ```
    codeblockPlugin({ theme: "tokyo-night", lightTheme: "catppuccin-latte" })
@@ -144,10 +149,14 @@ After installing @plugdash/codeblock and registering it in astro.config.mjs:
    or a `.light` / `.dark` class on `<html>`. A site that is dark with no marker
    on `<html>` should set `data-theme="dark"`, or light-OS visitors get light blocks.
 
-7. Options passed to `codeblockPlugin()` apply to every block, auto-wired or
-   imported. Props on `<CodeBlock>` override them per block.
+8. Options passed to `codeblockPlugin()` apply to every block, auto-wired or
+   imported. Props on `<CodeBlock>` override them per block (a prop that
+   changes the key makes that block highlight at render time).
 
-Metadata written: none
+9. On EmDash templates, add `"@plugdash/*"` to `minimumReleaseAgeExclude` in
+   `pnpm-workspace.yaml`, or pnpm installs an older release with no error.
+
+Metadata written: none. Each `code` node gets `pdHighlight` (object: key, html, bg, fg, lightBg?, lightFg?)
 Companion component: CodeBlock.astro
 import: `import CodeBlock from "@plugdash/codeblock/CodeBlock.astro"`
 usage: `<CodeBlock code="..." language="typescript" />` or auto-wired via PortableText
