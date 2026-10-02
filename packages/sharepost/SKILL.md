@@ -1,27 +1,23 @@
 ---
 name: sharepost
-description: Social sharing URL plugin for EmDash. Generates share URLs for Twitter/X, LinkedIn, WhatsApp, Bluesky, and email on publish and writes them to content metadata.
+description: Share buttons for EmDash. Builds share links for Twitter/X, LinkedIn, WhatsApp, Bluesky, and email at render time.
 ---
 
 # @plugdash/sharepost
 
-Generates sharing URLs for five platforms on content publish and writes them to metadata. Ships ShareButtons.astro for zero-JavaScript share links.
+Builds sharing links for five platforms at render time. Ships ShareButtons.astro for zero-JavaScript share links.
 
 ## Plugin type
 
-Standard
+Native (deprecated no-op descriptor, nothing to register)
 
 ## Capabilities declared
 
-```
-read:content
-write:content
-```
+None.
 
 ## Hooks
 
-- `plugin:install` - seeds default config to KV (platforms list)
-- `content:afterSave` - generates share URLs on publish, skips drafts
+None.
 
 ## Install
 
@@ -31,20 +27,7 @@ pnpm add @plugdash/sharepost
 
 ## Register
 
-```js
-// astro.config.mjs
-import { defineConfig } from "astro/config";
-import emdash from "emdash";
-import { sharepostPlugin } from "@plugdash/sharepost";
-
-export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [sharepostPlugin()],
-    }),
-  ],
-});
-```
+Not needed. Set `site` in `astro.config.mjs` so links use your public domain.
 
 ## Companion component
 
@@ -67,7 +50,6 @@ Variants: `circle` (default) / `pill` / `ghost` / `filled`
 Sizes: `sm` / `md` (default) / `lg`
 Theme: `auto` (default) / `dark` / `light`
 
-Renders nothing when shareUrls metadata is not present.
 
 ## Platform hover colours
 
@@ -87,61 +69,45 @@ LinkedIn `#0a66c2`, Bluesky `#0085ff`, WhatsApp `#25d366`, Email uses
 
 ## Configuration
 
-| Option    | Type       | Default   | Description                          |
-| --------- | ---------- | --------- | ------------------------------------ |
-| platforms | `string[]` | all five  | Platforms to generate share URLs for |
-| via       | `string`   | none      | Twitter @handle without @            |
-| hashtags  | `string[]` | none      | Twitter hashtags without #           |
+Props on `<ShareButtons>`:
+
+| Prop      | Type       | Default                    | Description                          |
+| --------- | ---------- | -------------------------- | ------------------------------------ |
+| url       | `string`   | current page, absolute     | URL to share                         |
+| title     | `string`   | `post.data.title`          | Share text                           |
+| platforms | `string[]` | twitter, linkedin, bluesky | Which buttons to show                |
+| via       | `string`   | none                       | X handle without @ (X link only)     |
+| hashtags  | `string[]` | none                       | X hashtags without # (X link only)   |
 
 ## What it does not do
 
 - Does not make external HTTP calls
 - Does not require client-side JavaScript
 - Does not track share clicks
-- Does not generate share URLs for drafts or posts without a slug
+- Does not write metadata or register hooks
 - Does not create Open Graph images (see @plugdash/socialcard)
 
 ## For agents
 
-After installing @plugdash/sharepost and registering it in astro.config.mjs:
-
-0. To configure without code: navigate to EmDash admin - Plugins - Share
-   Post - Settings. Platforms, Twitter via handle, hashtags, and
-   collections allowlist are available in the dashboard.
+After installing @plugdash/sharepost (no registration needed):
 
 1. Import the companion component in the post layout:
    ```
    import ShareButtons from "@plugdash/sharepost/ShareButtons.astro"
    ```
 
-2. Add the component where share buttons should display:
+2. Add it on the post page:
    ```
-   <ShareButtons post={post} />
-   ```
-   Common placements: below post title, post footer, engagement bar.
-
-3. To show all five platforms instead of the default three:
-   ```
-   <ShareButtons post={post} platforms={["twitter", "linkedin", "whatsapp", "bluesky", "email"]} />
+   <ShareButtons post={post} via="yourhandle" platforms={["twitter", "linkedin", "whatsapp", "bluesky", "email"]} />
    ```
 
-4. Publish a test post and verify:
-   - `post.data.metadata.shareUrls.twitter` is populated (URL string)
-   - `post.data.metadata.shareUrls.linkedin` is populated (URL string)
-   - Share buttons render as clickable links that open in new tabs
+3. Set `site: "https://your-domain"` in astro.config.mjs so the links use the public domain.
 
-5. If no share buttons appear, confirm:
-   - Post status is "published" (not draft)
-   - Post has a slug (share URLs need a URL to share)
-   - The post was saved after the plugin was installed (existing posts need a re-publish)
+4. Verify: load a published post and check the X link contains `url=` with an absolute URL (`https%3A%2F%2F...`) and `via=yourhandle`.
 
-Metadata written:
-- `post.data.metadata.shareUrls.twitter` - string, Twitter intent URL
-- `post.data.metadata.shareUrls.linkedin` - string, LinkedIn sharing URL
-- `post.data.metadata.shareUrls.whatsapp` - string, WhatsApp send URL
-- `post.data.metadata.shareUrls.bluesky` - string, Bluesky compose URL
-- `post.data.metadata.shareUrls.email` - string, mailto: URL
+5. If the URL is wrong behind a proxy, set `site` or pass `url`.
 
+Metadata written: none.
 Companion component: ShareButtons.astro
 import: `import ShareButtons from "@plugdash/sharepost/ShareButtons.astro"`
 usage: `<ShareButtons post={post} />`
