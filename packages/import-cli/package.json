@@ -1,0 +1,45 @@
+{
+	"name": "@plugdash/import",
+	"version": "0.0.0",
+	"description": "Move a Ghost or Substack export into a running EmDash site from the command line",
+	"keywords": [
+		"cli",
+		"emdash",
+		"emdash-plugin",
+		"ghost",
+		"import",
+		"substack"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/import-cli"
+	},
+	"bin": {
+		"plugdash-import": "./dist/cli.mjs"
+	},
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"scripts": {
+		"build": "tsdown src/cli.ts",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit",
+		"lint": "oxlint ."
+	},
+	"dependencies": {
+		"@plugdash/fromghost": "workspace:*",
+		"@plugdash/fromsubstack": "workspace:*",
+		"emdash": ">=0.38.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.19.43",
+		"fflate": "^0.8.2",
+		"vitest": "^2.0.0"
+	},
+	"engines": {
+		"node": ">=20"
+	}
+}
