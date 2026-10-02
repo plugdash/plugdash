@@ -8,7 +8,7 @@ All packages published to npm under @plugdash/.
 ## what this is
 
 Quality plugins for EmDash, built with explicit capability declarations.
-Standard (sandboxed) plugins export a bare object `satisfies SandboxedPlugin`;
+Standard (sandboxed) plugins export `const plugin: SandboxedPlugin = {...}`;
 Native plugins use `createPlugin()` wrapped in `definePlugin()`. No thin API wrappers — every plugin
 owns its logic. Every plugin ships a companion UI component that works
 beautifully out of the box with no configuration required.
@@ -41,11 +41,11 @@ ctx.kv.get() returns null (not undefined) for missing keys
 ```
 plugdash/
 ├── packages/                # one dir per plugin
-│   └── readtime/
+│   └── [name]/
 │       ├── src/
-│       │   ├── index.ts           # PluginDescriptor factory
-│       │   ├── sandbox-entry.ts   # satisfies SandboxedPlugin, with hooks
-│       │   └── ReadingTime.astro  # companion UI component
+│       │   ├── index.ts           # PluginDescriptor factory (+ createPlugin for Native)
+│       │   ├── sandbox-entry.ts   # Standard plugins only: const plugin: SandboxedPlugin
+│       │   └── [Component].astro  # companion UI component
 │       ├── tests/
 │       │   ├── index.test.ts      # unit tests
 │       │   └── integration.test.ts
@@ -55,10 +55,10 @@ plugdash/
 ├── shared/
 │   ├── types/src/index.ts   # EmDash API types — keep updated
 │   └── testing/src/index.ts # makeContext(), makeContentItem()
-├── testbed/                 # minimal EmDash site for integration tests
-│   ├── astro.config.mjs     # all plugins registered here
-│   └── fixtures/
-├── e2e/                     # Playwright functional tests
+├── e2e/
+│   ├── harness/             # starts a real blog-template site, dev and prod
+│   └── [name].spec.ts       # Playwright functional tests
+├── scripts/real-emdash/     # clones the template, packs and registers every plugin
 ├── skills/
 │   └── creating-plugins/
 │       └── SKILL.md         # agent skill for plugin creation
@@ -120,8 +120,8 @@ below, this section wins.
    fires for plugins registered in `astro.config.mjs`.
 5. Standard-format plugins do not get descriptor `options` at runtime. The
    generated module passes only `id, version, capabilities, allowedHosts,
-   storage, adminPages, adminWidgets, editorPanels, editorActions,
-   settingsSchema, portableTextBlocks, fieldWidgets`
+storage, adminPages, adminWidgets, editorPanels, editorActions,
+settingsSchema, portableTextBlocks, fieldWidgets`
    (`astro/integration/virtual-modules.ts`). Native plugins get
    `createPlugin(options)` with the options inlined as JSON. This works in
    production (codeblock `theme` proves it).
@@ -148,7 +148,7 @@ below, this section wins.
     `SCAN options`, which reads every row. Plugin KV lives in this table
     (`plugin:<id>:<key>`).
 14. Code reading only, not yet run: `ctx.content.update(collection, id, { seo:
-    { image } })` with no field changes skips the draft and upserts the SEO
+{ image } })` with no field changes skips the draft and upserts the SEO
     table, so it is live at once. `getSeoMeta()` uses `seo.image` before the
     featured image.
 15. The admin import screen supports only WordPress. Sources registered with
@@ -172,13 +172,17 @@ Added on 1.0.1 (card #25):
     "Unknown field 'metadata' in collection 'posts'"
     (`database/repositories/content.ts:1261-1264`), not a SqliteError.
 19. Secret settings need the `EMDASH_ENCRYPTION_KEY` env var
-    (`plugins/settings.ts:85-98`).
+    (`plugins/settings.ts:85-98`). It must be in the process environment: a
+    `.env` file alone did not work under `astro dev` (card #14, 2026-10-02).
 20. Plugin media uploads reject SVG (`GLOBAL_UPLOAD_ALLOWLIST`,
     `api/handlers/media-allowlist.ts:11-28`).
 21. Standard plugin routes get `(routeCtx, ctx)`; native routes get one full
     `ctx` with a real `Request` (`plugins/adapt-sandbox-entry.ts:222-280`). A
     thrown error that is not a `PluginRouteError` reaches the client as 500
-    `INTERNAL_ERROR` "Plugin route error".
+    `INTERNAL_ERROR` "Plugin route error". A `PluginRouteError` the plugin
+    throws can hit the same path when the plugin and the host load different
+    copies of the emdash module, because the `instanceof` check fails
+    (`plugins/routes.ts:296`). A separate fix is in progress (2026-10-02).
 
 **Design rules**
 
@@ -224,11 +228,51 @@ The pattern for native plugins with hooks is in
 - Lazy-import heavy libraries (shiki, linkedom, satori) inside the code path
   that needs them, so they do not load on every request or cold start.
 
+// confirmed 2026-10-02 while proving a sandboxed plugin (card #26, docs/registry-fit.md)
+`const plugin = {...} satisfies SandboxedPlugin` fails `emdash-plugin build`
+with `TS2883: The inferred type of 'plugin' cannot be named without a
+reference to 'PluginStorageConfig'`. Write
+`const plugin: SandboxedPlugin = {...}; export default plugin;` as the
+official scaffold does. This works for tsdown builds too, so use it
+everywhere. After the open plugin PRs merge, no plugdash package ships a
+`sandbox-entry.ts`; this applies to new Standard plugins.
+
+// confirmed 2026-10-02 on EmDash 1.0.1 (cards #09, #10)
+Public browser POSTs to plugin routes need the `X-EmDash-Request: 1` header
+or an `Origin` that matches the site (`api/csrf.ts:31-59`). Without either
+the request gets 403 `CSRF_REJECTED`. Companion components that POST must
+send the header.
+
+// confirmed 2026-10-02 while building @plugdash/codeblock pre-save (card #15)
+`content:beforeSave` needs the `content:write` capability. Without it the
+hook is skipped with only a console warning. Its `event.content` is the raw
+request data, not a full entry: on autosave it is partial, so check every
+field you read. Whatever the handler returns replaces that data. Native hooks
+default to `errorPolicy: "abort"`, which fails the save when the handler
+throws; set `errorPolicy: "continue"` for non-critical work.
+
+// confirmed 2026-10-02 on EmDash 1.0.1 (cards #04, #14)
+The SSRF guard blocks plugin `ctx.http.fetch` to loopback and private IPs,
+with no override (`plugins/context.ts:1179`, `security/ssrf.ts:95`). A local
+mock server on 127.0.0.1 is unreachable from a plugin. Test outbound calls
+with a mocked `ctx.http` in unit tests, and with log lines on the real site.
+
+// confirmed 2026-10-02 while building @plugdash/socialcard PNG (card #13)
+Uploading media with a filename that already exists creates a new media
+record; nothing is replaced. A plugin that regenerates a file must delete the
+old record itself.
+
+// confirmed 2026-10-02 while building @plugdash/shortlink redirects (card #10)
+When a post's slug changes, EmDash rewrites existing redirects that point at
+the old URL to the new one. A plugin that stores redirects to post URLs does
+not need to update them on slug change.
+
 // confirmed 2026-09-22 during Track B audit, emdash core CHANGELOG 0.13.0 (PR #1057)
 `definePlugin()` is BREAKING-removed for sandboxed-format (Standard) plugins
 as of emdash core 0.13.0. `sandbox-entry.ts` no longer wraps its export in
-`definePlugin()` - it is a bare default export with a `satisfies
-SandboxedPlugin` annotation, typed via `import type { SandboxedPlugin } from
+`definePlugin()` - it is a bare default export typed as `SandboxedPlugin`
+(`const plugin: SandboxedPlugin`, not `satisfies`, see the 2026-10-02 note
+above), via `import type { SandboxedPlugin } from
 "emdash/plugin"` (type-only, erased at bundle time, no runtime `emdash`
 import remains). Explicit parameter type annotations on hook/route handlers
 also go away - the mapped `SandboxedPlugin` type infers them per hook/route
@@ -396,12 +440,12 @@ Never strip HTML tags. Traverse Portable Text nodes:
 import type { PortableTextBlock } from "@portabletext/types";
 
 function extractText(blocks: PortableTextBlock[]): string {
-  return blocks
-    .filter((b) => b._type === "block")
-    .flatMap((b) => b.children ?? [])
-    .filter((c) => c._type === "span")
-    .map((c) => c.text ?? "")
-    .join(" ");
+	return blocks
+		.filter((b) => b._type === "block")
+		.flatMap((b) => b.children ?? [])
+		.filter((c) => c._type === "span")
+		.map((c) => c.text ?? "")
+		.join(" ");
 }
 ```
 
@@ -411,9 +455,9 @@ function extractText(blocks: PortableTextBlock[]): string {
 
 ```typescript
 interface ContentHookEvent {
-  content: Record<string, unknown>; // spread ContentItem
-  collection: string;
-  isNew: boolean;
+	content: Record<string, unknown>; // spread ContentItem
+	collection: string;
+	isNew: boolean;
 }
 ```
 
@@ -461,23 +505,23 @@ Every Standard plugin requires two files:
 
 ```
 src/index.ts          → PluginDescriptor factory (Vite build time)
-src/sandbox-entry.ts  → bare object satisfies SandboxedPlugin, with hooks (request time)
+src/sandbox-entry.ts  → const plugin: SandboxedPlugin, with hooks (request time)
 ```
 
 package.json must export both:
 
 ```json
 {
-  "exports": {
-    ".": "./dist/index.js",
-    "./sandbox": "./dist/sandbox-entry.js",
-    "./[ComponentName].astro": "./src/[ComponentName].astro"
-  }
+	"exports": {
+		".": "./dist/index.js",
+		"./sandbox": "./dist/sandbox-entry.js",
+		"./[ComponentName].astro": "./src/[ComponentName].astro"
+	}
 }
 ```
 
 The descriptor's entrypoint references the sandbox export:
-`entrypoint: "@plugdash/readtime/sandbox"`
+`entrypoint: "@plugdash/[name]/sandbox"`
 
 ### standard vs native
 
@@ -487,8 +531,14 @@ Use unless the plugin needs Astro components or Node.js built-ins.
 **Native** — escape hatch. Needs `native: true` in descriptor. Cannot be sandboxed.
 Required for: block type plugins (Astro renderers), import plugins (Node.js fs/zip).
 
-Plugins that must be Native: `callout`, `codeblock`, `chartblock`,
-`fromsubstack`, `fromghost`, `frommedium`
+// updated 2026-10-02 to the state after the open plugin PRs merge
+Native, because they render blocks or import files: `callout`, `codeblock`,
+`fromghost`, `fromsubstack`. Native, because their hooks take build-time
+options (rule D): `autobuild`, `enrichkit`, `heartpost` (KV count per post),
+`shortlink` (native EmDash redirects, no `RedirectPage`), `socialcard`.
+Render-time with no hooks: `readtime`, `tocgen`, `sharepost`. Their
+descriptor is kept only so old configs load. No plugdash package is
+Standard today.
 
 ### http calls use ctx.http.fetch(), not fetch()
 
@@ -539,6 +589,10 @@ Always three args: (collection, id, data).
 
 **5. Using global fetch() in sandbox-entry.ts**
 Use ctx.http.fetch(). Global fetch is silently blocked in Workers isolates.
+
+**5b. Writing `satisfies SandboxedPlugin`**
+It fails `emdash-plugin build` with TS2883. Use
+`const plugin: SandboxedPlugin = {...}; export default plugin;`.
 
 **6. Writing PLAN.md or TODO.md into packages/**
 Planning files (PLAN.md, TODO.md) go outside this repo in the location specified by your session prompt. Never in the monorepo.
@@ -605,9 +659,10 @@ Stop. Wait for approval.
 STAGE 5 — INTEGRATION TESTS
 Write packages/[name]/tests/integration.test.ts
 Use EmDashTestClient from @plugdash/testing.
-If testbed is not running, write comprehensive mocks and note this.
-Register plugin in testbed/astro.config.mjs — this file exists, register
-every new plugin here as part of Stage 5.
+There is no testbed/ (removed in #43). The real-site harness registers
+every package that exports a `*Plugin` factory automatically
+(scripts/real-emdash/write-site.mjs); add the companion component to the
+post page there.
 Stop. Wait for approval.
 
 STAGE 5b — FUNCTIONAL TESTS (e2e)
@@ -625,14 +680,14 @@ Update root README.md plugin table.
 Stop. Wait for approval.
 
 STAGE 7 — WEBSITE CONTENT
-Write testbed/fixtures/plugins/[name].json — catalog entry for plugdash.dev.
+Write the catalog entry for plugdash.dev (testbed/fixtures was removed in #43).
 ```
 
 **Smoke tests run on every push (automated):**
 `pnpm build && pnpm typecheck && pnpm lint && pnpm test && pnpm smoke`
 
 **Integration tests run on PR (automated):**
-Requires testbed running on localhost:4321 (not a substitute for stage 5b)
+Real EmDash workflow runs `pnpm e2e` and `pnpm e2e:prod` on every PR
 
 **Functional tests run before release (automated):**
 `pnpm e2e` and `pnpm e2e:prod` against a real EmDash site
@@ -666,20 +721,20 @@ Font: `"Lexend", system-ui, sans-serif` for UI. `"IBM Plex Mono", monospace` for
 ```css
 /* all components use these tokens */
 :root {
-  --plugdash-font-ui: "Lexend", system-ui, sans-serif;
-  --plugdash-font-mono: "IBM Plex Mono", monospace;
-  --plugdash-muted: rgb(from currentColor r g b / 0.55);
-  --plugdash-accent: #6366f1;
-  --plugdash-accent-fg: #ffffff;
-  --plugdash-border: rgb(from currentColor r g b / 0.12);
-  --plugdash-surface: rgb(from currentColor r g b / 0.05);
-  --plugdash-transition: 150ms ease;
-  --plugdash-size-xs: 0.75rem;
-  --plugdash-size-sm: 0.875rem;
-  --plugdash-size-md: 1rem;
-  --plugdash-radius-sm: 4px;
-  --plugdash-radius-md: 8px;
-  --plugdash-radius-full: 9999px;
+	--plugdash-font-ui: "Lexend", system-ui, sans-serif;
+	--plugdash-font-mono: "IBM Plex Mono", monospace;
+	--plugdash-muted: rgb(from currentColor r g b / 0.55);
+	--plugdash-accent: #6366f1;
+	--plugdash-accent-fg: #ffffff;
+	--plugdash-border: rgb(from currentColor r g b / 0.12);
+	--plugdash-surface: rgb(from currentColor r g b / 0.05);
+	--plugdash-transition: 150ms ease;
+	--plugdash-size-xs: 0.75rem;
+	--plugdash-size-sm: 0.875rem;
+	--plugdash-size-md: 1rem;
+	--plugdash-radius-sm: 4px;
+	--plugdash-radius-md: 8px;
+	--plugdash-radius-full: 9999px;
 }
 ```
 
@@ -712,11 +767,11 @@ Theme: `auto` (default, follows prefers-color-scheme) · `dark` · `light`
 
 ```json
 {
-  "exports": {
-    ".": "./dist/index.js",
-    "./sandbox": "./dist/sandbox-entry.js",
-    "./ReadingTime.astro": "./src/ReadingTime.astro"
-  }
+	"exports": {
+		".": "./dist/index.js",
+		"./sandbox": "./dist/sandbox-entry.js",
+		"./ReadingTime.astro": "./src/ReadingTime.astro"
+	}
 }
 ```
 
@@ -738,16 +793,16 @@ Engagement bar tokens:
 
 ```css
 :root {
-  --plugdash-engage-gap: 0.375rem;
-  --plugdash-engage-size: 2rem;
-  --plugdash-engage-radius: 9999px;
-  --plugdash-engage-border: rgb(from currentColor r g b / 0.15);
-  --plugdash-engage-bg: rgb(from currentColor r g b / 0.04);
-  --plugdash-engage-bg-hover: rgb(from currentColor r g b / 0.08);
-  --plugdash-engage-transition: 150ms ease;
-  --plugdash-heart-color: var(--plugdash-accent, #6366f1);
-  --plugdash-heart-fill-duration: 200ms;
-  --plugdash-copy-success-color: #22c55e;
+	--plugdash-engage-gap: 0.375rem;
+	--plugdash-engage-size: 2rem;
+	--plugdash-engage-radius: 9999px;
+	--plugdash-engage-border: rgb(from currentColor r g b / 0.15);
+	--plugdash-engage-bg: rgb(from currentColor r g b / 0.04);
+	--plugdash-engage-bg-hover: rgb(from currentColor r g b / 0.08);
+	--plugdash-engage-transition: 150ms ease;
+	--plugdash-heart-color: var(--plugdash-accent, #6366f1);
+	--plugdash-heart-fill-duration: 200ms;
+	--plugdash-copy-success-color: #22c55e;
 }
 ```
 
@@ -765,8 +820,8 @@ KV writes that track analytics must not block the response.
 ```typescript
 // analytics write — fire and forget
 ctx.kv
-  .increment(`clicks:${code}`)
-  .catch((err) => ctx.log.error("clickcount: kv write failed", { err }));
+	.increment(`clicks:${code}`)
+	.catch((err) => ctx.log.error("clickcount: kv write failed", { err }));
 
 // critical write — await
 await ctx.content.update(collection, id, { excerpt: value });
@@ -781,8 +836,8 @@ item is already published; no status check is needed.
 
 ```typescript
 if (!ctx.content) {
-  ctx.log.error("readtime: content capability not available");
-  return;
+	ctx.log.error("readtime: content capability not available");
+	return;
 }
 ```
 
@@ -912,38 +967,33 @@ This keeps context windows small and sessions fast.
 
 ```json
 {
-  "name": "@plugdash/[name]",
-  "version": "0.1.0",
-  "description": "[one sentence — problem-first, not feature-first]",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./sandbox": "./dist/sandbox-entry.js",
-    "./[ComponentName].astro": "./src/[ComponentName].astro"
-  },
-  "scripts": {
-    "build": "tsdown src/index.ts src/sandbox-entry.ts",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
-  },
-  "keywords": [
-    "emdash",
-    "emdash-plugin",
-    "[name]",
-    "[wordpress-equivalent-if-any]"
-  ],
-  "license": "MIT",
-  "devDependencies": {
-    "@plugdash/types": "workspace:*",
-    "@plugdash/testing": "workspace:*",
-    "typescript": "*",
-    "vitest": "*"
-  }
+	"name": "@plugdash/[name]",
+	"version": "0.1.0",
+	"description": "[one sentence — problem-first, not feature-first]",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		},
+		"./sandbox": "./dist/sandbox-entry.js",
+		"./[ComponentName].astro": "./src/[ComponentName].astro"
+	},
+	"scripts": {
+		"build": "tsdown src/index.ts src/sandbox-entry.ts",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit"
+	},
+	"keywords": ["emdash", "emdash-plugin", "[name]", "[wordpress-equivalent-if-any]"],
+	"license": "MIT",
+	"devDependencies": {
+		"@plugdash/types": "workspace:*",
+		"@plugdash/testing": "workspace:*",
+		"typescript": "*",
+		"vitest": "*"
+	}
 }
 ```
 
@@ -953,7 +1003,7 @@ Keywords always include `"emdash"` and `"emdash-plugin"`. Always MIT.
 
 ## adding a new plugin — quick reference
 
-1. Copy `packages/readtime/` as the template
+1. Copy the closest package as the template (heartpost for native hooks, readtime for render-time)
 2. Update package.json: name, description, exports (., ./sandbox, ./Component.astro)
 3. Read the EmDash creating-plugins SKILL.md before writing code
    (path to emdash source will be specified in your session prompt)
@@ -963,10 +1013,10 @@ Keywords always include `"emdash"` and `"emdash-plugin"`. Always MIT.
 5. Follow the stage system — PLAN, TODO, failing tests, implement,
    integration tests, functional tests (Playwright), docs, website content
 6. PLAN.md and TODO.md go in the location specified by your session prompt
-7. Register in `testbed/astro.config.mjs`
+7. Check `pnpm e2e` registers it (scripts/real-emdash/write-site.mjs)
 8. Ship the companion Astro component alongside the plugin logic
 9. Update root README.md plugin table
-10. Write `testbed/fixtures/plugins/[name].json` for plugdash.dev catalog
+10. Write the plugdash.dev catalog entry
 11. If you discover anything new about the EmDash API, update AGENTS.md
 
 ---
