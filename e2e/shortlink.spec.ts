@@ -1,107 +1,70 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-// Functional tests for @plugdash/shortlink
-// Requires testbed running on localhost:4321 with the shortlink plugin registered.
-// Run: pnpm playwright test e2e/shortlink.spec.ts
+// Functional tests for @plugdash/shortlink (native EmDash redirects).
+// Needs a dev site with shortlinkPlugin() registered and a posts page at
+// /posts/[slug] that renders <CopyLink post={post} />.
+// Run: BASE_URL=http://127.0.0.1:5120 pnpm playwright test e2e/shortlink.spec.ts
+// Auth uses the dev-bypass endpoint, so point it at `astro dev`, not a prod build.
 
-const BASE_URL = "http://localhost:4321";
+const BASE_URL = process.env.BASE_URL ?? "http://127.0.0.1:4321";
+const H = { "X-EmDash-Request": "1" };
 
-test.describe("CopyLink component rendering", () => {
-	test("CopyLink button renders when shortlink metadata exists", async ({ page }) => {
-		await page.goto(`${BASE_URL}/shortlink-test`);
-		const btn = page.locator(".plugdash-copy").first();
-		await expect(btn).toBeVisible();
-		await expect(btn).toHaveAttribute("data-copy");
+const shortCode = (id: string) => id.slice(-8).toLowerCase();
+
+test.describe("shortlink", () => {
+	test.beforeEach(async ({ request }) => {
+		await request.get(`${BASE_URL}/_emdash/api/setup/dev-bypass`);
 	});
 
-	test("CopyLink button has copy icon visible by default", async ({ page }) => {
-		await page.goto(`${BASE_URL}/shortlink-test`);
-		const icon = page.locator(".plugdash-copy-icon").first();
-		await expect(icon).toBeVisible();
-		// Check icon should be hidden
-		const check = page.locator(".plugdash-copy-check").first();
-		await expect(check).not.toBeVisible();
-	});
-
-	test("CopyLink circle variant has correct border-radius", async ({ page }) => {
-		await page.goto(`${BASE_URL}/shortlink-test`);
-		const btn = page.locator(".plugdash-copy--circle").first();
-		await expect(btn).toBeVisible();
-		const radius = await btn.evaluate((el) => {
-			return getComputedStyle(el).borderRadius;
+	test("publish creates a one-hop 301 that survives a slug change", async ({ request, page }) => {
+		const slug = `sl-e2e-${Date.now()}`;
+		const created = await request.post(`${BASE_URL}/_emdash/api/content/posts`, {
+			headers: H,
+			data: { data: { title: "Shortlink e2e" }, slug },
 		});
-		// Should be fully rounded (9999px or 50%)
-		expect(radius).toMatch(/9999px|50%/);
-	});
+		expect(created.ok()).toBe(true);
+		const id: string = (await created.json()).data.item.id;
+		const source = `/s/${shortCode(id)}`;
 
-	test("CopyLink pill variant renders with padding", async ({ page }) => {
-		await page.goto(`${BASE_URL}/shortlink-test-pill`);
-		const btn = page.locator(".plugdash-copy--pill").first();
-		await expect(btn).toBeVisible();
-	});
-
-	test("CopyLink ghost variant renders without border", async ({ page }) => {
-		await page.goto(`${BASE_URL}/shortlink-test-ghost`);
-		const btn = page.locator(".plugdash-copy--ghost").first();
-		await expect(btn).toBeVisible();
-		const border = await btn.evaluate((el) => {
-			return getComputedStyle(el).borderStyle;
+		await request.post(`${BASE_URL}/_emdash/api/content/posts/${id}/publish`, {
+			headers: H,
+			data: {},
 		});
-		expect(border).toBe("none");
-	});
 
-	test("CopyLink does not render when shortlink metadata is missing", async ({ page }) => {
-		await page.goto(`${BASE_URL}/shortlink-test-empty`);
-		const btn = page.locator(".plugdash-copy");
-		await expect(btn).toHaveCount(0);
-	});
+		// One request, one 301, straight to the post.
+		const head = await request.head(`${BASE_URL}${source}`, { maxRedirects: 0 });
+		expect(head.status()).toBe(301);
+		expect(head.headers().location).toBe(`/posts/${slug}`);
 
-	test("CopyLink with showUrl displays the short URL text", async ({ page }) => {
-		await page.goto(`${BASE_URL}/shortlink-test-showurl`);
-		const urlText = page.locator(".plugdash-copy-url").first();
-		await expect(urlText).toBeVisible();
-		await expect(urlText).toContainText("/s/");
-	});
-});
-
-test.describe("CopyLink copy interaction", () => {
-	test("clicking CopyLink sets data-copied attribute", async ({ page, context }) => {
-		// Grant clipboard permissions
-		await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-		await page.goto(`${BASE_URL}/shortlink-test`);
-
-		const btn = page.locator(".plugdash-copy").first();
-		await btn.click();
-
-		// Should show the check icon after click
-		await expect(btn).toHaveAttribute("data-copied", "true");
-	});
-
-	test("data-copied attribute resets after timeout", async ({ page, context }) => {
-		await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-		await page.goto(`${BASE_URL}/shortlink-test`);
-
-		const btn = page.locator(".plugdash-copy").first();
-		await btn.click();
-		await expect(btn).toHaveAttribute("data-copied", "true");
-
-		// Wait for the reset (default 2000ms)
-		await expect(btn).not.toHaveAttribute("data-copied", { timeout: 3000 });
-	});
-});
-
-test.describe("shortlink redirect", () => {
-	test("/s/[code] redirects to target URL", async ({ page }) => {
-		// This test requires a published post with a shortlink
-		const response = await page.goto(`${BASE_URL}/s/test1`);
-		// Should redirect (301) or land on the target page
-		expect(response?.status()).toBeLessThan(400);
-	});
-
-	test("/s/[unknown] returns 404", async ({ page }) => {
-		const response = await page.goto(`${BASE_URL}/s/nonexistent`, {
-			failOnStatusCode: false,
+		// Hits are counted by EmDash on the redirect row.
+		const list = await request.get(`${BASE_URL}/_emdash/api/redirects?search=${source}`, {
+			headers: H,
 		});
-		expect(response?.status()).toBe(404);
+		const row = (await list.json()).data.items.find((r: { source: string }) => r.source === source);
+		expect(row).toMatchObject({ type: 301, groupName: "shortlink" });
+		expect(row.hits).toBeGreaterThan(0);
+
+		// CopyLink renders an absolute short URL from the entry id.
+		await page.goto(`${BASE_URL}/posts/${slug}`);
+		const copy = await page.locator(".plugdash-copy").first().getAttribute("data-copy");
+		expect(copy).toBe(new URL(source, page.url()).href);
+
+		// Slug change + republish: the short link still lands on the post.
+		await request.put(`${BASE_URL}/_emdash/api/content/posts/${id}`, {
+			headers: H,
+			data: { slug: `${slug}-new` },
+		});
+		await request.post(`${BASE_URL}/_emdash/api/content/posts/${id}/publish`, {
+			headers: H,
+			data: {},
+		});
+		const moved = await request.get(`${BASE_URL}${source}`);
+		expect(moved.status()).toBe(200);
+		expect(new URL(moved.url()).pathname).toBe(`/posts/${slug}-new`);
+	});
+
+	test("unknown code is a 404", async ({ request }) => {
+		const res = await request.head(`${BASE_URL}/s/zzzzzzzz`, { maxRedirects: 0 });
+		expect(res.status()).toBe(404);
 	});
 });
