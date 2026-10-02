@@ -1,36 +1,16 @@
 {
 	"name": "@plugdash/autobuild",
 	"version": "0.2.2",
-	"description": "Fires a Cloudflare Pages, Netlify, or Vercel build hook on every publish from EmDash",
-	"type": "module",
-	"main": "./dist/index.mjs",
-	"types": "./dist/index.d.mts",
-	"exports": {
-		".": {
-			"import": "./dist/index.mjs",
-			"types": "./dist/index.d.mts"
-		},
-		"./sandbox": {
-			"import": "./dist/sandbox-entry.mjs"
-		}
-	},
-	"files": [
-		"dist"
-	],
-	"scripts": {
-		"build": "tsdown src/index.ts src/sandbox-entry.ts --dts.eager",
-		"test": "vitest run",
-		"typecheck": "tsc --noEmit"
-	},
+	"description": "Fires a Cloudflare Pages, Netlify, or Vercel build hook when content is published or unpublished, for static sites that read EmDash at build time",
 	"keywords": [
+		"autobuild",
+		"ci-cd",
+		"cloudflare-pages",
+		"deploy-hook",
 		"emdash",
 		"emdash-plugin",
-		"autobuild",
-		"deploy-hook",
-		"cloudflare-pages",
 		"netlify",
-		"vercel",
-		"ci-cd"
+		"vercel"
 	],
 	"license": "MIT",
 	"repository": {
@@ -38,12 +18,30 @@
 		"url": "git+https://github.com/plugdash/plugdash.git",
 		"directory": "packages/autobuild"
 	},
-	"peerDependencies": {
-		"emdash": ">=0.13.0"
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"main": "./dist/index.mjs",
+	"types": "./dist/index.d.mts",
+	"exports": {
+		".": {
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.mts"
+		}
+	},
+	"scripts": {
+		"build": "tsdown src/index.ts --dts.eager",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@plugdash/types": "workspace:*",
 		"@plugdash/testing": "workspace:*",
+		"@plugdash/types": "workspace:*",
+		"emdash": "^1.0.1",
 		"vitest": "^2.0.0"
+	},
+	"peerDependencies": {
+		"emdash": ">=1.0.0"
 	}
 }

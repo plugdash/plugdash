@@ -1,0 +1,21 @@
+{
+	"name": "@plugdash/example-native-hooks",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Minimal native-format EmDash plugin used to prove the pattern in docs/plugin-pattern.md",
+	"license": "MIT",
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"main": "./dist/index.mjs",
+	"exports": {
+		".": "./dist/index.mjs"
+	},
+	"scripts": {
+		"build": "tsdown src/index.ts --no-dts"
+	},
+	"peerDependencies": {
+		"emdash": ">=1.0.0"
+	}
+}

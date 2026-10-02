@@ -1,482 +1,98 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-	extractText,
-	calculateReadingTime,
-	validateReadtimeSettings,
-} from "../src/sandbox-entry.ts";
-import { makeContext, makeContentItem } from "@plugdash/testing";
-import type { PortableTextBlock } from "@portabletext/types";
+import { describe, it, expect } from "vitest";
+import { getBodyBlocks, getReadingTime } from "../src/reading-time.ts";
+import { readtimePlugin, createPlugin } from "../src/index.ts";
 
-// ── extractText ──
+const para = (text: string) => ({
+	_type: "block",
+	_key: "k",
+	style: "normal",
+	children: [{ _type: "span", _key: "s", text, marks: [] }],
+});
+const words = (n: number) => Array.from({ length: n }, () => "word").join(" ");
+const post = (data: Record<string, unknown>) => ({ id: "slug", data });
 
-describe("extractText", () => {
-	it("returns empty string for empty array", () => {
-		expect(extractText([])).toBe("");
+describe("getReadingTime", () => {
+	it("counts plain words and rounds up", () => {
+		expect(getReadingTime(post({ content: [para(words(1200))] }))).toEqual({
+			wordCount: 1200,
+			minutes: 6,
+		});
 	});
 
-	it("extracts text from single block with single span", () => {
-		const blocks: PortableTextBlock[] = [
-			{
-				_type: "block",
-				_key: "a",
-				children: [{ _type: "span", _key: "s1", text: "Hello world", marks: [] }],
-				markDefs: [],
-				style: "normal",
-			},
-		];
-		expect(extractText(blocks)).toBe("Hello world");
+	it("honours wordsPerMinute", () => {
+		expect(getReadingTime(post({ content: [para(words(1200))] }), { wordsPerMinute: 100 }).minutes).toBe(
+			12,
+		);
 	});
 
-	it("extracts text from multiple blocks", () => {
-		const blocks: PortableTextBlock[] = [
-			{
-				_type: "block",
-				_key: "a",
-				children: [{ _type: "span", _key: "s1", text: "First", marks: [] }],
-				markDefs: [],
-				style: "normal",
-			},
-			{
-				_type: "block",
-				_key: "b",
-				children: [{ _type: "span", _key: "s2", text: "Second", marks: [] }],
-				markDefs: [],
-				style: "normal",
-			},
-		];
-		expect(extractText(blocks)).toBe("First Second");
+	it("never returns less than 1 minute, even with no body", () => {
+		expect(getReadingTime(post({}))).toEqual({ wordCount: 0, minutes: 1 });
+		expect(getReadingTime(null).minutes).toBe(1);
 	});
 
-	it("ignores non-block types - images, embeds", () => {
+	it("counts CJK characters at cjkCharsPerMinute", () => {
+		// 1000 han chars = 2 min, no words
+		expect(getReadingTime([para("漢".repeat(1000))])).toEqual({ wordCount: 1000, minutes: 2 });
+		// mixed: 238 words (1 min) + 500 chars (1 min) = 2
+		expect(getReadingTime([para(`${words(238)} ${"字".repeat(500)}`)]).minutes).toBe(2);
+		// Hangul, Hiragana, Katakana are CJK too
+		expect(getReadingTime([para("한ひカ")]).wordCount).toBe(3);
+	});
+
+	it("counts Devanagari as space-separated words", () => {
+		expect(getReadingTime([para("नमस्ते दुनिया यह एक परीक्षण है")]).wordCount).toBe(6);
+	});
+
+	it("counts callout title and body, ignores code and images", () => {
 		const blocks = [
-			{
-				_type: "image",
-				_key: "img1",
-				asset: { _ref: "image-abc" },
-			},
-			{
-				_type: "block",
-				_key: "a",
-				children: [{ _type: "span", _key: "s1", text: "Text here", marks: [] }],
-				markDefs: [],
-				style: "normal",
-			},
-			{
-				_type: "embed",
-				_key: "e1",
-				url: "https://example.com",
-			},
-		] as unknown as PortableTextBlock[];
-		expect(extractText(blocks)).toBe("Text here");
+			{ _type: "callout", title: "Heads up", body: "read this now" },
+			{ _type: "code", code: words(5000) },
+			{ _type: "image", asset: { _ref: "x" } },
+		];
+		expect(getReadingTime(blocks).wordCount).toBe(5);
 	});
 
 	it("ignores non-span children", () => {
-		const blocks: PortableTextBlock[] = [
-			{
-				_type: "block",
-				_key: "a",
-				children: [
-					{ _type: "span", _key: "s1", text: "Keep this", marks: [] },
-					{ _type: "inlineImage", _key: "i1" } as any,
-					{ _type: "span", _key: "s2", text: "and this", marks: [] },
-				],
-				markDefs: [],
-				style: "normal",
-			},
-		];
-		expect(extractText(blocks)).toBe("Keep this and this");
-	});
-
-	it("handles missing children array", () => {
-		const blocks = [
-			{
-				_type: "block",
-				_key: "a",
-				markDefs: [],
-				style: "normal",
-				// no children property
-			},
-		] as unknown as PortableTextBlock[];
-		expect(extractText(blocks)).toBe("");
+		const b = { _type: "block", children: [{ _type: "span", text: "a b" }, { _type: "inlineThing" }] };
+		expect(getReadingTime([b]).wordCount).toBe(2);
 	});
 });
 
-// ── calculateReadingTime ──
+describe("getBodyBlocks", () => {
+	const a = [para("alpha")];
+	const b = [para("beta")];
+	const c = [para("gamma")];
 
-describe("calculateReadingTime", () => {
-	it("returns wordCount 0 and minutes 1 for empty string", () => {
-		const result = calculateReadingTime("", 238);
-		expect(result.wordCount).toBe(0);
-		expect(result.minutes).toBe(1);
+	it("prefers content, then body", () => {
+		expect(getBodyBlocks(post({ content: a, body: b }))).toBe(a);
+		expect(getBodyBlocks(post({ body: b }))).toBe(b);
 	});
 
-	it("returns correct wordCount for simple sentence", () => {
-		const result = calculateReadingTime("The quick brown fox jumps", 238);
-		expect(result.wordCount).toBe(5);
+	it("falls back to the first Portable Text array", () => {
+		expect(getBodyBlocks(post({ title: "t", tags: ["x"], story: c }))).toBe(c);
 	});
 
-	it("applies 238 wpm by default", () => {
-		// 238 words should take exactly 1 minute (ceil(238/238) = 1)
-		const words = Array.from({ length: 238 }, (_, i) => `word${i}`).join(" ");
-		const result = calculateReadingTime(words, 238);
-		expect(result.wordCount).toBe(238);
-		expect(result.minutes).toBe(1);
+	it("uses the explicit field only", () => {
+		expect(getBodyBlocks(post({ content: a, notes: b }), "notes")).toBe(b);
+		expect(getBodyBlocks(post({ content: a }), "notes")).toBeNull();
 	});
 
-	it("respects custom wordsPerMinute config", () => {
-		// 100 words at 50 wpm = 2 minutes
-		const words = Array.from({ length: 100 }, (_, i) => `word${i}`).join(" ");
-		const result = calculateReadingTime(words, 50);
-		expect(result.wordCount).toBe(100);
-		expect(result.minutes).toBe(2);
-	});
-
-	it("enforces minimum 1 minute", () => {
-		const result = calculateReadingTime("one", 238);
-		expect(result.wordCount).toBe(1);
-		expect(result.minutes).toBe(1);
-	});
-
-	it("handles 50000 word document correctly", () => {
-		const words = Array.from({ length: 50000 }, (_, i) => `word${i}`).join(" ");
-		const result = calculateReadingTime(words, 238);
-		expect(result.wordCount).toBe(50000);
-		// ceil(50000 / 238) = ceil(210.08) = 211
-		expect(result.minutes).toBe(211);
+	it("returns null without data", () => {
+		expect(getBodyBlocks({ id: "x" })).toBeNull();
+		expect(getBodyBlocks(undefined)).toBeNull();
 	});
 });
 
-// ── readtime hook: content:afterSave ──
-
-describe("readtime hook: content:afterSave", () => {
-	let ctx: ReturnType<typeof makeContext>;
-
-	beforeEach(() => {
-		ctx = makeContext();
+describe("readtimePlugin (deprecated no-op)", () => {
+	it("is a native descriptor with no capabilities", () => {
+		const d = readtimePlugin({ wordsPerMinute: 200, collections: ["posts"] });
+		expect(d).toMatchObject({ id: "readtime", format: "native", capabilities: [] });
+		expect(d.options).toBeUndefined();
 	});
 
-	async function runHook(
-		content: Record<string, unknown>,
-		collection = "posts",
-	) {
-		// Import the plugin definition and invoke the content:afterSave handler
-		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["content:afterSave"];
-		const event = { content, collection, isNew: false };
-		await hook.handler(event, ctx);
-	}
-
-	it("writes wordCount and readingTimeMinutes on published post", async () => {
-		const content = makeContentItem({
-			status: "published",
-			data: {
-				body: [
-					{
-						_type: "block",
-						_key: "a",
-						children: [{ _type: "span", _key: "s1", text: "one two three four five", marks: [] }],
-						markDefs: [],
-						style: "normal",
-					},
-				],
-				metadata: {},
-			},
-		});
-
-		// Mock content.get to return existing content for merge
-		ctx.content!.get = vi.fn().mockResolvedValue({
-			id: content.id,
-			type: "posts",
-			slug: content.slug,
-			status: "published",
-			data: { body: (content.data as Record<string, unknown>).body, metadata: {} },
-			createdAt: content.createdAt,
-			updatedAt: content.updatedAt,
-		});
-
-		await runHook(content, "posts");
-
-		expect(ctx.content!.update).toHaveBeenCalledWith(
-			"posts",
-			content.id,
-			expect.objectContaining({
-				metadata: expect.objectContaining({
-					wordCount: 5,
-					readingTimeMinutes: 1,
-				}),
-			}),
-		);
-	});
-
-	it("skips draft content - ctx.content.update not called", async () => {
-		const content = makeContentItem({ status: "draft" });
-		await runHook(content);
-		expect(ctx.content!.update).not.toHaveBeenCalled();
-	});
-
-	it("skips archived content", async () => {
-		const content = makeContentItem({ status: "archived" });
-		await runHook(content);
-		expect(ctx.content!.update).not.toHaveBeenCalled();
-	});
-
-	it("skips scheduled content", async () => {
-		const content = makeContentItem({ status: "scheduled" });
-		await runHook(content);
-		expect(ctx.content!.update).not.toHaveBeenCalled();
-	});
-
-	it("skips collections not in config.collections list", async () => {
-		// Set config.collections to only allow "articles"
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "config:collections") return Promise.resolve(["articles"]);
-			if (key === "config:wordsPerMinute") return Promise.resolve(238);
-			return Promise.resolve(null);
-		});
-
-		const content = makeContentItem({ status: "published" });
-		await runHook(content, "posts");
-		expect(ctx.content!.update).not.toHaveBeenCalled();
-	});
-
-	it("processes all collections when config.collections is undefined", async () => {
-		// config.collections returns null (default - all collections)
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "config:collections") return Promise.resolve(null);
-			if (key === "config:wordsPerMinute") return Promise.resolve(238);
-			return Promise.resolve(null);
-		});
-
-		const content = makeContentItem({
-			status: "published",
-			data: {
-				body: [
-					{
-						_type: "block",
-						_key: "a",
-						children: [{ _type: "span", _key: "s1", text: "hello", marks: [] }],
-						markDefs: [],
-						style: "normal",
-					},
-				],
-				metadata: {},
-			},
-		});
-
-		ctx.content!.get = vi.fn().mockResolvedValue({
-			id: content.id,
-			type: "any-collection",
-			slug: content.slug,
-			status: "published",
-			data: { body: [], metadata: {} },
-			createdAt: content.createdAt,
-			updatedAt: content.updatedAt,
-		});
-
-		await runHook(content, "any-collection");
-		expect(ctx.content!.update).toHaveBeenCalled();
-	});
-
-	it("merges with existing metadata, does not overwrite other fields", async () => {
-		const content = makeContentItem({
-			status: "published",
-			data: {
-				body: [
-					{
-						_type: "block",
-						_key: "a",
-						children: [{ _type: "span", _key: "s1", text: "hello world", marks: [] }],
-						markDefs: [],
-						style: "normal",
-					},
-				],
-				metadata: { author: "someone", seoTitle: "My Post" },
-			},
-		});
-
-		ctx.content!.get = vi.fn().mockResolvedValue({
-			id: content.id,
-			type: "posts",
-			slug: content.slug,
-			status: "published",
-			data: { body: [], metadata: { author: "someone", seoTitle: "My Post" } },
-			createdAt: content.createdAt,
-			updatedAt: content.updatedAt,
-		});
-
-		await runHook(content, "posts");
-
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
-		const updatedData = updateCall![2];
-		expect(updatedData.metadata.author).toBe("someone");
-		expect(updatedData.metadata.seoTitle).toBe("My Post");
-		expect(updatedData.metadata.wordCount).toBe(2);
-		expect(updatedData.metadata.readingTimeMinutes).toBe(1);
-	});
-
-	it("handles undefined ctx.content gracefully - logs error, does not throw", async () => {
-		// Remove content capability
-		const noContentCtx = makeContext({ content: undefined });
-		const content = makeContentItem({ status: "published" });
-
-		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["content:afterSave"];
-		const event = { content, collection: "posts", isNew: false };
-
-		// Should not throw
-		await expect(hook.handler(event, noContentCtx)).resolves.toBeUndefined();
-		expect(noContentCtx.log.error).toHaveBeenCalled();
-	});
-
-	it("is idempotent - second publish overwrites, does not duplicate", async () => {
-		const content = makeContentItem({
-			status: "published",
-			data: {
-				body: [
-					{
-						_type: "block",
-						_key: "a",
-						children: [{ _type: "span", _key: "s1", text: "one two three", marks: [] }],
-						markDefs: [],
-						style: "normal",
-					},
-				],
-				metadata: { wordCount: 99, readingTimeMinutes: 99 },
-			},
-		});
-
-		ctx.content!.get = vi.fn().mockResolvedValue({
-			id: content.id,
-			type: "posts",
-			slug: content.slug,
-			status: "published",
-			data: { body: [], metadata: { wordCount: 99, readingTimeMinutes: 99 } },
-			createdAt: content.createdAt,
-			updatedAt: content.updatedAt,
-		});
-
-		await runHook(content, "posts");
-
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0];
-		const updatedData = updateCall![2];
-		// Should be 3 (fresh calculation), not 99 or 102
-		expect(updatedData.metadata.wordCount).toBe(3);
-		expect(updatedData.metadata.readingTimeMinutes).toBe(1);
-	});
-});
-
-// ── admin page ──
-
-describe("admin page", () => {
-	let ctx: ReturnType<typeof makeContext>;
-
-	beforeEach(() => {
-		ctx = makeContext();
-	});
-
-	async function invokeAdmin(input: unknown): Promise<any> {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const handler = plugin.default.routes!.admin!.handler;
-		return handler(
-			{
-				input,
-				request: { url: "http://localhost", method: "POST", headers: {} },
-			},
-			ctx,
-		);
-	}
-
-	it("page_load returns form with current config values", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "config:wordsPerMinute") return Promise.resolve(250);
-			if (key === "config:collections") return Promise.resolve(["blog", "notes"]);
-			return Promise.resolve(null);
-		});
-		const res = await invokeAdmin({ type: "page_load" });
-		const form = res.blocks.find((b: any) => b.type === "form");
-		const wpmField = form.fields.find((f: any) => f.action_id === "wordsPerMinute");
-		const collectionsField = form.fields.find((f: any) => f.action_id === "collections");
-		expect(wpmField.initial_value).toBe(250);
-		expect(collectionsField.initial_value).toBe("blog, notes");
-	});
-
-	it("page_load returns default values when KV is empty", async () => {
-		const res = await invokeAdmin({ type: "page_load" });
-		const form = res.blocks.find((b: any) => b.type === "form");
-		const wpmField = form.fields.find((f: any) => f.action_id === "wordsPerMinute");
-		const collectionsField = form.fields.find((f: any) => f.action_id === "collections");
-		expect(wpmField.initial_value).toBe(238);
-		expect(collectionsField.initial_value).toBe("");
-	});
-
-	it("save_settings writes valid config to KV", async () => {
-		const res = await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: { wordsPerMinute: 250, collections: "blog, notes" },
-		});
-		expect(ctx.kv.set).toHaveBeenCalledWith("config:wordsPerMinute", 250);
-		expect(ctx.kv.set).toHaveBeenCalledWith("config:collections", ["blog", "notes"]);
-		expect(res.toast.type).toBe("success");
-	});
-
-	it("save_settings stores null for collections when blank", async () => {
-		await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: { wordsPerMinute: 238, collections: "" },
-		});
-		expect(ctx.kv.set).toHaveBeenCalledWith("config:collections", null);
-	});
-
-	it("save_settings returns error feedback on invalid wordsPerMinute", async () => {
-		const res = await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: { wordsPerMinute: 50, collections: "" },
-		});
-		expect(res.toast.type).toBe("error");
-		expect(ctx.kv.set).not.toHaveBeenCalled();
-	});
-
-	it("save_settings does not write when wordsPerMinute exceeds max", async () => {
-		const res = await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: { wordsPerMinute: 1000, collections: "" },
-		});
-		expect(res.toast.type).toBe("error");
-		expect(ctx.kv.set).not.toHaveBeenCalled();
-	});
-});
-
-describe("validateReadtimeSettings", () => {
-	it("accepts valid input", () => {
-		const r = validateReadtimeSettings({ wordsPerMinute: 250, collections: "blog" });
-		expect(r.ok).toBe(true);
-		expect(r.wordsPerMinute).toBe(250);
-		expect(r.collections).toEqual(["blog"]);
-	});
-
-	it("coerces string numbers", () => {
-		const r = validateReadtimeSettings({ wordsPerMinute: "300", collections: "" });
-		expect(r.ok).toBe(true);
-		expect(r.wordsPerMinute).toBe(300);
-		expect(r.collections).toBeNull();
-	});
-
-	it("rejects non-integer wpm", () => {
-		const r = validateReadtimeSettings({ wordsPerMinute: 238.5, collections: "" });
-		expect(r.ok).toBe(false);
-	});
-
-	it("rejects wpm below 100", () => {
-		const r = validateReadtimeSettings({ wordsPerMinute: 99, collections: "" });
-		expect(r.ok).toBe(false);
-	});
-
-	it("rejects wpm above 500", () => {
-		const r = validateReadtimeSettings({ wordsPerMinute: 501, collections: "" });
-		expect(r.ok).toBe(false);
+	it("createPlugin has empty hooks", () => {
+		const p = createPlugin();
+		expect(p.id).toBe("readtime");
+		expect(p.hooks).toEqual({});
 	});
 });

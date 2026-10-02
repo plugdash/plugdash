@@ -26,7 +26,8 @@
 		"emdash",
 		"emdash-plugin",
 		"heartpost",
-		"like-button"
+		"like-button",
+		"astro-component"
 	],
 	"license": "MIT",
 	"repository": {

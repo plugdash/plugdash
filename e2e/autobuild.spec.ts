@@ -1,101 +1,82 @@
+import { readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 
-// Functional tests for @plugdash/autobuild
-// Requires testbed running on localhost:4321 with the autobuild plugin
-// registered in testbed/astro.config.mjs.
-// Run: pnpm playwright test e2e/autobuild.spec.ts
+// autobuild has no UI, so these tests drive the content API and read the
+// plugin log. EmDash blocks loopback hosts for plugin fetches, so a log line
+// "webhook failed" or "webhook fired" counts as "the hook was called".
 //
-// autobuild has no UI component - it is pure infrastructure. These tests
-// verify observable side effects: the plugin registers cleanly, its
-// webhook URL validation blocks SSRF, and publish events trigger a fetch
-// attempt (logged by the plugin regardless of whether the remote hook
-// succeeds).
+// Env:
+//   BASE_URL         site origin, default http://127.0.0.1:5124
+//   AUTOBUILD_LOG    path to the server log (dev: site/.astro/dev.log)
+//   AUTOBUILD_COOKIE session cookie header value (omit in dev: dev-bypass is used)
+//   AUTOBUILD_DEBOUNCE_MS  debounceMs set in astro.config.mjs, default 1000
+//
+// Site config: autobuildPlugin({ hookUrl: "https://autobuild-test.invalid/hook",
+// debounceMs: 1000 }). Tag: @prod tests also run against a production build.
 
-const BASE_URL = "http://localhost:4321";
+const BASE = process.env.BASE_URL ?? "http://127.0.0.1:5124";
+const LOG = process.env.AUTOBUILD_LOG;
+const DEBOUNCE = Number(process.env.AUTOBUILD_DEBOUNCE_MS ?? 1000);
+const SETTLE = DEBOUNCE + 2500;
 
-test.describe("autobuild plugin registration", () => {
-	test("testbed loads without errors after registering autobuild", async ({
-		page,
-	}) => {
-		const errors: string[] = [];
-		page.on("pageerror", (err) => errors.push(err.message));
-		await page.goto(BASE_URL);
-		expect(errors).toEqual([]);
-	});
+const fired = () =>
+	LOG ? (readFileSync(LOG, "utf8").match(/webhook (failed|fired|non-2xx)/g) ?? []).length : 0;
 
-	test("autobuild appears in the installed plugins list", async ({ page }) => {
-		await page.goto(`${BASE_URL}/admin/plugins`);
-		await expect(page.getByText("autobuild", { exact: false })).toBeVisible();
-	});
+test.describe.configure({ mode: "serial" });
+test.skip(!LOG, "set AUTOBUILD_LOG to the server log path");
+
+let headers: Record<string, string>;
+
+test.beforeAll(async ({ request }) => {
+	headers = { "X-EmDash-Request": "1", "Content-Type": "application/json" };
+	if (process.env.AUTOBUILD_COOKIE) {
+		headers.Cookie = process.env.AUTOBUILD_COOKIE;
+	} else {
+		await request.get(`${BASE}/_emdash/api/setup/dev-bypass?redirect=/_emdash/admin`);
+	}
 });
 
-test.describe("autobuild publish-triggered webhook", () => {
-	test("publishing a post logs a webhook attempt within debounceMs + 1s", async ({
-		page,
-	}) => {
-		// Navigate to admin, create a draft in the "posts" collection, publish it.
-		await page.goto(`${BASE_URL}/admin/content/posts/new`);
-		await page
-			.getByLabel("Title")
-			.fill("autobuild e2e test post");
-		await page.getByRole("button", { name: /publish/i }).click();
+const api = (path: string) => `${BASE}/_emdash/api/content/posts${path}`;
 
-		// Debounce default in testbed is 100ms. Wait up to 2s for the log entry.
-		await page.waitForTimeout(200);
-
-		// autobuild logs to the plugin log which is visible in the admin log viewer.
-		await page.goto(`${BASE_URL}/admin/logs?plugin=autobuild`);
-		// Either "webhook fired" (2xx) or "webhook non-2xx" / "webhook failed" is OK.
-		// The placeholder Cloudflare URL will almost certainly 4xx or 5xx, so we
-		// expect an error log entry. What matters is that the fetch was attempted.
-		const logEntry = page.getByText(/autobuild: webhook/i).first();
-		await expect(logEntry).toBeVisible({ timeout: 2000 });
+async function create(request: import("@playwright/test").APIRequestContext, slug: string) {
+	const res = await request.post(api(""), {
+		headers,
+		data: { data: { title: slug, content: [] }, slug },
 	});
+	expect(res.ok()).toBeTruthy();
+	return (await res.json()).data.item.id as string;
+}
 
-	test("three rapid publishes produce exactly one webhook log entry", async ({
-		page,
-	}) => {
-		for (let i = 0; i < 3; i++) {
-			await page.goto(`${BASE_URL}/admin/content/posts/new`);
-			await page.getByLabel("Title").fill(`autobuild debounce test ${i}`);
-			await page.getByRole("button", { name: /publish/i }).click();
-			await page.waitForTimeout(20);
-		}
-		// Wait for debounce window to elapse
-		await page.waitForTimeout(200);
+test("@prod publish fires once, autosaves fire nothing, unpublish fires once", async ({
+	request,
+	page,
+}) => {
+	const slug = `autobuild-${Date.now()}`;
+	const id = await create(request, slug);
+	const base = fired();
 
-		await page.goto(`${BASE_URL}/admin/logs?plugin=autobuild`);
-		const entries = await page
-			.getByText(/autobuild: webhook (fired|non-2xx|failed)/i)
-			.count();
-		// Three publishes within the debounce window should coalesce into one.
-		// The log may also contain entries from earlier tests; assert that at
-		// most N+1 entries exist and that debounce is working. For strict
-		// verification, clear logs between tests or snapshot before/after.
-		expect(entries).toBeGreaterThanOrEqual(1);
-	});
+	await request.post(api(`/${id}/publish`), { headers, data: {} });
+	await page.waitForTimeout(SETTLE);
+	expect(fired() - base).toBe(1);
 
-	test("draft save does not trigger a webhook attempt", async ({ page }) => {
-		await page.goto(`${BASE_URL}/admin/content/posts/new`);
-		await page.getByLabel("Title").fill("autobuild draft test");
-		await page.getByRole("button", { name: /save draft/i }).click();
-		await page.waitForTimeout(200);
+	for (let i = 0; i < 10; i++) {
+		await request.put(api(`/${id}`), {
+			headers,
+			data: { data: { title: `${slug} ${i}` }, skipRevision: true },
+		});
+	}
+	await page.waitForTimeout(SETTLE);
+	expect(fired() - base).toBe(1);
 
-		// No new autobuild log entry should appear from this action alone.
-		// This is best verified by snapshotting the log count before/after.
-		// Placeholder assertion: the admin remains responsive.
-		await expect(page.getByText(/draft/i).first()).toBeVisible();
-	});
+	await request.post(api(`/${id}/unpublish`), { headers, data: {} });
+	await page.waitForTimeout(SETTLE);
+	expect(fired() - base).toBe(2);
 });
 
-test.describe("autobuild SSRF protection", () => {
-	test("configuring a private-IP hookUrl logs an error on the next publish", async () => {
-		// This test assumes an admin-configurable hookUrl (Block Kit settings
-		// page) exists. If the testbed config is frozen at build time with the
-		// placeholder Cloudflare URL, skip: this test is informational.
-		test.skip(
-			true,
-			"admin Block Kit settings for autobuild not yet implemented in testbed",
-		);
-	});
+test("@prod deleting a never-published draft fires nothing", async ({ request, page }) => {
+	const id = await create(request, `autobuild-draft-${Date.now()}`);
+	const base = fired();
+	await request.delete(api(`/${id}`), { headers });
+	await page.waitForTimeout(SETTLE);
+	expect(fired() - base).toBe(0);
 });

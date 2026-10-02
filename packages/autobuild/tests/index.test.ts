@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
-	validateHookUrl,
+	autobuildPlugin,
+	createPlugin,
+	getOptions,
+	hostAllowed,
 	isPrivateHostname,
-	shouldTrigger,
-	Debouncer,
-	maskHookUrl,
-	validateAutobuildSettings,
-} from "../src/sandbox-entry.ts";
-import { parseHookHostname } from "../src/index.ts";
-import { makeContext, makeContentItem } from "@plugdash/testing";
+	parseHookHostname,
+	resetWarnings,
+	validateHookUrl,
+} from "../src/index.ts";
 
 // ── validateHookUrl ──
 
@@ -180,744 +180,175 @@ describe("parseHookHostname", () => {
 	});
 });
 
-// ── shouldTrigger ──
+// ── options and descriptor ──
 
-describe("shouldTrigger", () => {
-	const defaultConfig = { statuses: ["published"] as string[] };
-
-	it("returns true when status is published and statuses defaults to ['published']", () => {
-		const event = { content: { status: "published" }, collection: "posts" };
-		expect(shouldTrigger(event, defaultConfig)).toBe(true);
-	});
-
-	it("returns false when status is draft and statuses defaults", () => {
-		const event = { content: { status: "draft" }, collection: "posts" };
-		expect(shouldTrigger(event, defaultConfig)).toBe(false);
-	});
-
-	it("returns false when status is archived and statuses defaults", () => {
-		const event = { content: { status: "archived" }, collection: "posts" };
-		expect(shouldTrigger(event, defaultConfig)).toBe(false);
-	});
-
-	it("returns true when status matches custom statuses list", () => {
-		const event = { content: { status: "draft" }, collection: "posts" };
-		expect(shouldTrigger(event, { statuses: ["published", "draft"] })).toBe(true);
-	});
-
-	it("returns true when collection is in collections list", () => {
-		const event = { content: { status: "published" }, collection: "blog" };
-		expect(
-			shouldTrigger(event, {
-				statuses: ["published"],
-				collections: ["blog", "news"],
-			}),
-		).toBe(true);
-	});
-
-	it("returns false when collection is not in collections list", () => {
-		const event = { content: { status: "published" }, collection: "pages" };
-		expect(
-			shouldTrigger(event, {
-				statuses: ["published"],
-				collections: ["blog"],
-			}),
-		).toBe(false);
-	});
-
-	it("returns true when collections is undefined (all collections)", () => {
-		const event = { content: { status: "published" }, collection: "anything" };
-		expect(shouldTrigger(event, { statuses: ["published"] })).toBe(true);
-	});
-
-	it("does not throw when event.content is undefined (afterDelete case)", () => {
-		const event = { collection: "posts" } as {
-			content?: { status?: unknown };
-			collection: string;
-		};
-		expect(() => shouldTrigger(event, defaultConfig)).not.toThrow();
-	});
-
-	it("treats undefined event.content as passing the status check (afterDelete)", () => {
-		const event = { collection: "posts" } as {
-			content?: { status?: unknown };
-			collection: string;
-		};
-		expect(shouldTrigger(event, defaultConfig)).toBe(true);
-	});
-
-	it("still applies collection filter when event.content is undefined", () => {
-		const event = { collection: "pages" } as {
-			content?: { status?: unknown };
-			collection: string;
-		};
-		expect(
-			shouldTrigger(event, {
-				statuses: ["published"],
-				collections: ["blog"],
-			}),
-		).toBe(false);
-	});
-});
-
-// ── Debouncer ──
-
-describe("Debouncer", () => {
-	beforeEach(() => {
-		vi.useFakeTimers();
-	});
-
-	afterEach(() => {
-		vi.useRealTimers();
-	});
-
-	it("fires the scheduled function once after the window", async () => {
-		const deb = new Debouncer();
-		const fn = vi.fn().mockResolvedValue(undefined);
-		deb.schedule(100, fn);
-		expect(fn).not.toHaveBeenCalled();
-		await vi.advanceTimersByTimeAsync(100);
-		expect(fn).toHaveBeenCalledTimes(1);
-	});
-
-	it("coalesces three rapid schedule() calls into a single fire", async () => {
-		const deb = new Debouncer();
-		const fn = vi.fn().mockResolvedValue(undefined);
-		deb.schedule(100, fn);
-		deb.schedule(100, fn);
-		deb.schedule(100, fn);
-		await vi.advanceTimersByTimeAsync(100);
-		expect(fn).toHaveBeenCalledTimes(1);
-	});
-
-	it("resets the timer when a new schedule() arrives mid-window", async () => {
-		const deb = new Debouncer();
-		const fn = vi.fn().mockResolvedValue(undefined);
-		deb.schedule(100, fn);
-		await vi.advanceTimersByTimeAsync(50);
-		deb.schedule(100, fn); // reset
-		await vi.advanceTimersByTimeAsync(50); // 100ms total, but window reset at 50ms
-		expect(fn).not.toHaveBeenCalled();
-		await vi.advanceTimersByTimeAsync(50); // now 100ms since reset
-		expect(fn).toHaveBeenCalledTimes(1);
-	});
-
-	it("fires again for a new event after a completed window", async () => {
-		const deb = new Debouncer();
-		const fn = vi.fn().mockResolvedValue(undefined);
-		deb.schedule(100, fn);
-		await vi.advanceTimersByTimeAsync(100);
-		expect(fn).toHaveBeenCalledTimes(1);
-		deb.schedule(100, fn);
-		await vi.advanceTimersByTimeAsync(100);
-		expect(fn).toHaveBeenCalledTimes(2);
-	});
-});
-
-// ── autobuild hook: content:afterSave ──
-
-describe("autobuild hook: content:afterSave", () => {
-	let ctx: ReturnType<typeof makeContext>;
-	let fetchMock: ReturnType<typeof vi.fn>;
-
-	beforeEach(() => {
-		vi.useFakeTimers();
-		fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
-		ctx = makeContext({
-			http: { fetch: fetchMock },
-			kv: {
-				get: vi.fn().mockImplementation((key: string) => {
-					if (key === "autobuild:config:hookUrl")
-						return Promise.resolve("https://api.cloudflare.com/hook");
-					if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-					if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
-					if (key === "autobuild:config:collections") return Promise.resolve(null);
-					if (key === "autobuild:config:method") return Promise.resolve("POST");
-					if (key === "autobuild:bootstrapHash") return Promise.resolve(null);
-					return Promise.resolve(null);
-				}),
-				set: vi.fn().mockResolvedValue(undefined),
-				delete: vi.fn().mockResolvedValue(undefined),
-				list: vi.fn().mockResolvedValue([]),
-				getVersioned: vi.fn().mockResolvedValue(null),
-				compareAndSet: vi.fn().mockResolvedValue({ applied: true }),
-				compareAndDelete: vi.fn().mockResolvedValue({ applied: true }),
-			},
-		});
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
-	});
-
-	afterEach(() => {
-		vi.useRealTimers();
-	});
-
-	async function runSaveHook(content: Record<string, unknown>, collection = "posts") {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["content:afterSave"];
-		const event = { content, collection, isNew: false };
-		await hook.handler(event, ctx);
-	}
-
-	it("fires webhook on published content after debounce window", async () => {
-		const content = makeContentItem({ status: "published" });
-		await runSaveHook(content, "posts");
-		expect(fetchMock).not.toHaveBeenCalled(); // debounced
-		await vi.advanceTimersByTimeAsync(60);
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		expect(fetchMock.mock.calls[0]![0]).toBe("https://api.cloudflare.com/hook");
-	});
-
-	it("skips draft content", async () => {
-		const content = makeContentItem({ status: "draft" });
-		await runSaveHook(content, "posts");
-		await vi.advanceTimersByTimeAsync(100);
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	it("skips archived content", async () => {
-		const content = makeContentItem({ status: "archived" });
-		await runSaveHook(content, "posts");
-		await vi.advanceTimersByTimeAsync(100);
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	it("skips scheduled content", async () => {
-		const content = makeContentItem({ status: "scheduled" });
-		await runSaveHook(content, "posts");
-		await vi.advanceTimersByTimeAsync(100);
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	it("skips collection not in collections filter", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "autobuild:config:hookUrl")
-				return Promise.resolve("https://api.cloudflare.com/hook");
-			if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-			if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
-			if (key === "autobuild:config:collections") return Promise.resolve(["blog"]);
-			if (key === "autobuild:config:method") return Promise.resolve("POST");
-			if (key === "autobuild:bootstrapHash") return Promise.resolve(null);
-			return Promise.resolve(null);
-		});
-		const content = makeContentItem({ status: "published" });
-		await runSaveHook(content, "pages");
-		await vi.advanceTimersByTimeAsync(100);
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	it("no-ops when hookUrl is empty", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "autobuild:config:hookUrl") return Promise.resolve("");
-			if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-			if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
-			return Promise.resolve(null);
-		});
-		const content = makeContentItem({ status: "published" });
-		await runSaveHook(content, "posts");
-		await vi.advanceTimersByTimeAsync(100);
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	it("logs error when webhook returns 500", async () => {
-		fetchMock.mockResolvedValue(new Response("err", { status: 500 }));
-		const content = makeContentItem({ status: "published" });
-		await runSaveHook(content, "posts");
-		await vi.advanceTimersByTimeAsync(60);
-		await Promise.resolve();
-		await Promise.resolve();
-		expect(ctx.log.error).toHaveBeenCalled();
-	});
-
-	it("logs error when webhook rejects (network failure)", async () => {
-		fetchMock.mockRejectedValue(new Error("network down"));
-		const content = makeContentItem({ status: "published" });
-		await runSaveHook(content, "posts");
-		await vi.advanceTimersByTimeAsync(60);
-		await Promise.resolve();
-		await Promise.resolve();
-		expect(ctx.log.error).toHaveBeenCalled();
-	});
-
-	it("does not throw when ctx.http is missing", async () => {
-		ctx = makeContext({
-			http: undefined,
-			kv: ctx.kv,
-		});
-		const content = makeContentItem({ status: "published" });
-		await expect(runSaveHook(content, "posts")).resolves.toBeUndefined();
-		await vi.advanceTimersByTimeAsync(100);
-	});
-
-	it("does not block publish event on webhook latency (handler resolves before fetch)", async () => {
-		fetchMock.mockImplementation(
-			() =>
-				new Promise((resolve) =>
-					setTimeout(() => resolve(new Response("ok", { status: 200 })), 10_000),
-				),
-		);
-		const content = makeContentItem({ status: "published" });
-		await runSaveHook(content, "posts");
-		expect(true).toBe(true);
-	});
-
-	it("logs error when webhook times out (AbortController aborts hanging fetch)", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "autobuild:config:hookUrl")
-				return Promise.resolve("https://api.cloudflare.com/hook");
-			if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-			if (key === "autobuild:config:timeout") return Promise.resolve(30);
-			if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
-			if (key === "autobuild:config:method") return Promise.resolve("POST");
-			if (key === "autobuild:bootstrapHash") return Promise.resolve(null);
-			return Promise.resolve(null);
-		});
-
-		// Fetch that never resolves unless aborted via signal
-		fetchMock.mockImplementation((_url: string, init: RequestInit) => {
-			return new Promise((_resolve, reject) => {
-				const signal = init?.signal as AbortSignal | undefined;
-				if (signal) {
-					const onAbort = () => {
-						reject(new Error("The operation was aborted"));
-					};
-					if (signal.aborted) onAbort();
-					else signal.addEventListener("abort", onAbort);
-				}
-			});
-		});
-
-		const content = makeContentItem({ status: "published" });
-		await runSaveHook(content, "posts");
-		// Advance past debounce window (50ms) then past timeout (30ms more)
-		await vi.advanceTimersByTimeAsync(60);
-		await vi.advanceTimersByTimeAsync(40);
-		await Promise.resolve();
-		await Promise.resolve();
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		expect(ctx.log.error).toHaveBeenCalled();
-		const errorMessages = (ctx.log.error as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
-		expect(errorMessages.some((m) => typeof m === "string" && m.includes("failed"))).toBe(true);
-	});
-
-	it("rejects private-IP hookUrl and logs error", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "autobuild:config:hookUrl") return Promise.resolve("https://192.168.1.1/hook");
-			if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-			if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
-			return Promise.resolve(null);
-		});
-		const content = makeContentItem({ status: "published" });
-		await runSaveHook(content, "posts");
-		await vi.advanceTimersByTimeAsync(60);
-		await Promise.resolve();
-		await Promise.resolve();
-		expect(fetchMock).not.toHaveBeenCalled();
-		expect(ctx.log.error).toHaveBeenCalled();
-	});
-});
-
-// ── autobuild hook: content:afterDelete ──
-
-describe("autobuild hook: content:afterDelete", () => {
-	let ctx: ReturnType<typeof makeContext>;
-	let fetchMock: ReturnType<typeof vi.fn>;
-
-	beforeEach(() => {
-		vi.useFakeTimers();
-		fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
-		ctx = makeContext({
-			http: { fetch: fetchMock },
-			kv: {
-				get: vi.fn().mockImplementation((key: string) => {
-					if (key === "autobuild:config:hookUrl")
-						return Promise.resolve("https://api.cloudflare.com/hook");
-					if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-					if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
-					if (key === "autobuild:config:collections") return Promise.resolve(null);
-					if (key === "autobuild:config:method") return Promise.resolve("POST");
-					if (key === "autobuild:bootstrapHash") return Promise.resolve(null);
-					return Promise.resolve(null);
-				}),
-				set: vi.fn().mockResolvedValue(undefined),
-				delete: vi.fn().mockResolvedValue(undefined),
-				list: vi.fn().mockResolvedValue([]),
-				getVersioned: vi.fn().mockResolvedValue(null),
-				compareAndSet: vi.fn().mockResolvedValue({ applied: true }),
-				compareAndDelete: vi.fn().mockResolvedValue({ applied: true }),
-			},
-		});
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
-	});
-
-	afterEach(() => {
-		vi.useRealTimers();
-	});
-
-	async function runDeleteHook(id: string, collection: string) {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["content:afterDelete"];
-		const event = { id, collection };
-		await hook.handler(event, ctx);
-	}
-
-	it("fires webhook on delete event (no status check)", async () => {
-		await runDeleteHook("post-1", "posts");
-		await vi.advanceTimersByTimeAsync(60);
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-	});
-
-	it("respects collections filter on delete", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "autobuild:config:hookUrl")
-				return Promise.resolve("https://api.cloudflare.com/hook");
-			if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-			if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
-			if (key === "autobuild:config:collections") return Promise.resolve(["blog"]);
-			if (key === "autobuild:config:method") return Promise.resolve("POST");
-			if (key === "autobuild:bootstrapHash") return Promise.resolve(null);
-			return Promise.resolve(null);
-		});
-		await runDeleteHook("page-1", "pages");
-		await vi.advanceTimersByTimeAsync(100);
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	it("does not throw when event has no content field", async () => {
-		await expect(runDeleteHook("p-1", "posts")).resolves.toBeUndefined();
-	});
-});
-
-// ── autobuild hook: plugin:install ──
-
-describe("autobuild hook: plugin:install", () => {
-	let ctx: ReturnType<typeof makeContext>;
-
-	beforeEach(() => {
-		ctx = makeContext({
-			kv: {
-				get: vi.fn().mockResolvedValue(null),
-				set: vi.fn().mockResolvedValue(undefined),
-				delete: vi.fn().mockResolvedValue(undefined),
-				list: vi.fn().mockResolvedValue([]),
-				getVersioned: vi.fn().mockResolvedValue(null),
-				compareAndSet: vi.fn().mockResolvedValue({ applied: true }),
-				compareAndDelete: vi.fn().mockResolvedValue({ applied: true }),
-			},
-		});
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
-	});
-
-	afterEach(() => {
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
-	});
-
-	async function runInstall() {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["plugin:install"];
-		await hook.handler({}, ctx);
-	}
-
-	it("seeds KV from globalThis bootstrap when present", async () => {
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = {
-			hookUrl: "https://api.cloudflare.com/hook",
-			debounceMs: 3000,
-			collections: ["blog"],
-		};
-		await runInstall();
-		expect(ctx.kv.set).toHaveBeenCalledWith(
-			"autobuild:config:hookUrl",
-			"https://api.cloudflare.com/hook",
-		);
-		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:debounceMs", 3000);
-		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:collections", ["blog"]);
-	});
-
-	it("logs warning once when hookUrl is missing", async () => {
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = {
+describe("options", () => {
+	it("defaults", () => {
+		expect(getOptions()).toMatchObject({
 			hookUrl: "",
-		};
-		await runInstall();
-		expect(ctx.log.warn).toHaveBeenCalled();
+			method: "POST",
+			collections: [],
+			debounceMs: 5000,
+			timeout: 5000,
+		});
 	});
 
-	it("writes a bootstrap hash to KV after seeding", async () => {
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = {
-			hookUrl: "https://api.cloudflare.com/hook",
-		};
-		await runInstall();
-		const hashCall = (ctx.kv.set as ReturnType<typeof vi.fn>).mock.calls.find(
-			(c) => c[0] === "autobuild:bootstrapHash",
-		);
-		expect(hashCall).toBeDefined();
+	it("allowedHosts = defaults + extra + hookUrl host", () => {
+		const o = getOptions({ hookUrl: "https://hooks.example.com/x", allowedHosts: ["a.test"] });
+		expect(o.allowedHosts).toEqual([
+			"api.cloudflare.com",
+			"api.netlify.com",
+			"api.vercel.com",
+			"a.test",
+			"hooks.example.com",
+		]);
+	});
+
+	it("hostAllowed supports wildcards", () => {
+		expect(hostAllowed("a.b.com", ["*.b.com"])).toBe(true);
+		expect(hostAllowed("b.com", ["*.b.com"])).toBe(false);
+	});
+
+	it("descriptor is native and carries options", () => {
+		const d = autobuildPlugin({ hookUrl: "https://api.netlify.com/build_hooks/x" });
+		expect(d).toMatchObject({
+			format: "native",
+			entrypoint: "@plugdash/autobuild",
+			options: { hookUrl: "https://api.netlify.com/build_hooks/x" },
+		});
+		expect(d.capabilities).toEqual(["content:read", "network:request"]);
 	});
 });
 
-// ── bootstrap hash reseed ──
+// ── hooks ──
 
-describe("bootstrap hash reseed on hook invocation", () => {
-	let ctx: ReturnType<typeof makeContext>;
-	let fetchMock: ReturnType<typeof vi.fn>;
+const HOOK = "https://api.netlify.com/build_hooks/abc";
 
+function makeCtx(settings: Record<string, string> = {}) {
+	const store = new Map<string, unknown>();
+	const entries = new Map<string, { status: string }>();
+	return {
+		store,
+		entries,
+		log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+		settings: { get: vi.fn(async (k: string) => settings[k] ?? null) },
+		kv: {
+			get: vi.fn(async (k: string) => store.get(k) ?? null),
+			set: vi.fn(async (k: string, v: unknown) => void store.set(k, v)),
+			delete: vi.fn(async (k: string) => store.delete(k)),
+		},
+		content: { get: vi.fn(async (_c: string, id: string) => entries.get(id) ?? null) },
+		http: { fetch: vi.fn(async () => new Response("ok", { status: 200 })) },
+	};
+}
+
+type Handler = (e: unknown, c: unknown) => Promise<void>;
+
+const hook = (opts: Parameters<typeof createPlugin>[0], name: string) => {
+	const h = (createPlugin(opts).hooks as unknown as Record<string, { handler: Handler }>)[name];
+	return h!.handler;
+};
+
+describe("autobuild hooks", () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
-		fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
+		resetWarnings();
+	});
+	afterEach(() => vi.useRealTimers());
+
+	const publish = { collection: "posts", content: { id: "1", status: "published" } };
+
+	it("registers no afterSave hook", () => {
+		expect(Object.keys(createPlugin({ hookUrl: HOOK }).hooks)).not.toContain("content:afterSave");
 	});
 
-	afterEach(() => {
-		vi.useRealTimers();
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = undefined;
+	it("5 publishes inside debounceMs make 1 fetch", async () => {
+		const ctx = makeCtx();
+		const h = hook({ hookUrl: HOOK, debounceMs: 1000 }, "content:afterPublish");
+		const runs = Array.from({ length: 5 }, () => h(publish, ctx));
+		await vi.advanceTimersByTimeAsync(1500);
+		await Promise.all(runs);
+		expect(ctx.http.fetch).toHaveBeenCalledTimes(1);
+		expect(ctx.http.fetch).toHaveBeenCalledWith(HOOK, expect.objectContaining({ method: "POST" }));
 	});
 
-	it("reseeds KV when globalThis bootstrap hash differs from stored hash", async () => {
-		(globalThis as Record<string, unknown>).__plugdash_autobuild_config__ = {
-			hookUrl: "https://api.cloudflare.com/new-hook",
-		};
-		ctx = makeContext({
-			http: { fetch: fetchMock },
-			kv: {
-				get: vi.fn().mockImplementation((key: string) => {
-					if (key === "autobuild:config:hookUrl")
-						return Promise.resolve("https://api.cloudflare.com/old-hook");
-					if (key === "autobuild:config:debounceMs") return Promise.resolve(50);
-					if (key === "autobuild:config:statuses") return Promise.resolve(["published"]);
-					if (key === "autobuild:bootstrapHash") return Promise.resolve("old-hash-value");
-					return Promise.resolve(null);
-				}),
-				set: vi.fn().mockResolvedValue(undefined),
-				delete: vi.fn().mockResolvedValue(undefined),
-				list: vi.fn().mockResolvedValue([]),
-				getVersioned: vi.fn().mockResolvedValue(null),
-				compareAndSet: vi.fn().mockResolvedValue({ applied: true }),
-				compareAndDelete: vi.fn().mockResolvedValue({ applied: true }),
-			},
-		});
-
-		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["content:afterSave"];
-		const content = makeContentItem({ status: "published" });
-		await hook.handler({ content, collection: "posts" }, ctx);
-
-		expect(ctx.kv.set).toHaveBeenCalledWith(
-			"autobuild:config:hookUrl",
-			"https://api.cloudflare.com/new-hook",
+	it("unpublish makes 1 fetch", async () => {
+		const ctx = makeCtx();
+		const run = hook({ hookUrl: HOOK, debounceMs: 100 }, "content:afterUnpublish")(
+			{ collection: "posts", content: { id: "1", status: "draft" } },
+			ctx,
 		);
-	});
-});
-
-// ── admin page ──
-
-describe("maskHookUrl", () => {
-	it("returns hostname + path snippet", () => {
-		expect(
-			maskHookUrl("https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/abc123"),
-		).toBe("api.cloudflare.com/client/...");
+		await vi.advanceTimersByTimeAsync(200);
+		await run;
+		expect(ctx.http.fetch).toHaveBeenCalledTimes(1);
 	});
 
-	it("returns empty string for empty input", () => {
-		expect(maskHookUrl("")).toBe("");
+	it("delete of a published entry fires, delete of a draft does not", async () => {
+		const opts = { hookUrl: HOOK, debounceMs: 100 };
+		const ctx = makeCtx();
+		ctx.entries.set("live", { status: "published" });
+		ctx.entries.set("draft", { status: "draft" });
+		for (const id of ["live", "draft"]) {
+			await hook(opts, "content:beforeDelete")({ id, collection: "posts" }, ctx);
+			const run = hook(opts, "content:afterDelete")(
+				{ id, collection: "posts", permanent: false },
+				ctx,
+			);
+			await vi.advanceTimersByTimeAsync(200);
+			await run;
+		}
+		expect(ctx.http.fetch).toHaveBeenCalledTimes(1);
+		expect(ctx.store.has("live:live")).toBe(false);
 	});
 
-	it("does not expose full path for long secrets", () => {
-		const masked = maskHookUrl("https://hooks.example.com/deploy/secret-token-987654321");
-		expect(masked).not.toContain("secret-token");
+	it("other collections are ignored", async () => {
+		const ctx = makeCtx();
+		const run = hook(
+			{ hookUrl: HOOK, collections: ["docs"], debounceMs: 10 },
+			"content:afterPublish",
+		)(publish, ctx);
+		await vi.advanceTimersByTimeAsync(50);
+		await run;
+		expect(ctx.http.fetch).not.toHaveBeenCalled();
 	});
 
-	it("returns (invalid) for malformed URLs", () => {
-		expect(maskHookUrl("not-a-url")).toBe("(invalid)");
-	});
-});
-
-describe("validateAutobuildSettings", () => {
-	it("accepts valid settings", () => {
-		const r = validateAutobuildSettings(
-			{
-				hookUrl: "https://api.cloudflare.com/webhooks/abc",
-				method: "POST",
-				debounceMs: 5000,
-				collections: "",
-			},
-			"",
-		);
-		expect(r.ok).toBe(true);
-		expect(r.hookUrl).toBe("https://api.cloudflare.com/webhooks/abc");
+	it("missing hook url warns once, never throws", async () => {
+		const ctx = makeCtx();
+		const h = hook({}, "content:afterPublish");
+		await h(publish, ctx);
+		await h(publish, ctx);
+		expect(ctx.log.warn).toHaveBeenCalledTimes(1);
+		expect(ctx.log.warn).toHaveBeenCalledWith("no hook URL configured, deploys are off");
+		expect(ctx.http.fetch).not.toHaveBeenCalled();
 	});
 
-	it("rejects private IP hook URLs", () => {
-		const r = validateAutobuildSettings(
-			{
-				hookUrl: "https://192.168.1.1/hook",
-				method: "POST",
-				debounceMs: 5000,
-				collections: "",
-			},
-			"",
-		);
-		expect(r.ok).toBe(false);
+	it("admin secret wins over the option", async () => {
+		const other = "https://api.vercel.com/v1/integrations/deploy/x";
+		const ctx = makeCtx({ hookUrl: other });
+		const run = hook({ hookUrl: HOOK, debounceMs: 10 }, "content:afterPublish")(publish, ctx);
+		await vi.advanceTimersByTimeAsync(50);
+		await run;
+		expect(ctx.http.fetch).toHaveBeenCalledWith(other, expect.anything());
 	});
 
-	it("rejects http:// URLs", () => {
-		const r = validateAutobuildSettings(
-			{
-				hookUrl: "http://example.com/hook",
-				method: "POST",
-				debounceMs: 5000,
-				collections: "",
-			},
-			"",
-		);
-		expect(r.ok).toBe(false);
+	it("blocks a host that is not allowed", async () => {
+		const ctx = makeCtx({ hookUrl: "https://evil.example.com/x" });
+		const run = hook({ debounceMs: 10 }, "content:afterPublish")(publish, ctx);
+		await vi.advanceTimersByTimeAsync(50);
+		await run;
+		expect(ctx.http.fetch).not.toHaveBeenCalled();
+		expect(ctx.log.error).toHaveBeenCalled();
 	});
 
-	it("preserves current hookUrl when input is blank", () => {
-		const r = validateAutobuildSettings(
-			{ hookUrl: "", method: "POST", debounceMs: 5000, collections: "" },
-			"https://existing.example.com/hook",
-		);
-		expect(r.ok).toBe(true);
-		expect(r.hookUrl).toBe("https://existing.example.com/hook");
+	it("hook timeout covers debounce + request + 5s", () => {
+		const p = createPlugin({ hookUrl: HOOK, debounceMs: 2000, timeout: 3000 });
+		expect(p.hooks["content:afterPublish"]?.timeout).toBe(10000);
 	});
 
-	it("rejects debounceMs below 500", () => {
-		const r = validateAutobuildSettings(
-			{ hookUrl: "", method: "POST", debounceMs: 100, collections: "" },
-			"https://x.example.com/hook",
-		);
-		expect(r.ok).toBe(false);
-	});
-
-	it("rejects debounceMs above 30000", () => {
-		const r = validateAutobuildSettings(
-			{ hookUrl: "", method: "POST", debounceMs: 60000, collections: "" },
-			"https://x.example.com/hook",
-		);
-		expect(r.ok).toBe(false);
-	});
-
-	it("rejects invalid method", () => {
-		const r = validateAutobuildSettings(
-			{ hookUrl: "", method: "PUT", debounceMs: 5000, collections: "" },
-			"https://x.example.com/hook",
-		);
-		expect(r.ok).toBe(false);
-	});
-});
-
-describe("admin page", () => {
-	let ctx: ReturnType<typeof makeContext>;
-
-	beforeEach(() => {
-		ctx = makeContext();
-	});
-
-	async function invokeAdmin(input: unknown): Promise<any> {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const handler = plugin.default.routes!.admin!.handler;
-		return handler({ input, request: { url: "http://localhost" } }, ctx);
-	}
-
-	it("page_load returns form with current config values", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "autobuild:config:hookUrl")
-				return Promise.resolve("https://api.cloudflare.com/webhooks/secret");
-			if (key === "autobuild:config:method") return Promise.resolve("GET");
-			if (key === "autobuild:config:debounceMs") return Promise.resolve(10000);
-			if (key === "autobuild:config:collections") return Promise.resolve(["blog"]);
-			return Promise.resolve(null);
-		});
-		const res = await invokeAdmin({ type: "page_load" });
-		const form = res.blocks.find((b: any) => b.type === "form");
-		// hookUrl field should NOT pre-fill the secret
-		expect(form.fields.find((f: any) => f.action_id === "hookUrl").initial_value).toBe("");
-		expect(form.fields.find((f: any) => f.action_id === "method").initial_value).toBe("GET");
-		expect(form.fields.find((f: any) => f.action_id === "debounceMs").initial_value).toBe(10000);
-	});
-
-	it("page_load masks hookUrl to hostname + first 8 chars of path", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "autobuild:config:hookUrl")
-				return Promise.resolve("https://api.cloudflare.com/client/v4/very-secret-token");
-			return Promise.resolve(null);
-		});
-		const res = await invokeAdmin({ type: "page_load" });
-		const fieldsBlock = res.blocks.find((b: any) => b.type === "fields");
-		expect(fieldsBlock).toBeTruthy();
-		const value = fieldsBlock.fields[0].value;
-		expect(value).toContain("api.cloudflare.com");
-		expect(value).not.toContain("very-secret-token");
-	});
-
-	it("page_load hides masked URL block when no hook configured", async () => {
-		const res = await invokeAdmin({ type: "page_load" });
-		const fieldsBlock = res.blocks.find((b: any) => b.type === "fields");
-		expect(fieldsBlock).toBeUndefined();
-	});
-
-	it("save_settings writes valid config to KV", async () => {
-		const res = await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: {
-				hookUrl: "https://api.cloudflare.com/new-hook",
-				method: "POST",
-				debounceMs: 3000,
-				collections: "blog, docs",
-			},
-		});
-		expect(ctx.kv.set).toHaveBeenCalledWith(
-			"autobuild:config:hookUrl",
-			"https://api.cloudflare.com/new-hook",
-		);
-		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:method", "POST");
-		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:debounceMs", 3000);
-		expect(ctx.kv.set).toHaveBeenCalledWith("autobuild:config:collections", ["blog", "docs"]);
-		expect(res.toast.type).toBe("success");
-	});
-
-	it("save_settings rejects private IP hook URLs", async () => {
-		const res = await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: {
-				hookUrl: "https://10.0.0.1/hook",
-				method: "POST",
-				debounceMs: 5000,
-				collections: "",
-			},
-		});
-		expect(res.toast.type).toBe("error");
-		expect(ctx.kv.set).not.toHaveBeenCalled();
-	});
-
-	it("save_settings rejects http:// hook URLs", async () => {
-		const res = await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: {
-				hookUrl: "http://api.example.com/hook",
-				method: "POST",
-				debounceMs: 5000,
-				collections: "",
-			},
-		});
-		expect(res.toast.type).toBe("error");
-		expect(ctx.kv.set).not.toHaveBeenCalled();
-	});
-
-	it("save_settings does not overwrite hookUrl when new input is empty", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "autobuild:config:hookUrl")
-				return Promise.resolve("https://existing.example.com/hook");
-			return Promise.resolve(null);
-		});
-		await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: { hookUrl: "", method: "POST", debounceMs: 5000, collections: "" },
-		});
-		expect(ctx.kv.set).toHaveBeenCalledWith(
-			"autobuild:config:hookUrl",
-			"https://existing.example.com/hook",
-		);
+	it("admin page reports a disallowed host", async () => {
+		const ctx = makeCtx({ hookUrl: "https://evil.example.com/x" });
+		const route = createPlugin().routes!.admin!;
+		const res = await route.handler(ctx as never);
+		expect(JSON.stringify(res)).toContain("not allowed");
 	});
 });
