@@ -16,7 +16,7 @@ pnpm add @plugdash/callout
 ```js
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import emdash from "emdash";
+import emdash from "emdash/astro";
 import { calloutPlugin } from "@plugdash/callout";
 
 export default defineConfig({
@@ -27,6 +27,10 @@ export default defineConfig({
   ],
 });
 ```
+
+The body is plain text. A blank line starts a new paragraph and a single
+line break stays a line break. HTML, links and markdown are shown as typed,
+not rendered.
 
 Native plugin - cannot be sandboxed or published to the EmDash marketplace.
 
@@ -113,7 +117,7 @@ Example override:
 
 ## What it does not do
 
-- No rich text inside callout body - plain text only
+- No rich text inside callout body (no links, bold or lists) - plain text only, with paragraph and line breaks kept
 - No custom icons per callout instance - variant determines the icon
 - No collapsible or expandable behavior
 - No animation on render

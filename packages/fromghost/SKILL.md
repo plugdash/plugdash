@@ -1,6 +1,6 @@
 ---
 name: fromghost
-description: Ghost JSON export importer. Native plugin registering an ImportSource so posts, pages, tags and authors from a Ghost export show up in EmDash's own import screen.
+description: Ghost JSON export importer. Native plugin registering an ImportSource so posts, pages, tags and authors from a Ghost export go through EmDash's import pipeline.
 ---
 
 # @plugdash/fromghost
@@ -8,8 +8,8 @@ description: Ghost JSON export importer. Native plugin registering an ImportSour
 ## what it does
 
 Parses a Ghost JSON export (Settings > Labs > Export your content) and
-registers it as a source in EmDash's `ImportSource` registry, next to the
-built-in WordPress/WXR importers. Converts post bodies to Portable Text via
+registers it as a source in EmDash's `ImportSource` registry (the admin
+import screen only lists WordPress, so drive it by script or API). Converts post bodies to Portable Text via
 the shared `@plugdash/html-to-portable-text` converter.
 
 ## plugin type
@@ -44,23 +44,21 @@ pnpm add @plugdash/fromghost
 ```js
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import emdash from "emdash";
+import emdash from "emdash/astro";
 import { fromghostPlugin } from "@plugdash/fromghost";
 
 export default defineConfig({
   integrations: [
     emdash({
-      plugins: [fromghostPlugin()], // must be plugins, not sandboxed - needs Node fs/JSON
+      plugins: [fromghostPlugin({ siteUrl: "https://blog.example.com" })],
     }),
   ],
 });
 ```
 
-`fromghostPlugin(config)` calls `registerSource()` as a side effect and
-returns the plugin descriptor. Importing the package at all also
-self-registers a zero-config default source, mirroring how EmDash's own
-built-in WXR/WordPress sources work - but `fromghostPlugin()` is the way to
-pass `siteUrl`, `preserveSlugs`, etc.
+`fromghostPlugin(config)` only returns the descriptor. The source is registered
+in `createPlugin(options)` at runtime, with the options inlined as JSON, so
+config works in production. Remove the plugin after the import.
 
 ## configuration
 
@@ -71,7 +69,9 @@ pass `siteUrl`, `preserveSlugs`, etc.
 | `importImages`      | `boolean`  | `true`    | Carry feature and inline images over              |
 | `importTags`        | `boolean`  | `true`    | Carry Ghost tags over as taxonomy terms           |
 | `siteUrl`           | `string`   | `""`      | Ghost site URL, to resolve `__GHOST_URL__` paths |
-| `onWarn`            | `(message: string) => void` | discard | Called for each recoverable import problem |
+| `paidPostsAs`       | `"draft" \| "publish" \| "skip"` | `"draft"` | Posts with visibility members/paid/tiers |
+
+Warnings come back as `warnings: string[]` on the analysis.
 
 ## what it does not do
 
@@ -88,20 +88,20 @@ pass `siteUrl`, `preserveSlugs`, etc.
 
 After installing @plugdash/fromghost and registering it in astro.config.mjs:
 
-1. No additional UI setup needed - "Ghost Export File" appears automatically
-   as a source in EmDash's admin import screen (`/_emdash/admin/import`).
+1. The source is not in the admin import screen (WordPress only). Call the
+   source's `analyze()` / `fetchContent()` from a script, or wait for the CLI.
 
-2. To verify setup, export a Ghost site as JSON (Settings > Labs > Export),
-   upload it on the import screen, confirm the analysis shows the expected
-   post/page/tag counts, then run the import and check the created content.
+2. To verify, run `analyze()` on the export and check the post/page/tag counts
+   and `warnings`, then import and check the created content.
 
-3. If feature images don't resolve, confirm `siteUrl` is set in
-   `fromghostPlugin({ siteUrl: "https://yoursite.com" })` - without it,
-   Ghost's `__GHOST_URL__`-relative image paths are skipped, not guessed at.
+3. If images don't resolve, confirm `siteUrl` is set in
+   `fromghostPlugin({ siteUrl: "https://yoursite.com" })`. Placeholders are
+   replaced in post HTML and inline images are listed as attachments.
 
-4. If a post's body is empty after import, check `onWarn` output for a
-   Mobiledoc or Lexical warning - Mobiledoc posts have no converter and
-   Lexical drafts without rendered HTML are recovered as plain text only.
+4. Paid and members posts import as drafts unless `paidPostsAs` says otherwise.
+
+5. If a post's body is empty, check `analysis.warnings` for a Mobiledoc or
+   Lexical warning.
 
 Metadata written: none (import source only, no persistent plugin state)
 Source id: `ghost`

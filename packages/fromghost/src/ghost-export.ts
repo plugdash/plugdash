@@ -54,6 +54,13 @@ export interface GhostUser {
 	email?: string | null;
 }
 
+/** A row of Ghost 4+'s `posts_meta` table, where SEO fields moved to. */
+export interface GhostPostMeta {
+	post_id?: string;
+	meta_title?: string | null;
+	meta_description?: string | null;
+}
+
 /** A row of `posts_tags` or `posts_authors`. */
 export interface GhostJoinRow {
 	post_id?: string;
@@ -126,15 +133,16 @@ export function parseGhostExport(raw: unknown): ParsedGhostExport {
 	}
 
 	if (!source) {
-		throw new Error(
-			"Not a Ghost export: expected `db[].data`, `data` or `posts` in the JSON",
-		);
+		throw new Error("Not a Ghost export: expected `db[].data`, `data` or `posts` in the JSON");
 	}
 
 	return {
 		version: version ?? "unknown",
 		data: {
-			posts: rows<GhostPost>(source, "posts"),
+			posts: withPostsMeta(
+				rows<GhostPost>(source, "posts"),
+				rows<GhostPostMeta>(source, "posts_meta"),
+			),
 			tags: rows<GhostTag>(source, "tags"),
 			users: rows<GhostUser>(source, "users"),
 			posts_tags: rows<GhostJoinRow>(source, "posts_tags"),
@@ -142,6 +150,25 @@ export function parseGhostExport(raw: unknown): ParsedGhostExport {
 			settings: rows<GhostSetting>(source, "settings"),
 		},
 	};
+}
+
+/**
+ * Ghost 4+ moved meta_title and meta_description off the posts table into
+ * posts_meta. Fold them back onto each post so the mapping only looks in one
+ * place. A value on the post row itself (Ghost 3 and older) wins.
+ */
+function withPostsMeta(posts: GhostPost[], meta: GhostPostMeta[]): GhostPost[] {
+	if (meta.length === 0) return posts;
+	const byPost = new Map(meta.map((row) => [row.post_id, row]));
+	return posts.map((post) => {
+		const row = byPost.get(post.id);
+		if (!row) return post;
+		return {
+			...post,
+			meta_title: post.meta_title || row.meta_title || null,
+			meta_description: post.meta_description || row.meta_description || null,
+		};
+	});
 }
 
 function lookupById<T extends { id?: string }>(items: T[]): Map<string, T> {
@@ -179,9 +206,7 @@ export function buildJoinIndex(
 
 	const index = new Map<string, string[]>();
 	for (const [postId, joinRows] of byPost) {
-		const sorted = joinRows
-			.slice()
-			.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+		const sorted = joinRows.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 		index.set(
 			postId,
 			sorted.map((join) => join[valueKey] as string),
@@ -242,9 +267,7 @@ export function isAbsoluteUrl(url: string): boolean {
 	return url.startsWith("http://") || url.startsWith("https://");
 }
 
-export function parseGhostDate(
-	value: string | null | undefined,
-): Date | undefined {
+export function parseGhostDate(value: string | null | undefined): Date | undefined {
 	if (!value) return undefined;
 	const date = new Date(value);
 	return Number.isNaN(date.getTime()) ? undefined : date;

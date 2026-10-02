@@ -104,6 +104,11 @@ describe("block type definition", () => {
 		expect(values).toContain("danger");
 	});
 
+	it("defaults the variant select to info", () => {
+		const variantField = getBlock().fields!.find((f) => f.action_id === "variant");
+		expect(variantField!.initial_value).toBe("info");
+	});
+
 	it("has a title text_input field", () => {
 		const block = getBlock();
 		const titleField = block.fields!.find((f) => f.action_id === "title");

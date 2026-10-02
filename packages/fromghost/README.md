@@ -1,9 +1,13 @@
 # @plugdash/fromghost
 
 Imports a Ghost JSON export (Settings > Labs > Export your content) into EmDash.
-Registers a Ghost source with EmDash's own import screen, next to the built-in
-WordPress importers, so posts, pages, tags and authors show up there with no
-separate CLI step.
+Registers a Ghost import source with EmDash's import registry, so posts, pages,
+tags and authors go through EmDash's own media download, taxonomy and
+content-creation pipeline.
+
+EmDash's admin import screen only lists WordPress sources, so "Ghost Export
+File" does not appear there. Run the import through a script or the import
+API. Remove the plugin after the import.
 
 ## Install
 
@@ -16,22 +20,20 @@ pnpm add @plugdash/fromghost
 ```js
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import emdash from "emdash";
+import emdash from "emdash/astro";
 import { fromghostPlugin } from "@plugdash/fromghost";
 
 export default defineConfig({
   integrations: [
     emdash({
-      plugins: [fromghostPlugin()], // must be plugins, not sandboxed - needs Node fs/JSON
+      plugins: [fromghostPlugin({ siteUrl: "https://blog.example.com" })],
     }),
   ],
 });
 ```
 
-Once registered, "Ghost Export File" appears as a source in EmDash's admin
-import screen (`/_emdash/admin/import`). Upload the export, review the
-analysis, and run the import - the rest of the pipeline (schema checks, media
-download, content creation) is EmDash's own.
+Options are passed to `createPlugin(options)` in the server runtime, so they
+are active in a production build.
 
 ## Config options
 
@@ -45,12 +47,17 @@ Passed to `fromghostPlugin({ ... })`:
 | importImages     | `boolean` | `true`    | Carry feature and inline images over                   |
 | importTags       | `boolean` | `true`    | Carry Ghost tags over as taxonomy terms                |
 | siteUrl          | `string`  | `""`      | The Ghost site's URL, to resolve `__GHOST_URL__` image paths |
-| onWarn           | `(message: string) => void` | discard | Called for every recoverable problem during import |
+| paidPostsAs      | `"draft" \| "publish" \| "skip"` | `"draft"` | Posts with Ghost visibility `members`, `paid` or `tiers`. The export holds their full body, so the default keeps them off the public site. `meta.visibility` is recorded either way |
 
-`siteUrl` matters: Ghost writes feature and inline images as
-`__GHOST_URL__/content/images/...` rather than an absolute URL. Without
-`siteUrl` those stay site-relative and are skipped (the import continues,
-just without that image) rather than guessed at.
+`siteUrl` matters: Ghost writes images and links as `__GHOST_URL__/...`
+rather than an absolute URL. With `siteUrl` set, every placeholder in the
+post HTML is replaced before conversion, and inline images are listed in the
+analysis attachments so EmDash downloads them. Without it, site-relative
+feature images are skipped (the import continues without them).
+
+Recoverable problems (Lexical-only drafts, duplicate slugs, unresolved images)
+are returned as `warnings` on the analysis. emdash 1.0.1's `ImportAnalysis`
+type has no warnings field, so this is an extra property on the object.
 
 Import status (draft vs. published) is not a plugin setting - it is read
 straight from each post's own Ghost status via `fetchContent`'s
@@ -87,9 +94,10 @@ straight from each post's own Ghost status via `fetchContent`'s
 - Skips duplicate slugs (keeping the first occurrence) and warns
 - Skips a feature image that cannot be resolved to an absolute URL and warns,
   rather than failing the whole post
-- Reports post/page counts, tag counts, and attachment counts through
-  EmDash's standard `ImportAnalysis`, so the admin's preview screen works
-  without any Ghost-specific UI
+- Reports post/page counts, tag counts, attachment counts (feature and inline
+  images) and warnings through `ImportAnalysis`
+- Loads the HTML converter (and `linkedom`) only when an import runs, so
+  having the plugin registered costs nothing at startup
 
 ## What it does not do
 
@@ -100,5 +108,5 @@ straight from each post's own Ghost status via `fetchContent`'s
 - Does not import Ghost members, newsletters, or comments
 - Does not preserve Ghost's internal tags (`visibility: "internal"`) as
   taxonomy - those are Ghost's own bookkeeping
-- Cannot be sandboxed - JSON parsing this size needs Node, and the plugin
-  registers directly into EmDash's import-source registry
+- Cannot be sandboxed - it registers directly into EmDash's import-source registry
+- Does not appear in the admin import screen (WordPress only in emdash 1.0.1)
