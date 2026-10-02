@@ -10,11 +10,11 @@ Not a plugin. Convenience package with an Astro component.
 
 ## capabilities declared
 
-None. The three sub-plugins declare their own capabilities.
+None. The child plugins declare their own capabilities.
 
 ## hooks
 
-None. The three sub-plugins register their own hooks.
+None. The child plugins register their own hooks.
 
 ## install
 
@@ -24,24 +24,16 @@ pnpm add @plugdash/engage
 
 ## register
 
-engage has no plugin descriptor. Register the three sub-plugins:
+engage has no plugin descriptor. Register heartpost and shortlink (sharepost needs no registration):
 
 ```js
 // astro.config.mjs
+import emdash from "emdash/astro";
 import { heartpostPlugin } from "@plugdash/heartpost";
-import { sharepostPlugin } from "@plugdash/sharepost";
 import { shortlinkPlugin } from "@plugdash/shortlink";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [
-        heartpostPlugin(),
-        sharepostPlugin({ via: "yourhandle" }),
-        shortlinkPlugin(),
-      ],
-    }),
-  ],
+	integrations: [emdash({ plugins: [heartpostPlugin(), shortlinkPlugin()] })],
 });
 ```
 
@@ -51,11 +43,13 @@ export default defineConfig({
 ---
 import EngagementBar from "@plugdash/engage/EngagementBar.astro"
 ---
-<EngagementBar post={post} />
+<EngagementBar post={post} via="yourhandle" />
 ```
 
-| Token | Default | Description |
-| --- | --- | --- |
+Extra props: `url`, `title`, `via`, `hashtags` (share) and `prefix` (copy, must match the shortlink `prefix` option).
+
+| Token                   | Default    | Description          |
+| ----------------------- | ---------- | -------------------- |
 | `--plugdash-engage-gap` | `0.375rem` | Gap between children |
 
 Variants: `circle` (default) / `pill` / `ghost`
@@ -64,35 +58,39 @@ Theme: `auto` (default) / `dark` / `light`
 
 ## configuration
 
-No configuration. The three sub-plugins are configured individually.
+No configuration. The child plugins are configured individually.
 
 ## what it does not do
 
 - Does not contain plugin logic, hooks, or routes
-- Does not work without all three sub-plugins installed
+- Does not work without all three packages installed
 - Does not expose the "filled" variant
 - Does not write any metadata
 
 ## for agents
 
-After installing @plugdash/engage and registering the three sub-plugins in astro.config.mjs:
+After installing @plugdash/engage and registering heartpost and shortlink in astro.config.mjs:
 
 1. Import the EngagementBar in the post layout:
+
    ```
    import EngagementBar from "@plugdash/engage/EngagementBar.astro"
    ```
 
 2. Add the component below the post content or in the post header:
+
    ```
-   <EngagementBar post={post} />
+   <EngagementBar post={post} via="yourhandle" />
    ```
 
 3. To customise the bar:
+
    ```
    <EngagementBar post={post} variant="pill" size="sm" platforms={["twitter", "bluesky"]} />
    ```
 
 4. To hide one component:
+
    ```
    <EngagementBar post={post} showHeart={false} />
    ```
@@ -102,9 +100,9 @@ After installing @plugdash/engage and registering the three sub-plugins in astro
    - Share buttons show links for configured platforms
    - Copy button copies the short URL to clipboard
 
-6. If a child component does not render, check that the corresponding plugin is registered and the post has the required metadata (shareUrls for share, shortlink for copy).
+6. If a child component does not render, check that heartpost and shortlink are registered and that `post` comes from getEmDashEntry (heart and copy need `post.data.id`).
 
-Metadata written: none (the three sub-plugins write their own metadata)
+Metadata written: none
 Companion component: EngagementBar.astro
 Import: `import EngagementBar from "@plugdash/engage/EngagementBar.astro"`
 Usage: `<EngagementBar post={post} />`

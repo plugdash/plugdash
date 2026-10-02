@@ -1,8 +1,9 @@
 # @plugdash/heartpost
 
-Readers want to acknowledge a post without writing a comment.
-Writes a KV-backed heart count per content item on click, deduplicated by
-fingerprint. Ships HeartButton.astro - a drop-in heart button with a
+Readers want to acknowledge a post without writing a comment, and a like
+button that writes a database row per visitor grows without bound.
+Heartpost keeps one count per post and remembers who hearted in the reader's
+own browser. Ships HeartButton.astro - a drop-in heart button with a
 bottom-to-top fill animation. No WordPress equivalent - only on EmDash.
 
 ## Install
@@ -16,92 +17,89 @@ pnpm add @plugdash/heartpost
 ```js
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import emdash from "emdash";
+import emdash from "emdash/astro";
 import { heartpostPlugin } from "@plugdash/heartpost";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [heartpostPlugin()],
-      // or sandboxed: [heartpostPlugin()]
-    }),
-  ],
+	integrations: [
+		emdash({
+			plugins: [heartpostPlugin()],
+		}),
+	],
 });
 ```
 
 ## Configuration
 
-### Admin dashboard
+| Option             | Type             | Default     | Description                                                          |
+| ------------------ | ---------------- | ----------- | -------------------------------------------------------------------- |
+| collections        | `string[]`       | `["posts"]` | Collections whose entries can be hearted                             |
+| rateLimitPerMinute | `number`         | `10`        | Hearts per client IP per minute. `0` turns the limit off             |
+| trustProxyHeader   | `string \| null` | `null`      | Header to read the client IP from when you sit behind your own proxy |
+| label              | `string`         | `"hearts"`  | Label for the heart count                                            |
 
-After installing, open the EmDash admin and go to Plugins - Heart Post -
-Settings. All options are available there. Changes take effect on the
-next publish - no code changes required.
-
-### Config options
-
-Configuration is stored in the plugin's KV store and can be changed via the
-admin UI or programmatically. Defaults are seeded on install.
-
-| Option      | Type       | Default    | Description                                  |
-| ----------- | ---------- | ---------- | -------------------------------------------- |
-| collections | `string[]` | all        | Limit processing to specific collection slugs |
-| label       | `string`   | `"hearts"` | Label for the heart count (admin display)     |
+`collections` used to default to every collection. It now defaults to
+`["posts"]`. Pass the collections you want if you heart anything else.
 
 ## Companion component
-
-Exported as `@plugdash/heartpost/HeartButton.astro`.
 
 ```astro
 ---
 import HeartButton from "@plugdash/heartpost/HeartButton.astro";
-const post = await emdash.content.get("posts", Astro.params.id);
 ---
 
 <HeartButton post={post} />
 ```
 
-### Props
+| Prop    | Type                            | Default    | Description                                                                 |
+| ------- | ------------------------------- | ---------- | --------------------------------------------------------------------------- |
+| post    | `Record<string, unknown>`       | (required) | Content item. Hearts are keyed on `post.data.id`, falling back to `post.id` |
+| variant | `"circle" \| "pill" \| "ghost"` | `"circle"` | Visual style                                                                |
+| size    | `"sm" \| "md" \| "lg"`          | `"md"`     | Component size                                                              |
+| theme   | `"auto" \| "dark" \| "light"`   | `"auto"`   | Color scheme                                                                |
+| class   | `string`                        | `""`       | Additional CSS class                                                        |
 
-| Prop    | Type                               | Default    | Description                   |
-| ------- | ---------------------------------- | ---------- | ----------------------------- |
-| post    | `Record<string, unknown>`          | (required) | Content item - the component reads `post.id` or `post.data.id` (checks both) |
-| variant | `"circle" \| "pill" \| "ghost"`    | `"circle"` | Visual style                  |
-| size    | `"sm" \| "md" \| "lg"`            | `"md"`     | Component size                |
-| theme   | `"auto" \| "dark" \| "light"`     | `"auto"`   | Color scheme                  |
-| class   | `string`                           | `""`       | Additional CSS class          |
-
-### Variants
-
-- **circle** - heart icon in a rounded button, count hidden (default)
-- **pill** - heart icon + count in a rounded pill
-- **ghost** - heart icon + count, no border or background
-
-### CSS custom properties
-
-| Property                          | Default                            | Description          |
-| --------------------------------- | ---------------------------------- | -------------------- |
-| `--plugdash-heart-color`          | `var(--plugdash-accent, #6366f1)`  | Heart fill color     |
-| `--plugdash-heart-fill-duration`  | `200ms`                            | Fill animation speed |
-| `--plugdash-engage-size`          | `2rem`                             | Button size          |
-| `--plugdash-engage-radius`        | `9999px`                           | Border radius        |
-| `--plugdash-engage-border`        | `rgb(from currentColor r g b / 0.15)` | Border color      |
-| `--plugdash-engage-bg`            | `rgb(from currentColor r g b / 0.04)` | Background color  |
-| `--plugdash-engage-bg-hover`      | `rgb(from currentColor r g b / 0.08)` | Hover background  |
+CSS custom properties: `--plugdash-heart-color`, `--plugdash-heart-fill-duration`,
+`--plugdash-engage-size`, `--plugdash-engage-radius`, `--plugdash-engage-border`,
+`--plugdash-engage-bg`, `--plugdash-engage-bg-hover`.
 
 ## How it works
 
-- Initialises a heart count (0) in KV on first publish via `content:afterSave`
-- Re-publish does not reset existing counts
-- POST route increments count and stores a fingerprint hash (sha256 of IP + User-Agent, truncated to 16 chars)
-- GET route returns current count and whether the current visitor has hearted
-- Fingerprint dedup prevents double-counting, not rigorous identity verification
-- No cookies, no accounts, no PII stored
+- One KV row per post: `count:<entry id>`. 1,000 hearts on a post is still one row.
+- Whether a visitor hearted is stored in their browser (`localStorage`, key
+  `plugdash-heart-<entry id>`). Clearing site data or switching browsers lets the
+  same person heart again. The count is a soft count, not a vote.
+- The button loads its count only when it is within 200px of the viewport. A page
+  that is never scrolled that far makes no request. Several buttons for one post
+  share a single request and update together.
+- Hearting needs a published entry in one of the `collections`. Anything else is rejected.
+- Rate limiting counts hearts per client IP per minute in a small storage collection.
+  Old buckets are removed as new ones are written.
+
+## Rate limiting and the client IP
+
+The IP comes from EmDash's `requestMeta.ip`, which only trusts forwarding headers
+on Cloudflare or when you declare them. A spoofed `X-Forwarded-For` is ignored.
+When there is no trusted IP (for example a plain local `node` server) the plugin
+logs one warning and skips the limit. If you run behind your own proxy, set
+`trustProxyHeader` to the header it sets.
+
+The built-in limit is a speed bump. For a public site, add a platform rate limit
+on `POST /_emdash/api/plugins/heartpost/heart` and `heart-remove` too, for example
+a Cloudflare Rate Limiting rule on that path.
+
+## Upgrading from 0.2.x
+
+- Existing counts carry over. The first heart on a post reads the old
+  `heartpost:<id>:count` key and continues from the larger number.
+- Old per-visitor rows are not deleted automatically. Open the EmDash admin,
+  go to Plugins - Heart Post, and use "Remove old visitor rows".
+- The sandboxed `./sandbox` export is gone. Heartpost is a native plugin now.
+- The `content:afterSave` hook is gone. Counts are created on the first heart.
 
 ## What it does not do
 
-- Does not process drafts, archived, or scheduled content
-- Does not provide atomic increment (uses KV get+set - occasional missed hearts under extreme concurrency are acceptable)
-- Does not store any personally identifiable information
-- Does not require authentication to heart a post
-- Does not support unhearting (hearts are permanent)
-- Does not provide an admin page for viewing heart counts (planned)
+- Does not stop a determined visitor from hearting more than once
+- Does not store IPs, fingerprints, or any visitor data in the database
+- Does not heart drafts, archived, or scheduled entries
+- Does not provide an admin page for viewing counts

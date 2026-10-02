@@ -1,569 +1,179 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
-	extractHeadings,
-	toAnchor,
 	deduplicateAnchors,
+	extractHeadings,
+	getBodyBlocks,
+	getToc,
 	nestHeadings,
-	validateTocgenSettings,
-} from "../src/sandbox-entry.ts";
-import { makeContext, makeContentItem } from "@plugdash/testing";
-import type { PortableTextBlock } from "@portabletext/types";
+	toAnchor,
+} from "../src/toc.ts";
+import { createPlugin, tocgenPlugin } from "../src/index.ts";
+import anchors from "../src/HeadingAnchors.astro?raw";
 
-// ── Helper: create a heading block ──
-
-function headingBlock(
-	style: string,
-	text: string,
-	key = "k1",
-): PortableTextBlock {
-	return {
-		_type: "block",
-		_key: key,
-		children: [{ _type: "span", _key: `${key}-s`, text, marks: [] }],
-		markDefs: [],
-		style,
-	};
-}
-
-// ── extractHeadings ──
-
-describe("extractHeadings", () => {
-	it("extracts h2 headings from Portable Text blocks", () => {
-		const blocks = [headingBlock("h2", "Getting Started")];
-		const result = extractHeadings(blocks);
-		expect(result).toEqual([{ level: 2, text: "Getting Started" }]);
-	});
-
-	it("extracts h3 headings", () => {
-		const blocks = [headingBlock("h3", "Installation")];
-		const result = extractHeadings(blocks);
-		expect(result).toEqual([{ level: 3, text: "Installation" }]);
-	});
-
-	it("extracts h4 headings", () => {
-		const blocks = [headingBlock("h4", "npm")];
-		const result = extractHeadings(blocks);
-		expect(result).toEqual([{ level: 4, text: "npm" }]);
-	});
-
-	it("ignores h1 headings", () => {
-		const blocks = [
-			headingBlock("h1", "Title"),
-			headingBlock("h2", "Section"),
-		];
-		const result = extractHeadings(blocks);
-		expect(result).toEqual([{ level: 2, text: "Section" }]);
-	});
-
-	it("handles headings with marks (bold text in heading)", () => {
-		const blocks: PortableTextBlock[] = [
-			{
-				_type: "block",
-				_key: "a",
-				children: [
-					{ _type: "span", _key: "s1", text: "Bold ", marks: ["strong"] },
-					{ _type: "span", _key: "s2", text: "heading", marks: [] },
-				],
-				markDefs: [],
-				style: "h2",
-			},
-		];
-		const result = extractHeadings(blocks);
-		expect(result).toEqual([{ level: 2, text: "Bold heading" }]);
-	});
-
-	it("skips headings with empty text", () => {
-		const blocks = [
-			headingBlock("h2", ""),
-			headingBlock("h2", "   "),
-			headingBlock("h2", "Real heading"),
-		];
-		const result = extractHeadings(blocks);
-		expect(result).toEqual([{ level: 2, text: "Real heading" }]);
-	});
-
-	it("handles missing children array", () => {
-		const blocks = [
-			{
-				_type: "block",
-				_key: "a",
-				markDefs: [],
-				style: "h2",
-			},
-		] as unknown as PortableTextBlock[];
-		const result = extractHeadings(blocks);
-		expect(result).toEqual([]);
-	});
-
-	it("ignores non-block types", () => {
-		const blocks = [
-			{ _type: "image", _key: "img1", asset: { _ref: "image-abc" } },
-			headingBlock("h2", "After image"),
-		] as unknown as PortableTextBlock[];
-		const result = extractHeadings(blocks);
-		expect(result).toEqual([{ level: 2, text: "After image" }]);
-	});
-
-	it("ignores normal paragraph blocks", () => {
-		const blocks = [
-			headingBlock("normal", "Just a paragraph"),
-			headingBlock("h2", "A heading"),
-		];
-		const result = extractHeadings(blocks);
-		expect(result).toEqual([{ level: 2, text: "A heading" }]);
-	});
+const block = (style: string, text: string) => ({
+	_type: "block",
+	_key: text,
+	style,
+	children: [{ _type: "span", _key: "s", text, marks: [] }],
 });
-
-// ── toAnchor ──
+const post = (data: Record<string, unknown>) => ({ id: "slug", data });
 
 describe("toAnchor", () => {
-	it("lowercases text", () => {
-		expect(toAnchor("Getting Started")).toBe("getting-started");
+	it("slugs English", () => {
+		expect(toAnchor("Getting Started!")).toBe("getting-started");
+		expect(toAnchor("  A -- B  ")).toBe("a-b");
 	});
 
-	it("replaces spaces with hyphens", () => {
-		expect(toAnchor("hello world")).toBe("hello-world");
+	it("keeps Hindi letters and vowel signs", () => {
+		expect(toAnchor("हिंदी शीर्षक")).toBe("हिंदी-शीर्षक");
+		expect(toAnchor("हिंदी शीर्षक")).not.toBe("");
+		expect(toAnchor("हिंदी शीर्षक")).not.toBe(toAnchor("दूसरा शीर्षक"));
 	});
 
-	it("removes special characters", () => {
-		expect(toAnchor("What's New?")).toBe("whats-new");
+	it("strips accents but keeps the letters", () => {
+		expect(toAnchor("Émojis & Ünicode")).toBe("emojis-unicode");
 	});
 
-	it("collapses multiple spaces into single hyphen", () => {
-		expect(toAnchor("hello   world")).toBe("hello-world");
-	});
-
-	it("trims leading and trailing whitespace", () => {
-		expect(toAnchor("  hello  ")).toBe("hello");
-	});
-
-	it("handles already-slugified text", () => {
-		expect(toAnchor("already-a-slug")).toBe("already-a-slug");
+	it("falls back to section for emoji-only and punctuation-only text", () => {
+		expect(toAnchor("🚀🔥")).toBe("section");
+		expect(toAnchor("?!...")).toBe("section");
 	});
 });
 
-// ── deduplicateAnchors ──
+describe("extractHeadings", () => {
+	it("returns h2-h4 only, skips empty ones", () => {
+		const body = [
+			block("h1", "Title"),
+			block("h2", "A"),
+			block("normal", "text"),
+			block("h3", "  "),
+			block("h4", "B"),
+			{ _type: "image" },
+		];
+		expect(extractHeadings(body)).toEqual([
+			{ level: 2, text: "A" },
+			{ level: 4, text: "B" },
+		]);
+	});
+});
 
 describe("deduplicateAnchors", () => {
-	it("assigns unique ids to headings", () => {
-		const headings = [
-			{ level: 2, text: "Introduction" },
-			{ level: 2, text: "Usage" },
-		];
-		const result = deduplicateAnchors(headings);
-		expect(result[0]!.id).toBe("introduction");
-		expect(result[1]!.id).toBe("usage");
+	it("suffixes repeats as x, x-2, x-3", () => {
+		const ids = deduplicateAnchors([2, 2, 3].map((level) => ({ level, text: "Same" }))).map(
+			(h) => h.id,
+		);
+		expect(ids).toEqual(["same", "same-2", "same-3"]);
 	});
 
-	it("handles duplicate headings with -2 -3 suffix", () => {
-		const headings = [
-			{ level: 2, text: "Introduction" },
-			{ level: 2, text: "Introduction" },
-			{ level: 2, text: "Introduction" },
-		];
-		const result = deduplicateAnchors(headings);
-		expect(result[0]!.id).toBe("introduction");
-		expect(result[1]!.id).toBe("introduction-2");
-		expect(result[2]!.id).toBe("introduction-3");
-	});
-
-	it("preserves text and level", () => {
-		const headings = [{ level: 3, text: "Details" }];
-		const result = deduplicateAnchors(headings);
-		expect(result[0]).toEqual({
-			id: "details",
-			text: "Details",
-			level: 3,
-		});
+	it("gives distinct non-empty ids to non-Latin headings", () => {
+		const ids = deduplicateAnchors(
+			["हिंदी शीर्षक", "दूसरा शीर्षक", "हिंदी शीर्षक", "🚀", "🔥"].map((text) => ({
+				level: 2,
+				text,
+			})),
+		).map((h) => h.id);
+		expect(ids.every(Boolean)).toBe(true);
+		expect(new Set(ids).size).toBe(ids.length);
 	});
 });
-
-// ── nestHeadings ──
 
 describe("nestHeadings", () => {
-	it("nests h3 under preceding h2", () => {
-		const flat = [
-			{ id: "intro", text: "Intro", level: 2 },
-			{ id: "details", text: "Details", level: 3 },
-		];
-		const result = nestHeadings(flat, 3);
-		expect(result).toHaveLength(1);
-		expect(result[0]!.id).toBe("intro");
-		expect(result[0]!.children).toHaveLength(1);
-		expect(result[0]!.children[0]!.id).toBe("details");
+	const flat = deduplicateAnchors([
+		{ level: 2, text: "A" },
+		{ level: 3, text: "A1" },
+		{ level: 4, text: "A1a" },
+		{ level: 2, text: "B" },
+	]);
+
+	it("nests by level", () => {
+		const t = nestHeadings(flat, 4);
+		expect(t.map((e) => e.text)).toEqual(["A", "B"]);
+		expect(t[0]!.children[0]!.children[0]!.text).toBe("A1a");
 	});
 
-	it("nests h4 under preceding h3", () => {
-		const flat = [
-			{ id: "intro", text: "Intro", level: 2 },
-			{ id: "details", text: "Details", level: 3 },
-			{ id: "subdetail", text: "Subdetail", level: 4 },
-		];
-		const result = nestHeadings(flat, 4);
-		expect(result).toHaveLength(1);
-		expect(result[0]!.children).toHaveLength(1);
-		expect(result[0]!.children[0]!.children).toHaveLength(1);
-		expect(result[0]!.children[0]!.children[0]!.id).toBe("subdetail");
+	it("honours maxDepth", () => {
+		expect(nestHeadings(flat, 2).every((e) => e.children.length === 0)).toBe(true);
 	});
 
-	it("h3 with no preceding h2 becomes top-level entry", () => {
-		const flat = [
-			{ id: "orphan", text: "Orphan h3", level: 3 },
-			{ id: "section", text: "Section", level: 2 },
-		];
-		const result = nestHeadings(flat, 3);
-		expect(result).toHaveLength(2);
-		expect(result[0]!.id).toBe("orphan");
-		expect(result[0]!.children).toEqual([]);
-		expect(result[1]!.id).toBe("section");
-	});
-
-	it("multiple h2 sections each with h3 children", () => {
-		const flat = [
-			{ id: "a", text: "A", level: 2 },
-			{ id: "a1", text: "A1", level: 3 },
-			{ id: "a2", text: "A2", level: 3 },
-			{ id: "b", text: "B", level: 2 },
-			{ id: "b1", text: "B1", level: 3 },
-		];
-		const result = nestHeadings(flat, 3);
-		expect(result).toHaveLength(2);
-		expect(result[0]!.children).toHaveLength(2);
-		expect(result[1]!.children).toHaveLength(1);
-	});
-
-	it("h4 headings excluded from tree when maxDepth=3", () => {
-		const flat = [
-			{ id: "intro", text: "Intro", level: 2 },
-			{ id: "details", text: "Details", level: 3 },
-			{ id: "subdetail", text: "Subdetail", level: 4 },
-		];
-		const result = nestHeadings(flat, 3);
-		expect(result).toHaveLength(1);
-		expect(result[0]!.children).toHaveLength(1);
-		// h4 should not appear anywhere in the tree
-		expect(result[0]!.children[0]!.children).toEqual([]);
-	});
-
-	it("all headings included when maxDepth=4", () => {
-		const flat = [
-			{ id: "intro", text: "Intro", level: 2 },
-			{ id: "details", text: "Details", level: 3 },
-			{ id: "subdetail", text: "Subdetail", level: 4 },
-		];
-		const result = nestHeadings(flat, 4);
-		expect(result).toHaveLength(1);
-		expect(result[0]!.children[0]!.children).toHaveLength(1);
-		expect(result[0]!.children[0]!.children[0]!.id).toBe("subdetail");
-	});
-
-	it("h3 only list with maxDepth=2 excludes all h3s", () => {
-		const flat = [
-			{ id: "intro", text: "Intro", level: 2 },
-			{ id: "details", text: "Details", level: 3 },
-		];
-		const result = nestHeadings(flat, 2);
-		expect(result).toHaveLength(1);
-		expect(result[0]!.children).toEqual([]);
+	it("promotes orphan h3 to the top", () => {
+		expect(nestHeadings(deduplicateAnchors([{ level: 3, text: "X" }]), 3)[0]!.text).toBe("X");
 	});
 });
 
-// ── tocgen hook: content:afterSave ──
-
-describe("tocgen hook: content:afterSave", () => {
-	let ctx: ReturnType<typeof makeContext>;
-
-	beforeEach(() => {
-		ctx = makeContext();
+describe("getBodyBlocks", () => {
+	const pt = [block("h2", "A")];
+	it("prefers content, then body, then any PT array", () => {
+		expect(getBodyBlocks(post({ content: pt, body: [] }))).toBe(pt);
+		expect(getBodyBlocks(post({ body: pt }))).toBe(pt);
+		expect(getBodyBlocks(post({ title: "x", other: pt }))).toBe(pt);
 	});
-
-	function makeBodyWithHeadings(count: number): PortableTextBlock[] {
-		return Array.from({ length: count }, (_, i) => headingBlock("h2", `Heading ${i + 1}`, `k${i}`));
-	}
-
-	async function runHook(
-		content: Record<string, unknown>,
-		collection = "posts",
-	) {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["content:afterSave"];
-		const event = { content, collection, isNew: false };
-		await hook.handler(event, ctx);
-	}
-
-	it("writes tocgen metadata on publish", async () => {
-		const content = makeContentItem({
-			status: "published",
-			data: {
-				body: makeBodyWithHeadings(3),
-				metadata: {},
-			},
-		});
-
-		ctx.content!.get = vi.fn().mockResolvedValue({
-			id: content.id,
-			data: { metadata: {} },
-		});
-
-		await runHook(content, "posts");
-
-		expect(ctx.content!.update).toHaveBeenCalledWith(
-			"posts",
-			content.id,
-			expect.objectContaining({
-				metadata: expect.objectContaining({
-					tocgen: expect.objectContaining({
-						entries: expect.any(Array),
-						generatedAt: expect.any(String),
-					}),
-				}),
-			}),
-		);
-
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
-		const entries = updateCall[2].metadata.tocgen.entries;
-		expect(entries).toHaveLength(3);
-		expect(entries[0].id).toBe("heading-1");
-		expect(entries[0].text).toBe("Heading 1");
-		expect(entries[0].level).toBe(2);
-	});
-
-	it("skips when heading count below minHeadings", async () => {
-		const content = makeContentItem({
-			status: "published",
-			data: {
-				body: makeBodyWithHeadings(2), // default minHeadings is 3
-				metadata: {},
-			},
-		});
-
-		await runHook(content, "posts");
-		expect(ctx.content!.update).not.toHaveBeenCalled();
-	});
-
-	it("does not write metadata.tocgen at all when below threshold (key absent, not empty)", async () => {
-		// Existing content has tocgen from a previous run with more headings.
-		// After edit reduced headings below threshold, tocgen key should be removed.
-		const content = makeContentItem({
-			status: "published",
-			data: {
-				body: makeBodyWithHeadings(1),
-				metadata: {},
-			},
-		});
-
-		ctx.content!.get = vi.fn().mockResolvedValue({
-			id: content.id,
-			data: {
-				metadata: {
-					tocgen: { entries: [], generatedAt: "2026-01-01T00:00:00Z" },
-					otherPlugin: "keep-this",
-				},
-			},
-		});
-
-		await runHook(content, "posts");
-
-		// Should still update to clear the stale tocgen key
-		if ((ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls.length > 0) {
-			const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
-			const metadata = updateCall[2].metadata;
-			expect(metadata.tocgen).toBeUndefined();
-			// Other plugins' metadata preserved
-			expect(metadata.otherPlugin).toBe("keep-this");
-		} else {
-			// Also acceptable: not calling update at all when nothing to write
-			expect(ctx.content!.update).not.toHaveBeenCalled();
-		}
-	});
-
-	it("skips non-published content", async () => {
-		for (const status of ["draft", "archived", "scheduled"]) {
-			const freshCtx = makeContext();
-			const content = makeContentItem({ status });
-			const plugin = await import("../src/sandbox-entry.ts");
-			const hook = plugin.default.hooks!["content:afterSave"];
-			await hook.handler({ content, collection: "posts", isNew: false }, freshCtx);
-			expect(freshCtx.content!.update).not.toHaveBeenCalled();
-		}
-	});
-
-	it("skips collections not in config", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "config:collections") return Promise.resolve(["articles"]);
-			if (key === "config:minHeadings") return Promise.resolve(3);
-			if (key === "config:maxDepth") return Promise.resolve(3);
-			return Promise.resolve(null);
-		});
-
-		const content = makeContentItem({
-			status: "published",
-			data: { body: makeBodyWithHeadings(5), metadata: {} },
-		});
-		await runHook(content, "posts");
-		expect(ctx.content!.update).not.toHaveBeenCalled();
-	});
-
-	it("is idempotent on republish", async () => {
-		const body = makeBodyWithHeadings(3);
-		const content = makeContentItem({
-			status: "published",
-			data: { body, metadata: {} },
-		});
-
-		ctx.content!.get = vi.fn().mockResolvedValue({
-			id: content.id,
-			data: {
-				metadata: {
-					tocgen: {
-						entries: [{ id: "old", text: "Old", level: 2, children: [] }],
-						generatedAt: "2026-01-01T00:00:00Z",
-					},
-				},
-			},
-		});
-
-		await runHook(content, "posts");
-
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
-		const entries = updateCall[2].metadata.tocgen.entries;
-		// Fresh calculation, not old stale data
-		expect(entries).toHaveLength(3);
-		expect(entries[0].text).toBe("Heading 1");
-	});
-
-	it("merges with existing metadata from other plugins", async () => {
-		const content = makeContentItem({
-			status: "published",
-			data: { body: makeBodyWithHeadings(3), metadata: {} },
-		});
-
-		ctx.content!.get = vi.fn().mockResolvedValue({
-			id: content.id,
-			data: {
-				metadata: {
-					wordCount: 500,
-					readingTimeMinutes: 3,
-					seoTitle: "My Post",
-				},
-			},
-		});
-
-		await runHook(content, "posts");
-
-		const updateCall = (ctx.content!.update as ReturnType<typeof vi.fn>).mock.calls[0]!;
-		const metadata = updateCall[2].metadata;
-		// Other plugins' keys preserved
-		expect(metadata.wordCount).toBe(500);
-		expect(metadata.readingTimeMinutes).toBe(3);
-		expect(metadata.seoTitle).toBe("My Post");
-		// tocgen key added
-		expect(metadata.tocgen).toBeDefined();
-		expect(metadata.tocgen.entries).toHaveLength(3);
-	});
-
-	it("handles missing ctx.content gracefully", async () => {
-		const noContentCtx = makeContext({ content: undefined });
-		const content = makeContentItem({
-			status: "published",
-			data: { body: makeBodyWithHeadings(5), metadata: {} },
-		});
-
-		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["content:afterSave"];
-		const event = { content, collection: "posts", isNew: false };
-
-		await expect(hook.handler(event, noContentCtx)).resolves.toBeUndefined();
-		expect(noContentCtx.log.error).toHaveBeenCalled();
+	it("honours field and returns null when missing", () => {
+		expect(getBodyBlocks(post({ content: [block("h2", "Z")], alt: pt }), "alt")).toBe(pt);
+		expect(getBodyBlocks(post({ title: "x" }))).toBeNull();
+		expect(getBodyBlocks(null)).toBeNull();
 	});
 });
 
-// ── admin page ──
+describe("getToc", () => {
+	const headings = [block("h2", "One"), block("h3", "Two"), block("h2", "Three")];
 
-describe("admin page", () => {
-	let ctx: ReturnType<typeof makeContext>;
-
-	beforeEach(() => {
-		ctx = makeContext();
+	it("returns a nested TOC for a post", () => {
+		const t = getToc(post({ content: headings }));
+		expect(t.map((e) => e.id)).toEqual(["one", "three"]);
+		expect(t[0]!.children[0]!.id).toBe("two");
 	});
 
-	async function invokeAdmin(input: unknown): Promise<any> {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const handler = plugin.default.routes!.admin!.handler;
-		return handler(
-			{ input, request: { url: "http://localhost", method: "POST", headers: {} } },
-			ctx,
-		);
-	}
-
-	it("page_load returns form with current config values", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "config:minHeadings") return Promise.resolve(5);
-			if (key === "config:maxDepth") return Promise.resolve(4);
-			if (key === "config:collections") return Promise.resolve(["docs"]);
-			return Promise.resolve(null);
-		});
-		const res = await invokeAdmin({ type: "page_load" });
-		const form = res.blocks.find((b: any) => b.type === "form");
-		expect(form.fields.find((f: any) => f.action_id === "minHeadings").initial_value).toBe(5);
-		expect(form.fields.find((f: any) => f.action_id === "maxDepth").initial_value).toBe("4");
-		expect(form.fields.find((f: any) => f.action_id === "collections").initial_value).toBe("docs");
+	it("is empty below minHeadings", () => {
+		expect(getToc(post({ content: headings.slice(0, 2) }))).toEqual([]);
+		expect(getToc(post({ content: headings.slice(0, 2) }), { minHeadings: 2 })).toHaveLength(1);
 	});
 
-	it("page_load returns default values when KV is empty", async () => {
-		const res = await invokeAdmin({ type: "page_load" });
-		const form = res.blocks.find((b: any) => b.type === "form");
-		expect(form.fields.find((f: any) => f.action_id === "minHeadings").initial_value).toBe(3);
-		expect(form.fields.find((f: any) => f.action_id === "maxDepth").initial_value).toBe("3");
+	it("counts only headings within maxDepth toward minHeadings", () => {
+		expect(getToc(post({ content: headings }), { maxDepth: 2 })).toEqual([]);
 	});
 
-	it("save_settings writes valid config to KV", async () => {
-		const res = await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: { minHeadings: 5, maxDepth: "4", collections: "blog, docs" },
-		});
-		expect(ctx.kv.set).toHaveBeenCalledWith("config:minHeadings", 5);
-		expect(ctx.kv.set).toHaveBeenCalledWith("config:maxDepth", 4);
-		expect(ctx.kv.set).toHaveBeenCalledWith("config:collections", ["blog", "docs"]);
-		expect(res.toast.type).toBe("success");
-	});
-
-	it("save_settings rejects invalid maxDepth", async () => {
-		const res = await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: { minHeadings: 3, maxDepth: "5", collections: "" },
-		});
-		expect(res.toast.type).toBe("error");
-		expect(ctx.kv.set).not.toHaveBeenCalled();
-	});
-
-	it("save_settings rejects minHeadings below 1", async () => {
-		const res = await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: { minHeadings: 0, maxDepth: "3", collections: "" },
-		});
-		expect(res.toast.type).toBe("error");
-		expect(ctx.kv.set).not.toHaveBeenCalled();
+	it("accepts a bare block array and survives bad input", () => {
+		expect(getToc(headings)).toHaveLength(2);
+		expect(getToc(undefined)).toEqual([]);
+		expect(getToc(post({}))).toEqual([]);
 	});
 });
 
-describe("validateTocgenSettings", () => {
-	it("accepts valid input", () => {
-		const r = validateTocgenSettings({ minHeadings: 3, maxDepth: "3", collections: "" });
-		expect(r.ok).toBe(true);
-		expect(r.minHeadings).toBe(3);
-		expect(r.maxDepth).toBe(3);
-		expect(r.collections).toBeNull();
+// Run the inline script from HeadingAnchors.astro against a fake DOM and
+// compare the ids with getToc().
+function scriptIds(texts: string[], preset: Record<number, string> = {}) {
+	const script = /<script[^>]*>([\s\S]*?)<\/script>/.exec(anchors)![1]!;
+	const els = texts.map((textContent, i) => ({ textContent, id: preset[i] ?? "" }));
+	const doc = { querySelector: () => ({ querySelectorAll: () => els }) };
+	new Function("document", "selector", script)(doc, "article");
+	return els.map((e) => e.id);
+}
+
+describe("HeadingAnchors script", () => {
+	const texts = ["हिंदी शीर्षक", "दूसरा शीर्षक", "Émojis & Ünicode", "Same", "Same", "🚀", "Same"];
+
+	it("is under 1 KB", () => {
+		const script = /<script[^>]*>([\s\S]*?)<\/script>/.exec(anchors)![1]!;
+		expect(script.length).toBeLessThan(1024);
 	});
 
-	it("rejects maxDepth 1", () => {
-		expect(validateTocgenSettings({ minHeadings: 3, maxDepth: "1", collections: "" }).ok).toBe(false);
+	it("sets the same ids getToc links to", () => {
+		const body = texts.map((t) => block("h2", t));
+		const flat = (es: ReturnType<typeof getToc>): string[] =>
+			es.flatMap((e) => [e.id, ...flat(e.children)]);
+		expect(scriptIds(texts)).toEqual(flat(getToc(post({ content: body }))));
 	});
 
-	it("rejects minHeadings > 10", () => {
-		expect(validateTocgenSettings({ minHeadings: 11, maxDepth: "3", collections: "" }).ok).toBe(false);
+	it("leaves existing ids alone", () => {
+		expect(scriptIds(["A", "B"], { 0: "mine" })).toEqual(["mine", "b"]);
+	});
+});
+
+describe("deprecated plugin descriptor", () => {
+	it("is a no-op native descriptor", () => {
+		const d = tocgenPlugin({ minHeadings: 2 });
+		expect(d).toMatchObject({ id: "tocgen", format: "native", capabilities: [] });
+		expect(d.entrypoint).toBe("@plugdash/tocgen");
+		expect(createPlugin().hooks).toBeDefined();
 	});
 });

@@ -1,9 +1,10 @@
 # @plugdash/sharepost
 
 Adding share buttons to a blog post should not require loading a third-party script.
-Generates sharing URLs for Twitter/X, LinkedIn, WhatsApp, Bluesky, and email on publish
-and writes them to content metadata. Ships `ShareButtons.astro` - a zero-JavaScript
-component that renders share links as plain anchor tags.
+Builds sharing links for Twitter/X, LinkedIn, WhatsApp, Bluesky, and email when the
+page renders, from the current URL and the post title. Ships `ShareButtons.astro` - a
+zero-JavaScript component that renders share links as plain anchor tags. No hooks, no
+database reads or writes.
 The EmDash equivalent of [Social Warfare](https://warfareplugins.com/) / [AddToAny](https://wordpress.org/plugins/add-to-any/) (basic tier).
 
 ## Install
@@ -14,38 +15,22 @@ pnpm add @plugdash/sharepost
 
 ## Register
 
+Nothing to register. `sharepostPlugin()` still exists as a no-op so older
+`astro.config.mjs` files keep working, but it is deprecated and ignores its options.
+
+Set `site` in `astro.config.mjs` so links use your public domain behind a proxy or CDN.
+Without it, links use the origin of the incoming request.
+
 ```js
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import emdash from "emdash";
-import { sharepostPlugin } from "@plugdash/sharepost";
+import emdash from "emdash/astro";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [sharepostPlugin()],
-    }),
-  ],
+  site: "https://example.com",
+  integrations: [emdash({})],
 });
 ```
-
-## Configuration
-
-### Admin dashboard
-
-After installing, open the EmDash admin and go to Plugins - Share Post -
-Settings. All configuration options are available there. Changes take
-effect on the next publish - no code changes required.
-
-### Config options
-
-Configuration is stored in the plugin's KV store. Defaults are seeded on install.
-
-| Option    | Type       | Default                                              | Description                          |
-| --------- | ---------- | ---------------------------------------------------- | ------------------------------------ |
-| platforms | `string[]` | `["twitter", "linkedin", "whatsapp", "bluesky", "email"]` | Platforms to generate share URLs for |
-| via       | `string`   | none                                                 | Twitter @handle without the @        |
-| hashtags  | `string[]` | none                                                 | Twitter hashtags without #           |
 
 ## Companion component
 
@@ -54,14 +39,18 @@ Configuration is stored in the plugin's KV store. Defaults are seeded on install
 import ShareButtons from "@plugdash/sharepost/ShareButtons.astro";
 ---
 
-<ShareButtons post={post} />
+<ShareButtons post={post} via="yourhandle" />
 ```
 
 ### Props
 
 | Prop        | Type                                                         | Default                             | Description                       |
 | ----------- | ------------------------------------------------------------ | ----------------------------------- | --------------------------------- |
-| post        | `Record<string, unknown>`                                    | required                            | The post object from EmDash       |
+| post        | `Record<string, unknown>`                                    | none                                | Post from `getEmDashEntry()`. Only used for the title |
+| url         | `string`                                                     | current page, as an absolute URL    | URL to share                      |
+| title       | `string`                                                     | `post.data.title`                   | Share text                        |
+| via         | `string`                                                     | none                                | X/Twitter handle without the @, X link only |
+| hashtags    | `string[]`                                                   | none                                | X/Twitter hashtags without #, X link only |
 | platforms   | `Array<"twitter" \| "linkedin" \| "whatsapp" \| "bluesky" \| "email">` | `["twitter", "linkedin", "bluesky"]` | Which buttons to show             |
 | variant     | `"circle" \| "pill" \| "ghost" \| "filled"`                 | `"circle"`                          | Visual style                      |
 | size        | `"sm" \| "md" \| "lg"`                                      | `"md"`                              | Button size                       |
@@ -111,37 +100,19 @@ Or target the per-platform class directly for custom hover treatments:
 .plugdash-share-btn--bluesky:hover { background: #0085ff; color: #fff; }
 ```
 
-## Metadata written
-
-On publish, writes to `post.data.metadata.shareUrls`:
-
-```typescript
-{
-  twitter: "https://twitter.com/intent/tweet?text=...",
-  linkedin: "https://www.linkedin.com/sharing/share-offsite/?url=...",
-  whatsapp: "https://api.whatsapp.com/send?text=...",
-  bluesky: "https://bsky.app/intent/compose?text=...",
-  email: "mailto:?subject=...&body=..."
-}
-```
-
-Only configured platforms appear in the object.
-
 ## What it does
 
-- Fires on `content:afterSave` when status is `published`
-- Reads post title from `event.content.data.title` (falls back to collection name)
-- Builds absolute post URL from `ctx.url()` and slug
-- Generates platform-specific share URLs with proper encoding
-- Truncates title to 200 chars for Twitter only
-- Reads existing content to merge metadata (preserves other plugins' fields)
-- Appends `via` and `hashtags` to Twitter URLs when configured
+- Builds the share links in the component on each render (about 0.007 ms for five links)
+- Uses `url` if given, else the current page URL resolved against `Astro.site` or the request origin
+- Reads the title from `title`, else `post.data.title`
+- Encodes titles and URLs, so `& " <` are safe
+- Truncates the title to 200 chars for X only
+- Appends `via` and `hashtags` to the X link only
 
 ## What it does not do
 
 - Does not make external HTTP calls - all URLs are constructed locally
 - Does not require client-side JavaScript - share links are plain anchor tags
 - Does not track share clicks - that is analytics territory
-- Does not generate share URLs for drafts, archived, or scheduled content
-- Does not generate share URLs for posts without a slug
+- Does not write to content or metadata, and registers no hooks
 - Does not create Open Graph images - see @plugdash/socialcard for that

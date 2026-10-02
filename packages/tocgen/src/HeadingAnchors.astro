@@ -1,0 +1,41 @@
+---
+/**
+ * @plugdash/tocgen - HeadingAnchors.astro
+ *
+ * Gives h2-h4 headings the same ids TableOfContents links to. EmDash's
+ * PortableText renders headings without ids. Place this AFTER the post body.
+ * Headings that already have an id are left alone.
+ *
+ * Usage:
+ *   <PortableText value={post.data.content} />
+ *   <HeadingAnchors />
+ *
+ * Props:
+ *   selector - CSS selector of the element holding the body, default "article"
+ */
+interface Props {
+	selector?: string;
+}
+const { selector = "article" } = Astro.props;
+---
+
+<script is:inline define:vars={{ selector }}>
+	(function () {
+		var root = document.querySelector(selector);
+		if (!root) return;
+		var seen = {};
+		root.querySelectorAll("h2,h3,h4").forEach(function (h) {
+			var t = h.textContent || "";
+			if (!t.trim()) return;
+			var b =
+				t
+					.normalize("NFKD")
+					.replace(/[\u0300-\u036f]/g, "")
+					.toLowerCase()
+					.replace(/[^\p{L}\p{M}\p{N}]+/gu, "-")
+					.replace(/^-+|-+$/g, "") || "section";
+			seen[b] = (seen[b] || 0) + 1;
+			if (!h.id) h.id = seen[b] > 1 ? b + "-" + seen[b] : b;
+		});
+	})();
+</script>

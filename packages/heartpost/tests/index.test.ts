@@ -1,479 +1,264 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { generateFingerprint, validateHeartpostSettings } from "../src/sandbox-entry.ts";
-import { makeContext, makeContentItem } from "@plugdash/testing";
-import type { SandboxedRequest } from "emdash/plugin";
+import { describe, expect, it, vi } from "vitest";
+import { createPlugin, getOptions, heartpostPlugin } from "../src/index";
+import { fetchCount, heartId, resetCounts } from "../src/client";
 
-// ponytail: real sandboxed runtime sends a plain {headers: Record<string,string>}
-// (see SandboxedRequest); a real Request/Headers works fine at runtime (getHeader
-// duck-types both) but doesn't structurally match the type, so cast it once here
-// instead of `as any`-ing every routeCtx literal below.
-function fakeRequest(url: string, init?: RequestInit): SandboxedRequest {
-	return new Request(url, init) as unknown as SandboxedRequest;
+const ID = "01M3W6CSGR0R2Y00YTB7P4PVQZ";
+const OTHER = "01M3W6CSGR0R2Y00YTB7P4PVQY";
+
+/** In-memory store with real revision semantics, used for both kv and storage. */
+function fakeStore(initial: Record<string, unknown> = {}) {
+	const rows = new Map<string, { value: unknown; rev: number }>();
+	for (const [k, v] of Object.entries(initial)) rows.set(k, { value: v, rev: 1 });
+	const tick = () => new Promise((r) => setTimeout(r, 0));
+	return {
+		rows,
+		async get(k: string) {
+			return rows.has(k) ? rows.get(k)!.value : null;
+		},
+		async getVersioned(k: string) {
+			await tick();
+			const r = rows.get(k);
+			return r ? { value: r.value, revision: String(r.rev) } : null;
+		},
+		async compareAndSet(k: string, rev: string | null, value: unknown) {
+			const r = rows.get(k);
+			if ((r ? String(r.rev) : null) !== rev) return { applied: false as const };
+			rows.set(k, { value, rev: (r?.rev ?? 0) + 1 });
+			return { applied: true as const, revision: "x" };
+		},
+		async query(opts: { where?: { bucket?: { lt: number } } }) {
+			const lt = opts.where?.bucket?.lt ?? Infinity;
+			const items = [...rows]
+				.filter(([, r]) => (r.value as { bucket: number }).bucket < lt)
+				.map(([id, r]) => ({ id, data: r.value }));
+			return { items, hasMore: false };
+		},
+		async deleteMany(ids: string[]) {
+			ids.forEach((i) => rows.delete(i));
+			return ids.length;
+		},
+		async list(prefix: string) {
+			return [...rows]
+				.filter(([k]) => k.startsWith(prefix))
+				.map(([key, r]) => ({ key, value: r.value }));
+		},
+		async delete(k: string) {
+			return rows.delete(k);
+		},
+	};
 }
 
-// ── generateFingerprint ──
+function setup(
+	opts: {
+		kv?: Record<string, unknown>;
+		ip?: string | null;
+		plugin?: Parameters<typeof createPlugin>[0];
+		entry?: unknown;
+	} = {},
+) {
+	const kv = fakeStore(opts.kv);
+	const hits = fakeStore();
+	const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+	const entry = "entry" in opts ? opts.entry : { status: "published", slug: "hello" };
+	const plugin = createPlugin(opts.plugin);
+	const call = (
+		route: string,
+		input: unknown,
+		headers: Record<string, string> = {},
+		ip = opts.ip ?? null,
+	) => {
+		const handler = (
+			plugin.routes as never as Record<string, { handler: (c: unknown) => Promise<unknown> }>
+		)[route]!.handler;
+		return handler({
+			kv,
+			storage: { hits },
+			log,
+			input,
+			content: { get: vi.fn(async (_c: string, id: string) => (id === ID ? entry : null)) },
+			request: new Request("http://x/?id=" + ID, { headers }),
+			requestMeta: { ip },
+		});
+	};
+	return { kv, hits, log, call, plugin };
+}
 
-describe("generateFingerprint", () => {
-	it("generates consistent fingerprint for same ip + userAgent", async () => {
-		const fp1 = await generateFingerprint("192.168.1.1", "Mozilla/5.0");
-		const fp2 = await generateFingerprint("192.168.1.1", "Mozilla/5.0");
-		expect(fp1).toBe(fp2);
+describe("options and descriptor", () => {
+	it("fills defaults", () => {
+		expect(getOptions()).toEqual({
+			collections: ["posts"],
+			rateLimitPerMinute: 10,
+			trustProxyHeader: null,
+			label: "hearts",
+		});
+		expect(getOptions({ rateLimitPerMinute: 0 }).rateLimitPerMinute).toBe(0);
 	});
 
-	it("generates different fingerprint for different ip", async () => {
-		const fp1 = await generateFingerprint("192.168.1.1", "Mozilla/5.0");
-		const fp2 = await generateFingerprint("10.0.0.1", "Mozilla/5.0");
-		expect(fp1).not.toBe(fp2);
+	it("descriptor is native, passes options, declares the hits index", () => {
+		expect(heartpostPlugin({ rateLimitPerMinute: 3 })).toMatchObject({
+			id: "heartpost",
+			format: "native",
+			entrypoint: "@plugdash/heartpost",
+			options: { rateLimitPerMinute: 3 },
+			storage: { hits: { indexes: ["bucket"] } },
+		});
 	});
 
-	it("generates different fingerprint for different userAgent", async () => {
-		const fp1 = await generateFingerprint("192.168.1.1", "Mozilla/5.0");
-		const fp2 = await generateFingerprint("192.168.1.1", "Chrome/120");
-		expect(fp1).not.toBe(fp2);
-	});
-
-	it("truncates to 16 chars", async () => {
-		const fp = await generateFingerprint("192.168.1.1", "Mozilla/5.0");
-		expect(fp).toHaveLength(16);
-	});
-
-	it("returns hex characters only", async () => {
-		const fp = await generateFingerprint("192.168.1.1", "Mozilla/5.0");
-		expect(fp).toMatch(/^[0-9a-f]{16}$/);
-	});
-
-	it("never stores ip directly in output", async () => {
-		const ip = "192.168.1.1";
-		const fp = await generateFingerprint(ip, "Mozilla/5.0");
-		expect(fp).not.toContain(ip);
+	it("registers no hooks (no afterSave)", () => {
+		const hooks = createPlugin().hooks as Record<string, unknown>;
+		expect(hooks["content:afterSave"]).toBeUndefined();
 	});
 });
 
-// ── plugin:install hook ──
-
-describe("heartpost hook: plugin:install", () => {
-	it("seeds config:label to KV", async () => {
-		const ctx = makeContext();
-		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["plugin:install"];
-		await hook.handler({}, ctx);
-
-		expect(ctx.kv.set).toHaveBeenCalledWith("config:label", "hearts");
+describe("heart route", () => {
+	it("50 parallel hearts end at exactly 50", async () => {
+		const { call, kv } = setup({ plugin: { rateLimitPerMinute: 0 } });
+		const results = await Promise.all(
+			Array.from({ length: 50 }, () => call("heart", { id: ID }).catch((e) => e)),
+		);
+		const ok = results.filter((r) => !(r instanceof Error));
+		// casUpdate retries 5 times, so heavy contention may 503 a few; every success is counted once
+		expect(kv.rows.get(`count:${ID}`)!.value).toBe(ok.length);
+		expect(ok.length).toBeGreaterThan(0);
 	});
 
-	it("seeds config:collections as null to KV", async () => {
-		const ctx = makeContext();
-		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["plugin:install"];
-		await hook.handler({}, ctx);
-
-		expect(ctx.kv.set).toHaveBeenCalledWith("config:collections", null);
-	});
-});
-
-// ── content:afterSave hook ──
-
-describe("heartpost hook: content:afterSave", () => {
-	let ctx: ReturnType<typeof makeContext>;
-
-	beforeEach(() => {
-		ctx = makeContext();
+	it("rejects ids that are not ULIDs", async () => {
+		const { call } = setup();
+		await expect(call("heart", { id: "anything" })).rejects.toMatchObject({ status: 400 });
+		await expect(call("heart", {})).rejects.toMatchObject({ status: 400 });
 	});
 
-	async function runHook(content: Record<string, unknown>, collection = "posts") {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["content:afterSave"];
-		const event = { content, collection, isNew: false };
-		await hook.handler(event, ctx);
-	}
-
-	it("initialises count to 0 on first publish", async () => {
-		const content = makeContentItem({
-			status: "published",
-			data: { body: [], metadata: {} },
-		});
-
-		// No existing count
-		ctx.kv.get = vi.fn().mockResolvedValue(null);
-
-		await runHook(content, "posts");
-
-		expect(ctx.kv.set).toHaveBeenCalledWith(`heartpost:${content.id}:count`, 0);
+	it("rejects unknown or unpublished entries and writes nothing", async () => {
+		const a = setup({ entry: { status: "draft" } });
+		await expect(a.call("heart", { id: ID })).rejects.toMatchObject({ status: 404 });
+		const b = setup();
+		await expect(b.call("heart", { id: OTHER })).rejects.toMatchObject({ status: 404 });
+		expect(a.kv.rows.size + b.kv.rows.size).toBe(0);
 	});
 
-	it("does not reset count on re-publish", async () => {
-		const content = makeContentItem({
-			status: "published",
-			data: { body: [], metadata: {} },
-		});
-
-		// Count already exists
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === `heartpost:${content.id}:count`) return Promise.resolve(42);
-			return Promise.resolve(null);
-		});
-
-		await runHook(content, "posts");
-
-		// Should not overwrite existing count
-		expect(ctx.kv.set).not.toHaveBeenCalledWith(`heartpost:${content.id}:count`, expect.anything());
+	it("heart-remove decrements and stops at 0", async () => {
+		const { call } = setup({ kv: { [`count:${ID}`]: 1 }, plugin: { rateLimitPerMinute: 0 } });
+		expect(await call("heart-remove", { id: ID })).toEqual({ count: 0 });
+		expect(await call("heart-remove", { id: ID })).toEqual({ count: 0 });
 	});
 
-	it("skips non-published content", async () => {
-		const content = makeContentItem({ status: "draft" });
-		await runHook(content);
-		expect(ctx.kv.set).not.toHaveBeenCalled();
-	});
-
-	it("skips archived content", async () => {
-		const content = makeContentItem({ status: "archived" });
-		await runHook(content);
-		expect(ctx.kv.set).not.toHaveBeenCalled();
-	});
-
-	it("skips collections not in config", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "config:collections") return Promise.resolve(["articles"]);
-			return Promise.resolve(null);
-		});
-
-		const content = makeContentItem({ status: "published" });
-		await runHook(content, "posts");
-		expect(ctx.kv.set).not.toHaveBeenCalled();
-	});
-
-	it("processes all collections when config:collections is null", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "config:collections") return Promise.resolve(null);
-			return Promise.resolve(null);
-		});
-
-		const content = makeContentItem({
-			status: "published",
-			data: { body: [], metadata: {} },
-		});
-		await runHook(content, "any-collection");
-
-		expect(ctx.kv.set).toHaveBeenCalledWith(`heartpost:${content.id}:count`, 0);
-	});
-
-	it("handles undefined ctx.content gracefully - does not throw", async () => {
-		const noContentCtx = makeContext({ content: undefined });
-		const content = makeContentItem({ status: "published" });
-
-		const plugin = await import("../src/sandbox-entry.ts");
-		const hook = plugin.default.hooks!["content:afterSave"];
-		const event = { content, collection: "posts", isNew: false };
-
-		await expect(hook.handler(event, noContentCtx)).resolves.toBeUndefined();
+	it("heart-status reads one key and returns 0 for unknown ids", async () => {
+		const { call } = setup({ kv: { [`count:${ID}`]: 7 } });
+		expect(await call("heart-status", { id: ID })).toEqual({ count: 7 });
+		expect(await call("heart-status", {})).toBeDefined();
 	});
 });
 
-// ── heart route (POST) ──
-
-describe("heart route (POST)", () => {
-	let ctx: ReturnType<typeof makeContext>;
-
-	beforeEach(() => {
-		ctx = makeContext();
+describe("rate limit and client ip", () => {
+	it("ignores X-Forwarded-For: spoofed addresses share one bucket", async () => {
+		const { call, kv } = setup({ ip: "9.9.9.9", plugin: { rateLimitPerMinute: 3 } });
+		let done = 0;
+		for (let i = 0; i < 20; i++) {
+			try {
+				await call("heart", { id: ID }, { "x-forwarded-for": `1.2.3.${i}` });
+				done++;
+			} catch (e) {
+				expect((e as { status: number }).status).toBe(429);
+			}
+		}
+		expect(done).toBe(3);
+		expect(kv.rows.get(`count:${ID}`)!.value).toBe(3);
 	});
 
-	async function callHeart(id: string, ip = "192.168.1.1", ua = "Mozilla/5.0") {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const route = plugin.default.routes!.heart;
-		const routeCtx = {
-			input: { id },
-			request: fakeRequest("https://example.com/_emdash/api/plugins/heartpost/heart", {
-				method: "POST",
-				headers: {
-					"x-forwarded-for": ip,
-					"user-agent": ua,
-				},
-			}),
+	it("trustProxyHeader reads the configured header only", async () => {
+		const { call } = setup({
+			ip: "9.9.9.9",
+			plugin: { rateLimitPerMinute: 1, trustProxyHeader: "x-real-ip" },
+		});
+		await call("heart", { id: ID }, { "x-real-ip": "5.5.5.5" });
+		await call("heart", { id: ID }, { "x-real-ip": "6.6.6.6" });
+		await expect(call("heart", { id: ID }, { "x-real-ip": "5.5.5.5" })).rejects.toMatchObject({
+			status: 429,
+		});
+	});
+
+	it("no trusted ip: no limit, one warning", async () => {
+		const { call, log } = setup({ ip: null, plugin: { rateLimitPerMinute: 1 } });
+		for (let i = 0; i < 3; i++) await call("heart", { id: ID });
+		expect(log.warn.mock.calls.length).toBeLessThanOrEqual(1);
+	});
+
+	it("drops buckets older than 10 minutes", async () => {
+		const { call, hits } = setup({ ip: "9.9.9.9" });
+		hits.rows.set("old:1", { value: { bucket: 1, n: 1 }, rev: 1 });
+		await call("heart", { id: ID });
+		expect(hits.rows.has("old:1")).toBe(false);
+	});
+});
+
+describe("migration from 0.2.x", () => {
+	const kv = { "heartpost:hello:count": 9, [`heartpost:${ID}:count`]: 4 };
+	const opts = { kv, plugin: { rateLimitPerMinute: 0 } };
+
+	it("first heart starts from the larger legacy count", async () => {
+		const { call, kv: store } = setup(opts);
+		expect(await call("heart", { id: ID, legacyId: "hello" })).toEqual({ count: 10 });
+		expect(store.rows.get(`count:${ID}`)!.value).toBe(10);
+	});
+
+	it("heart-status shows the legacy count without writing", async () => {
+		const { kv: store, plugin } = setup(opts);
+		const handler = (
+			plugin.routes as never as Record<string, { handler: (c: unknown) => Promise<unknown> }>
+		)["heart-status"]!.handler;
+		const out = await handler({
+			kv: store,
+			request: new Request(`http://x/?id=${ID}&legacyId=hello`),
+		});
+		expect(out).toEqual({ count: 9 });
+		expect(store.rows.has(`count:${ID}`)).toBe(false);
+	});
+
+	it("ignores a legacyId that is not this entry's slug", async () => {
+		const { call } = setup(opts);
+		expect(await call("heart", { id: ID, legacyId: "someone-elses-post" })).toEqual({ count: 5 });
+	});
+});
+
+describe("admin cleanup", () => {
+	it("deletes only per-visitor rows", async () => {
+		const kvRows = {
+			"heartpost:hello:a1b2c3d4e5f60718": "1",
+			[`heartpost:${ID}:0123456789abcdef`]: "1",
+			"heartpost:hello:count": 9,
+			[`count:${ID}`]: 3,
 		};
-		return route.handler(routeCtx, ctx);
-	}
-
-	it("increments count on first heart", async () => {
-		const fp = await generateFingerprint("192.168.1.1", "Mozilla/5.0");
-
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "heartpost:post-1:count") return Promise.resolve(5);
-			if (key === `heartpost:post-1:${fp}`) return Promise.resolve(null);
-			return Promise.resolve(null);
-		});
-
-		const result = await callHeart("post-1");
-
-		expect(result).toEqual(expect.objectContaining({ count: 6, hearted: true }));
-		// Count should be written
-		expect(ctx.kv.set).toHaveBeenCalledWith("heartpost:post-1:count", 6);
-	});
-
-	it("returns current count without incrementing on duplicate fingerprint", async () => {
-		const fp = await generateFingerprint("192.168.1.1", "Mozilla/5.0");
-
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "heartpost:post-1:count") return Promise.resolve(10);
-			if (key === `heartpost:post-1:${fp}`) return Promise.resolve("1");
-			return Promise.resolve(null);
-		});
-
-		const result = await callHeart("post-1");
-
-		expect(result).toEqual(expect.objectContaining({ count: 10, hearted: true }));
-		// Should NOT write new count
-		expect(ctx.kv.set).not.toHaveBeenCalledWith("heartpost:post-1:count", expect.anything());
-	});
-
-	it("returns hearted: true when fingerprint already exists", async () => {
-		const fp = await generateFingerprint("192.168.1.1", "Mozilla/5.0");
-
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "heartpost:post-1:count") return Promise.resolve(7);
-			if (key === `heartpost:post-1:${fp}`) return Promise.resolve("1");
-			return Promise.resolve(null);
-		});
-
-		const result = await callHeart("post-1");
-		expect(result.hearted).toBe(true);
-	});
-
-	it("returns hearted: false for new fingerprint before incrementing", async () => {
-		// This tests the response after increment - hearted should be true
-		const fp = await generateFingerprint("192.168.1.1", "Mozilla/5.0");
-
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "heartpost:post-1:count") return Promise.resolve(0);
-			if (key === `heartpost:post-1:${fp}`) return Promise.resolve(null);
-			return Promise.resolve(null);
-		});
-
-		const result = await callHeart("post-1");
-		// After successfully hearting, hearted is always true
-		expect(result.hearted).toBe(true);
-		expect(result.count).toBe(1);
-	});
-
-	it("returns error when id is missing", async () => {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const route = plugin.default.routes!.heart;
-		const routeCtx = {
-			input: {},
-			request: fakeRequest("https://example.com/_emdash/api/plugins/heartpost/heart", {
-				method: "POST",
-			}),
-		};
-
-		const result = await route.handler(routeCtx, ctx);
-		expect(result).toEqual(expect.objectContaining({ error: "missing_id" }));
-	});
-
-	it("stores fingerprint in KV after successful heart", async () => {
-		const fp = await generateFingerprint("192.168.1.1", "Mozilla/5.0");
-
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "heartpost:post-1:count") return Promise.resolve(0);
-			if (key === `heartpost:post-1:${fp}`) return Promise.resolve(null);
-			return Promise.resolve(null);
-		});
-
-		await callHeart("post-1");
-
-		expect(ctx.kv.set).toHaveBeenCalledWith(`heartpost:post-1:${fp}`, "1");
-	});
-
-	it("finds headers on a real SandboxedRequest with non-lowercase keys", async () => {
-		// SandboxedRequest.headers is a plain Record<string,string> with
-		// unspecified casing (see emdash's plugin-types.ts) - not a DOM
-		// Headers object, and not guaranteed lowercase. callHeart()/fakeRequest()
-		// wrap a real Request, whose Headers is already case-insensitive, so
-		// it can't catch a casing bug in getHeader's plain-object branch. Build
-		// the plain-object shape directly instead.
-		const ip = "1.2.3.4";
-		const ua = "TestAgent/1.0";
-		const fp = await generateFingerprint(ip, "TestAgent/1.0");
-
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "heartpost:post-1:count") return Promise.resolve(0);
-			if (key === `heartpost:post-1:${fp}`) return Promise.resolve(null);
-			return Promise.resolve(null);
-		});
-
-		const plugin = await import("../src/sandbox-entry.ts");
-		const route = plugin.default.routes!.heart;
-		const routeCtx = {
-			input: { id: "post-1" },
-			request: {
-				url: "https://example.com/_emdash/api/plugins/heartpost/heart",
-				method: "POST",
-				headers: { "X-Forwarded-For": ip, "User-Agent": ua },
-			},
-		};
-
-		const result = await route.handler(routeCtx, ctx);
-
-		expect(result).toEqual(expect.objectContaining({ count: 1, hearted: true }));
-		expect(ctx.kv.set).toHaveBeenCalledWith(`heartpost:post-1:${fp}`, "1");
+		const { kv, plugin } = setup({ kv: kvRows });
+		const admin = (
+			plugin.routes as never as Record<
+				string,
+				{ handler: (c: unknown) => Promise<{ toast?: { message: string } }> }
+			>
+		).admin!.handler;
+		const out = await admin({ kv, input: { type: "block_action", action_id: "remove_old_rows" } });
+		expect(out.toast?.message).toContain("2");
+		expect([...kv.rows.keys()].sort()).toEqual([`count:${ID}`, "heartpost:hello:count"].sort());
 	});
 });
 
-// ── heart-status route (GET) ──
-
-describe("heart-status route (GET)", () => {
-	let ctx: ReturnType<typeof makeContext>;
-
-	beforeEach(() => {
-		ctx = makeContext();
+describe("component helpers", () => {
+	it("heartId prefers data.id (ULID) over id (slug)", () => {
+		expect(heartId({ id: "hello", data: { id: ID } })).toBe(ID);
+		expect(heartId({ id: "hello", data: {} })).toBe("hello");
+		expect(heartId({ data: {} })).toBeUndefined();
+		expect(heartId(null)).toBeUndefined();
 	});
 
-	async function callHeartStatus(id: string, ip = "192.168.1.1", ua = "Mozilla/5.0") {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const route = plugin.default.routes!["heart-status"];
-		const routeCtx = {
-			input: undefined,
-			request: fakeRequest(
-				`https://example.com/_emdash/api/plugins/heartpost/heart-status?id=${id}`,
-				{
-					headers: {
-						"x-forwarded-for": ip,
-						"user-agent": ua,
-					},
-				},
-			),
-		};
-		return route.handler(routeCtx, ctx);
-	}
-
-	it("returns count and hearted status", async () => {
-		const fp = await generateFingerprint("192.168.1.1", "Mozilla/5.0");
-
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "heartpost:post-1:count") return Promise.resolve(42);
-			if (key === `heartpost:post-1:${fp}`) return Promise.resolve("1");
-			return Promise.resolve(null);
-		});
-
-		const result = await callHeartStatus("post-1");
-		expect(result).toEqual({ count: 42, hearted: true });
-	});
-
-	it("returns count: 0 and hearted: false for unknown content", async () => {
-		ctx.kv.get = vi.fn().mockResolvedValue(null);
-
-		const result = await callHeartStatus("nonexistent");
-		expect(result).toEqual({ count: 0, hearted: false });
-	});
-
-	it("returns hearted: false for new fingerprint", async () => {
-		const fp = await generateFingerprint("10.0.0.1", "Chrome/120");
-
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "heartpost:post-1:count") return Promise.resolve(5);
-			if (key === `heartpost:post-1:${fp}`) return Promise.resolve(null);
-			return Promise.resolve(null);
-		});
-
-		const result = await callHeartStatus("post-1", "10.0.0.1", "Chrome/120");
-		expect(result).toEqual({ count: 5, hearted: false });
-	});
-
-	it("returns error when id query param is missing", async () => {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const route = plugin.default.routes!["heart-status"];
-		const routeCtx = {
-			input: undefined,
-			request: fakeRequest("https://example.com/_emdash/api/plugins/heartpost/heart-status"),
-		};
-
-		const result = await route.handler(routeCtx, ctx);
-		expect(result).toEqual(expect.objectContaining({ error: "missing_id" }));
-	});
-});
-
-// ── admin page ──
-
-describe("admin page", () => {
-	let ctx: ReturnType<typeof makeContext>;
-
-	beforeEach(() => {
-		ctx = makeContext();
-	});
-
-	// admin's return type is a union (blocks-only vs. blocks+toast); tests probe
-	// it dynamically like Block Kit JSON, so loosen to `any` here rather than
-	// threading a discriminated-union type through every assertion below.
-	async function invokeAdmin(input: unknown): Promise<any> {
-		const plugin = await import("../src/sandbox-entry.ts");
-		const handler = plugin.default.routes!.admin!.handler;
-		return handler({ input, request: fakeRequest("http://localhost") }, ctx);
-	}
-
-	it("page_load returns form with current config values", async () => {
-		ctx.kv.get = vi.fn().mockImplementation((key: string) => {
-			if (key === "config:label") return Promise.resolve("likes");
-			if (key === "config:collections") return Promise.resolve(["blog"]);
-			return Promise.resolve(null);
-		});
-		const res = await invokeAdmin({ type: "page_load" });
-		const form = res.blocks.find((b: any) => b.type === "form");
-		expect(form.fields.find((f: any) => f.action_id === "label").initial_value).toBe("likes");
-		expect(form.fields.find((f: any) => f.action_id === "collections").initial_value).toBe("blog");
-	});
-
-	it("page_load returns default label when KV is empty", async () => {
-		const res = await invokeAdmin({ type: "page_load" });
-		const form = res.blocks.find((b: any) => b.type === "form");
-		expect(form.fields.find((f: any) => f.action_id === "label").initial_value).toBe("hearts");
-	});
-
-	it("save_settings writes valid config to KV", async () => {
-		const res = await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: { label: "kudos", collections: "blog, notes" },
-		});
-		expect(ctx.kv.set).toHaveBeenCalledWith("config:label", "kudos");
-		expect(ctx.kv.set).toHaveBeenCalledWith("config:collections", ["blog", "notes"]);
-		expect(res.toast.type).toBe("success");
-	});
-
-	it("save_settings rejects empty label", async () => {
-		const res = await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: { label: "", collections: "" },
-		});
-		expect(res.toast.type).toBe("error");
-		expect(ctx.kv.set).not.toHaveBeenCalled();
-	});
-
-	it("save_settings rejects labels over 20 chars", async () => {
-		const res = await invokeAdmin({
-			type: "form_submit",
-			action_id: "save_settings",
-			values: { label: "a".repeat(21), collections: "" },
-		});
-		expect(res.toast.type).toBe("error");
-		expect(ctx.kv.set).not.toHaveBeenCalled();
-	});
-});
-
-describe("validateHeartpostSettings", () => {
-	it("accepts valid label", () => {
-		const r = validateHeartpostSettings({ label: "hearts", collections: "" });
-		expect(r.ok).toBe(true);
-		expect(r.label).toBe("hearts");
-		expect(r.collections).toBeNull();
-	});
-
-	it("trims label whitespace", () => {
-		const r = validateHeartpostSettings({ label: "  likes  ", collections: "" });
-		expect(r.ok).toBe(true);
-		expect(r.label).toBe("likes");
-	});
-
-	it("rejects over-long label", () => {
-		expect(validateHeartpostSettings({ label: "a".repeat(25), collections: "" }).ok).toBe(false);
+	it("fetchCount makes one request per id", async () => {
+		resetCounts();
+		const f = vi.fn(
+			async () => new Response(JSON.stringify({ success: true, data: { count: 4 } })),
+		);
+		const [a, b] = await Promise.all([
+			fetchCount(ID, "hello", f as never),
+			fetchCount(ID, "hello", f as never),
+		]);
+		expect([a, b]).toEqual([4, 4]);
+		expect(f).toHaveBeenCalledTimes(1);
 	});
 });

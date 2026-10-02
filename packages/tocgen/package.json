@@ -1,7 +1,7 @@
 {
 	"name": "@plugdash/tocgen",
 	"version": "0.2.4",
-	"description": "Auto-generated table of contents for EmDash posts",
+	"description": "Table of contents for EmDash posts, computed at render time with no hooks or stored data",
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
@@ -10,21 +10,19 @@
 			"import": "./dist/index.mjs",
 			"types": "./dist/index.d.mts"
 		},
-		"./sandbox": {
-			"import": "./dist/sandbox-entry.mjs"
-		},
 		"./utils": {
-			"import": "./dist/utils.mjs",
-			"types": "./dist/utils.d.mts"
+			"import": "./dist/toc.mjs",
+			"types": "./dist/toc.d.mts"
 		},
-		"./TableOfContents.astro": "./src/TableOfContents.astro"
+		"./TableOfContents.astro": "./src/TableOfContents.astro",
+		"./HeadingAnchors.astro": "./src/HeadingAnchors.astro"
 	},
 	"files": [
 		"dist",
 		"src/*.astro"
 	],
 	"scripts": {
-		"build": "tsdown src/index.ts --dts.eager --external @portabletext/types && tsdown src/sandbox-entry.ts --dts.eager --no-clean --external @portabletext/types && tsdown src/utils.ts --dts.eager --no-clean --external @portabletext/types",
+		"build": "tsdown src/index.ts src/toc.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
@@ -41,8 +39,7 @@
 		"directory": "packages/tocgen"
 	},
 	"peerDependencies": {
-		"emdash": ">=0.13.0",
-		"@portabletext/types": "^2.0.0"
+		"emdash": ">=0.13.0"
 	},
 	"devDependencies": {
 		"@plugdash/types": "workspace:*",

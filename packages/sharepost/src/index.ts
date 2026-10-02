@@ -1,29 +1,37 @@
-// @plugdash/sharepost - descriptor factory (runs in Vite at build time)
+// @plugdash/sharepost - deprecated no-op native plugin.
+//
+// Share URLs are built at render time by ShareButtons.astro, so nothing needs
+// registering. sharepostPlugin() stays so existing astro.config.mjs files keep working.
 
+import { definePlugin } from "emdash";
 import type { PluginDescriptor } from "@plugdash/types";
 import pkg from "../package.json" with { type: "json" };
+import type { Platform } from "./utils.ts";
 
-export type Platform = "twitter" | "linkedin" | "whatsapp" | "bluesky" | "email";
+export type { Platform };
 
 export interface SharepostConfig {
-	/** Platforms to generate share URLs for. Default: all five. */
+	/** @deprecated Pass `platforms` to <ShareButtons> instead. */
 	platforms?: Platform[];
-	/** Twitter @handle without the @, e.g. "abhinavs". */
+	/** @deprecated Pass `via` to <ShareButtons> instead. */
 	via?: string;
-	/** Twitter hashtags without #. */
+	/** @deprecated Pass `hashtags` to <ShareButtons> instead. */
 	hashtags?: string[];
 }
 
-export function sharepostPlugin(config?: SharepostConfig): PluginDescriptor {
+/** @deprecated No registration needed. Use <ShareButtons> directly. */
+export function sharepostPlugin(_config?: SharepostConfig): PluginDescriptor<SharepostConfig> {
 	return {
 		id: "sharepost",
 		version: pkg.version,
-		format: "standard",
-		entrypoint: "@plugdash/sharepost/sandbox",
-		capabilities: ["content:read", "content:write"],
-		// Options are documentation-only for standard plugins.
-		// At runtime, config is read from ctx.kv (seeded by plugin:install hook).
-		options: config as Record<string, unknown>,
-		adminPages: [{ path: "/settings", label: "Share Post", icon: "share" }],
+		format: "native",
+		entrypoint: "@plugdash/sharepost",
+		capabilities: [],
 	};
 }
+
+export function createPlugin() {
+	return definePlugin({ id: "sharepost", version: pkg.version, hooks: {} });
+}
+
+export default createPlugin;
