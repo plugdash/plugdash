@@ -36,6 +36,8 @@ const showIcon = iconProp ?? node?.icon ?? true;
 
 if (!body) return;
 
+const paragraphs = body.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+
 const classes = [
 	"plugdash-callout",
 	`plugdash-callout--${variant}`,
@@ -79,7 +81,7 @@ const classes = [
 	)}
 	<div class="plugdash-callout__content">
 		{title && <p class="plugdash-callout__title">{title}</p>}
-		<p class="plugdash-callout__body">{body}</p>
+		{paragraphs.map((p) => <p class="plugdash-callout__body">{p}</p>)}
 	</div>
 </aside>
 
@@ -151,7 +153,11 @@ const classes = [
 	.plugdash-callout__body {
 		margin: 0;
 		font-size: var(--plugdash-size-sm, 0.875rem);
-		white-space: pre-wrap;
+		white-space: pre-line;
+	}
+
+	.plugdash-callout__body + .plugdash-callout__body {
+		margin-top: 0.5rem;
 	}
 
 	/* theme overrides */
