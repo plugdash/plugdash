@@ -1,6 +1,18 @@
 # @plugdash/enrichkit
 
-AI enrichment for publishers who don't want to think about prompts. One LLM call on publish adds a summary, key topics, auto-tags, a reading level estimate, and a tweet draft to post metadata - configure which enrichments you need.
+**@plugdash/enrichkit** - writing a summary, tags and a tweet for every post is the chore nobody does. On publish it makes one LLM call and stores a summary, topics, tags, a reading level and a tweet draft, and fills an empty SEO description with the summary. Only on EmDash - the result sits next to the post, ready for an agent on the EmDash MCP server to pick up.
+
+## What it costs
+
+Enrichkit is built to call the provider as rarely as possible:
+
+- **Publish only.** It listens to `content:afterPublish`. Autosaves and draft saves never call the provider, even on a post that is already live.
+- **Unchanged content is free.** Each result stores a SHA-256 hash of the model, the enrichment flags, the title and the body text. Republishing the same text skips the call.
+- **One call, no retries.** The reply is structured output (a forced tool call on Anthropic, a strict JSON schema on OpenAI). If the reply still can't be read, a 429 comes back, or the request times out, it logs once and stops. The next changed publish tries again.
+- **Short posts are skipped.** Under 100 words, no call.
+- **Body is capped** at 12,000 characters.
+
+With the default `claude-haiku-4-5`, a typical post costs well under a cent per changed publish.
 
 ## Install
 
@@ -8,100 +20,75 @@ AI enrichment for publishers who don't want to think about prompts. One LLM call
 pnpm add @plugdash/enrichkit
 ```
 
-## Register
-
 ```js
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import emdash from "emdash";
+import emdash from "emdash/astro";
 import { enrichkitPlugin } from "@plugdash/enrichkit";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [
-        enrichkitPlugin({
-          provider: "anthropic",
-          apiKey: process.env.ANTHROPIC_API_KEY,
-        }),
-      ],
-    }),
-  ],
+	integrations: [
+		emdash({
+			plugins: [enrichkitPlugin({ provider: "anthropic" })],
+		}),
+	],
 });
 ```
 
-The API key can also be left out at build time and set later from the admin UI at `/_emdash/admin/plugins/enrichkit/settings`.
+## Set the API key
 
-## Config options
+The key is an encrypted plugin setting, so it never lands in your build output.
 
-| Option                    | Type      | Default             | Description                                  |
-| -------------------------- | --------- | -------------------- | --------------------------------------------- |
-| provider                   | `"anthropic" \| "openai"` | required | Which LLM API to call |
-| apiKey                     | `string`  | required             | API key for the chosen provider              |
-| model                      | `string`  | provider default     | `claude-haiku-4-5` (Anthropic) or `gpt-4o-mini` (OpenAI) |
-| enrichments.summary        | `boolean` | `true`                | 2-3 sentence summary of the main argument     |
-| enrichments.keyTopics      | `boolean` | `true`                | 3-5 main topics as short noun phrases         |
-| enrichments.readingLevel   | `boolean` | `false`               | Estimated grade level (e.g. "Grade 8")        |
-| enrichments.autoTags       | `boolean` | `true`                | 3-8 lowercase, hyphenated discovery tags      |
-| enrichments.tweetDraft     | `boolean` | `true`                | Tweet draft under 280 characters              |
+1. Generate an encryption key and set `EMDASH_ENCRYPTION_KEY` in the server's process environment. Export it in the shell that runs `astro dev` or `node dist/server/entry.mjs` (on Cloudflare, add it as a Worker secret). A `.env` file alone was not picked up by `astro dev` in testing.
 
-## Before / after
+   ```bash
+   pnpm exec emdash secrets generate
+   ```
 
-**Before publish** - a plain post with no metadata beyond title and body.
+   Without it, saving the key fails with `PLUGIN_SETTING_ENCRYPTION_KEY_MISSING`.
 
-**After publish** - `post.data.metadata.enrichkit`:
+2. In the admin, open **Plugins > enrichkit > Settings** and paste your Anthropic or OpenAI key into **API key**.
 
-```json
-{
-  "summary": "A look at how static sites evolved from plain HTML to full content platforms, and what that means for publishers choosing a stack today.",
-  "keyTopics": ["static site generators", "content management", "web performance"],
-  "autoTags": ["ssg", "cms", "performance", "web-dev"],
-  "tweetDraft": "Static sites grew up. Here's what changed and why it matters for your next project.",
-  "generatedAt": "2026-04-01T12:00:00Z",
-  "model": "claude-haiku-4-5"
-}
-```
+You can also pass `apiKey` in the options. That works, but the key ends up in plain text in the build, and enrichkit logs a one-time warning recommending the admin setting. A key in the admin wins over the option.
 
-`readingLevel` is off by default; enable it to also get a `"Grade 10"`-style estimate.
+## Where results go
 
-## Metadata written
+- **KV `result:<entry id>`**, one row per entry: `{ summary, topics, tags, readingLevel, tweet, model, generatedAt, hash }` plus `collection` and `title`. Only enabled fields are present.
+- **`seo.description`**, when `writeSeoDescription` is on and the description is empty. This is a seo-only update, so it goes live right away without creating a draft. An author's own description is never overwritten. Collections without SEO are skipped.
+- **The admin page** at **Plugins > Enrichkit** shows the latest result for each enriched entry, with a **Regenerate** button that forces one new call.
 
-On publish, writes to `post.data.metadata.enrichkit`:
+## Options
 
-```typescript
-{
-  summary?: string
-  keyTopics?: string[]
-  readingLevel?: string
-  autoTags?: string[]
-  tweetDraft?: string
-  generatedAt: string  // ISO 8601
-  model: string
-}
-```
+| Option                     | Type                      | Default                                                    | Description                                          |
+| -------------------------- | ------------------------- | ---------------------------------------------------------- | ---------------------------------------------------- |
+| `provider`                 | `"anthropic" \| "openai"` | `"anthropic"`                                              | Which API to call. Also sets `allowedHosts`.         |
+| `model`                    | `string`                  | `claude-haiku-4-5` / `gpt-4o-mini`                         | Model id                                             |
+| `enrichments.summary`      | `boolean`                 | `true`                                                     | 2-3 sentence summary                                 |
+| `enrichments.keyTopics`    | `boolean`                 | `true`                                                     | 3-5 topics                                           |
+| `enrichments.autoTags`     | `boolean`                 | `true`                                                     | 3-8 lowercase tags                                   |
+| `enrichments.readingLevel` | `boolean`                 | `false`                                                    | Estimated grade level                                |
+| `enrichments.tweetDraft`   | `boolean`                 | `true`                                                     | Tweet under 280 characters (longer ones are dropped) |
+| `field`                    | `string`                  | `content`, then `body`, then the first Portable Text field | Which field holds the body                           |
+| `writeSeoDescription`      | `boolean`                 | `true`                                                     | Fill an empty `seo.description` with the summary     |
+| `timeoutMs`                | `number`                  | `30000`                                                    | Abort the provider request after this long           |
+| `apiKey`                   | `string`                  | none                                                       | Fallback key. Prefer the admin setting.              |
 
-Only enabled, successfully-validated fields are included - a field the model omitted or returned in the wrong shape is left out rather than written as `null` or an empty value.
+## Troubleshooting
 
-## What it does
+All log lines are under the `enrichkit` plugin.
 
-- Fires on `content:afterSave` when status is `published`
-- Skips content under 100 words - short posts aren't worth the API call
-- Extracts plain text from the Portable Text body and builds one prompt covering every enabled enrichment
-- Calls the configured provider (Anthropic Messages API or OpenAI Chat Completions) with a 20 second timeout
-- Parses the JSON response and validates each field's type; retries once if the JSON is unusable
-- Merges the result into existing content metadata (read-merge-write), so other plugins' metadata is preserved
-- Logs the fields written and the token count on success
+- `calling provider` - one line per paid call. Count these to see what you are spending.
+- `content unchanged since last enrichment, skipping` - the hash matched, no call.
+- `host api.anthropic.com not in allowedHosts; set provider in astro.config.mjs or add it to allowedHosts` - the `provider` option doesn't match the API it is calling.
+- `no API key: ...` - set the key as described above.
 
 ## What it does not do
 
-- Does not fail a publish for any enrichment failure - missing key, timeout, rate limit, invalid JSON, or quota error all just skip and log
-- Does not retry synchronously on a rate limit (HTTP 429) - waits for the next publish instead
-- Does not truncate an over-length tweet draft - drops it, since a tweet cut mid-word is worse than none
-- Does not enrich drafts, archived, or scheduled content
-- Does not call the provider more than twice per publish (one attempt, one retry on invalid JSON)
-- Does not render the stored API key back into the admin UI - shows a masked hint (`sk-t...1234`) and only overwrites the key when a new non-empty value is submitted
-- Does not support custom prompts - the prompt template is fixed per the enabled enrichment fields
+- Does not run on autosave, draft save, schedule or unpublish.
+- Does not retry. Not on a bad reply, not on 429, not on timeout.
+- Does not write to `data.metadata` (0.1.x did). Read results from KV or from `seo.description`.
+- Does not fail a publish. Every failure is logged and skipped.
 
-## vrk / vrksh integration
+## License
 
-If your build environment already has the [vrk](https://vrksh.dev) CLI wired up for LLM calls, enrichkit's provider call is isolated in one function (`callModel` in `sandbox-entry.ts`, backed by the pure `buildRequest`/`extractCompletion` helpers in `enrich-logic.ts`) so it can be swapped for a `vrk prompt --model claude-haiku-4-5 --json` pipe instead of calling the Anthropic/OpenAI API directly. Not wired up out of the box - flagged here for teams who want to fork it.
+MIT

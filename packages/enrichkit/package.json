@@ -1,41 +1,16 @@
 {
 	"name": "@plugdash/enrichkit",
 	"version": "0.1.2",
-	"description": "Enriches published EmDash content with an AI summary, key topics, auto-tags, reading level, and a tweet draft",
-	"type": "module",
-	"main": "./dist/index.mjs",
-	"types": "./dist/index.d.mts",
-	"exports": {
-		".": {
-			"import": "./dist/index.mjs",
-			"types": "./dist/index.d.mts"
-		},
-		"./sandbox": {
-			"import": "./dist/sandbox-entry.mjs"
-		},
-		"./enrich-logic": {
-			"import": "./dist/enrich-logic.mjs",
-			"types": "./dist/enrich-logic.d.mts"
-		}
-	},
-	"files": [
-		"dist"
-	],
-	"scripts": {
-		"build": "tsdown src/index.ts --dts.eager && tsdown src/sandbox-entry.ts --dts.eager --no-clean && tsdown src/enrich-logic.ts --dts.eager --no-clean",
-		"test": "vitest run",
-		"typecheck": "tsc --noEmit",
-		"lint": "oxlint ."
-	},
+	"description": "Adds an AI summary, topics, tags and a tweet draft to EmDash posts with one LLM call per changed publish",
 	"keywords": [
+		"ai",
+		"auto-tagging",
 		"emdash",
 		"emdash-plugin",
 		"enrichkit",
-		"ai",
 		"llm",
 		"metadata",
-		"summary",
-		"auto-tagging"
+		"summary"
 	],
 	"license": "MIT",
 	"repository": {
@@ -43,12 +18,31 @@
 		"url": "git+https://github.com/plugdash/plugdash.git",
 		"directory": "packages/enrichkit"
 	},
-	"peerDependencies": {
-		"emdash": ">=0.13.0"
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"main": "./dist/index.mjs",
+	"types": "./dist/index.d.mts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.mts",
+			"import": "./dist/index.mjs"
+		}
+	},
+	"scripts": {
+		"build": "tsdown src/index.ts --dts.eager",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit",
+		"lint": "oxlint ."
 	},
 	"devDependencies": {
-		"@plugdash/types": "workspace:*",
 		"@plugdash/testing": "workspace:*",
+		"@plugdash/types": "workspace:*",
+		"emdash": "^1.0.1",
 		"vitest": "^2.0.0"
+	},
+	"peerDependencies": {
+		"emdash": ">=1.0.0"
 	}
 }
