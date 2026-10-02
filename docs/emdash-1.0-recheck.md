@@ -1,0 +1,108 @@
+# EmDash 1.0 recheck of the #00 facts
+
+Checked 2026-10-01 against `emdash@1.0.1` and `@emdash-cms/admin@1.0.1` (Astro 7.3.5, node adapter, sqlite), on a copy of the official blog template.
+
+How it was checked:
+
+- Code: every path below is relative to `node_modules/emdash/src/` unless it says otherwise.
+- Runtime: two probe plugins were registered next to all 12 plugdash plugins. A native one (`createPlugin(options)` + `definePlugin`) and a standard-format one (`format: "standard"`). They log what EmDash passes them. The site was run in dev on port 5150, then built and run from an empty directory on port 5151 with a copy of the dev DB (the #00 step 9 method).
+- The plugdash packages were installed from `pnpm pack` of `main` at 1060697, not from npm.
+
+## Summary
+
+16 facts are still true and 1 has changed (fact 16). Several things are new in 1.0.1 and matter to open cards (see "Other 1.0.1 differences").
+
+## The 17 facts
+
+| # | Fact (short) | Status | Evidence |
+| --- | --- | --- | --- |
+| 1 | Publishing fires `content:afterPublish`, not `content:afterSave` | STILL TRUE | `emdash-runtime.ts:4415` handleContentPublish, then `runAfterPublishHooks` at 4479-4487. afterSave fires only on create (3495-3497) and update (3922-3924). Runtime: publish logged only afterPublish from both probes. |
+| 2 | Admin autosaves every 2 s with `skipRevision`, and each autosave fires afterSave | STILL TRUE | Admin `dist/index.js:28869` `AUTOSAVE_DELAY = 2e3`, timer at 29406, `skipRevision: true` at 70866. Runtime: PUT with `skipRevision` returned 200, afterSave logged `published isNew false excerpt autosaved`, and the live page did not change. |
+| 3 | `ctx.content.update()` writes to the draft revision, `ctx.content.get()` reads the live row | STILL TRUE | `plugins/context.ts:877-878` update calls `updateDraftAware`. `plugins/content-access.ts:25-26` get calls `findById`. Runtime: get before and after update both returned the old excerpt, and `draftRevisionId` was set. |
+| 4 | `plugin:install` / `plugin:activate` never fire for plugins registered in `astro.config` | STILL TRUE | `runPluginInstallLifecycle` (`emdash-runtime.ts:1088-1091`) is called only from `astro/routes/api/admin/plugins/marketplace/[id]/install.ts:76` and `registry/install.ts:122`. Runtime: neither hook logged in dev or prod. |
+| 5 | Standard-format plugins get no descriptor `options`, native plugins get `createPlugin(options)` | STILL TRUE | `astro/integration/virtual-modules.ts:278-300` passes id, version, capabilities, allowedHosts, storage, adminPages, adminWidgets, editorPanels, editorActions, settingsSchema, portableTextBlocks, fieldWidgets and now `mcp`, but no options. Native at 302-305: `createPlugin(<JSON options>)`. Runtime prod: native route returned `options: {"hello":"from-options"}`. Standard ctx keys: plugin, storage, kv, settings, content, schema, taxonomies, bylines, redirects, media, http, log, site, url, users, comments, cron, email. |
+| 6 | `globalThis` set in the descriptor factory does not reach the prod server | STILL TRUE | `virtual-modules.ts:249-250` comment: "globals don't persist between build time and runtime". Runtime prod: `/c25` showed `global: null` and the native `createPlugin` logged `globalThis.__c25 null`. (In dev it is visible, because it is one process.) |
+| 7 | `ctx.settings.get(key)` returns null when nothing is stored, ignoring the schema default | STILL TRUE | `plugins/settings.ts:245-249`. Runtime: `settings.get("greeting")` returned null with schema default `"hi"`. |
+| 8 | Sandboxed-format hooks time out after 5000 ms, `{ timeout, handler }` overrides, timeout does not cancel | STILL TRUE | `plugins/adapt-sandbox-entry.ts:59` `DEFAULT_TIMEOUT = 5000`, entry timeout used at 83. `plugins/hooks.ts:437-444` uses `Promise.race`. Runtime: `Hook timeout after 200ms`, then `[C25S] afterPublish finished after timeout`. Native `definePlugin` also defaults to 5000 (`plugins/define-plugin.ts:281`, 293). |
+| 9 | Official templates have no `metadata` field, and the PT field is `content` | STILL TRUE | All 8 templates (blog, starter, portfolio, marketing, and the `-cloudflare` versions) checked: no `metadata`, PT field `content` (marketing uses a `blocks` type). Runtime: `ctx.content.update(c, id, { metadata })` threw `EmDashValidationError: Unknown field 'metadata' in collection 'posts'` (`database/repositories/content.ts:1261-1264`). |
+| 10 | `getEmDashEntry()`: `entry.id` is the slug, `entry.data.id` is the ULID | STILL TRUE | `query.ts:466-469`. Runtime: `entryId "probe"`, `dataId "01M3W674Y8PH3W7P7X0AH201KX"`. |
+| 11 | Plugin routes at `/_emdash/api/plugins/<id>/<route>`, wrapped in `{ success, data }` | STILL TRUE | `astro/routes/api/plugins/[pluginId]/[...path].ts`, `plugins/http-route-dispatch.ts:152` `apiSuccess`, `api/error.ts:51-52`. Runtime: `{"success":true,"data":{...}}`. New options listed below. |
+| 12 | Native redirects: `ctx.redirects`, cache in middleware, hit counts, 410, auto redirect on slug change | STILL TRUE | Capabilities `redirects:read` / `redirects:write` (`plugins/types.ts:93`, `plugins/context.ts:1770-1772`). Middleware cache `astro/middleware/redirect.ts:71-74`, `recordHit` 86-112, 410 at 83 and 103. Auto redirect `database/repositories/redirect.ts:575`. Runtime dev and prod: `/s/abc` returned 301 to `/posts/probe`. |
+| 13 | `getByPrefix()` runs `LIKE 'prefix%'`, which scans every row | STILL TRUE | `database/repositories/options.ts:235-246` `name LIKE ? ESCAPE '\'`. `EXPLAIN QUERY PLAN`: `SCAN options USING INDEX sqlite_autoindex_options_1`. |
+| 14 | A seo-only `update()` skips the draft and is live at once, `getSeoMeta()` prefers `seo.image` | STILL TRUE (now runtime-verified) | `plugins/context.ts:872-883`, upsert 899-903. `seo/index.ts:137-138` uses `seo.image` before `defaultOgImage`. Blog template passes `defaultOgImage: featuredImageUrl` (`src/pages/posts/[slug].astro:60`). Runtime: live `<title>probe-seo-title \| My Blog</title>` at once, while an excerpt edit in the same hook stayed in the draft. |
+| 15 | Admin import screen supports only WordPress, `registerSource()` sources have no UI or API | STILL TRUE | Admin `dist/index.js:1940-2220` and route at 72060 call only `/import/wordpress*` and `/import/probe`. API routes exist only under `api/import/{probe,wordpress,wordpress-plugin}`. `getAllSources` is used only in `import/registry.ts:33-48`. |
+| 16 | No page cache, no `site`, `ctx.url()` / `ctx.site.url` are relative | CHANGED (partly) | See below. |
+| 17 | Cloudflare free limits (10 ms CPU, 100k req/day, D1 5M reads / 100k writes per day, billed per row scanned) | STILL TRUE | Cloudflare Workers and D1 pricing pages, fetched 2026-10-01: same numbers, and "Rows read measure how many rows a query reads (scans)". |
+
+### Fact 16 in detail
+
+Still true:
+
+- No page cache, and no `site` in any template's `astro.config.mjs`.
+- `Astro.site` is null in components (`/c25` returned `site: null` in dev and prod).
+
+Changed:
+
+- `ctx.site.url` and `ctx.url()` are no longer relative once setup has run. The setup wizard stores `emdash:site_url` from the request origin with `setIfAbsent` (`astro/routes/api/setup/index.ts:118`). Dev-bypass does the same (`astro/routes/api/setup/dev-bypass.ts:136`).
+- The runtime reads it at init (`emdash-runtime.ts:1598-1617`). `plugins/context.ts:1406-1418` resolves the site URL in this order: the option, then Astro `site`, then `""`.
+- Runtime dev: before a restart, `siteUrl` was `""` and `ctx.url("/x")` was `"/x"`. After a restart, the native route returned `siteUrl: "http://127.0.0.1:5150"`.
+- Runtime prod on port 5151, with the dev DB copied: both probes returned `siteUrl: "http://127.0.0.1:5150"`. So it is the host where setup ran, not the host serving the request.
+
+What this means:
+
+- The value is written once (`setIfAbsent`) and cached at runtime init. A dev DB copied to production carries the dev origin with it.
+- Design rule E (build URLs at render time from the request, never store absolute URLs) still holds. Do not trust `ctx.site.url` for public links unless the site owner has set the site URL on purpose.
+
+Cards affected: #08, #10, #12, #13, #04, #20, #22, #24.
+
+## Other 1.0.1 differences
+
+These do not flip a fact, but cards should know about them.
+
+- Unknown fields now fail validation. `updateDraftAware` throws `EmDashValidationError: Unknown field 'metadata' in collection 'posts'` (`database/repositories/content.ts:1261-1264`) instead of the old `SqliteError: no such column`. Any try/catch that matches on the SQLite message will miss it. It merges top-level keys over the draft (1273). Cards: #05 (mock should throw this), #06, #07, #08, #10, #20.
+- On update, afterSave receives the hydrated draft data (`emdash-runtime.ts:3896`). Create has a `skipSaveHooks` option. Cards: #05.
+- SVG uploads from plugins are blocked. `ctx.media.upload()` checks `GLOBAL_UPLOAD_ALLOWLIST` (`plugins/context.ts:980-988`). That list has png, jpeg, gif, webp, avif, video, audio and pdf, and leaves out `image/svg+xml` on purpose (`api/handlers/media-allowlist.ts:11-28`). Runtime: socialcard 0.1.2 logged `afterSave failed { err: 'PluginRouteError: File type not allowed' }`. Card #13 already plans PNG, so this confirms it.
+- Secret settings are encrypted at rest and need `EMDASH_ENCRYPTION_KEY` (`plugins/settings.ts:85-98`, `config/secrets.ts:6`, 253). Without it, writes throw `PLUGIN_SETTING_ENCRYPTION_KEY_MISSING`. Cards: #14, #12, #23, #20 (design rule D needs a line on the env var).
+- Plugin routes can return a raw `Response` with `response: "raw"` (`plugins/http-route-dispatch.ts:138-150`), redirects included. Public GET routes honour `cacheControl` (`plugins/types.ts:1903-1909`). Private routes default to the `plugins:manage` permission (`plugins/types.ts:1901`). `requestMeta.ip` is available (`plugins/types.ts:1853-1873`). In local node it was null. Cards: #03, #09, #10.
+- `ctx.redirects` update and delete need `_rev` (`plugins/context.ts:607-630`). Card: #10.
+- Plugin descriptors can carry `mcp` (`virtual-modules.ts:278-300`). A descriptor with no `entrypoint` now throws at build (`virtual-modules.ts:263-275`). Cards: #01, #26.
+- `definePlugin()` still throws "definePlugin() requires `id`" for objects without an id (`plugins/define-plugin.ts:83-90`).
+
+## Packages on 1.0.1
+
+All 12 plugins registered with default options (autobuild with `hookUrl: "https://example.com/hook"`), plus engage for its component. "Loads" means the plugin is listed `enabled: true` by `/_emdash/api/admin/plugins` and its hooks run. Hooks were exercised by updating a published post, since publish itself fires no afterSave (fact 1). Components were rendered on a test page against the probe post. Dev and prod gave the same results except where noted.
+
+| Package | Dev | Prod build |
+| --- | --- | --- |
+| autobuild 0.2.2 | Loads. Hook fires: `webhook non-2xx { status: 405 }` (expected for example.com). | Loads. Hook does nothing: `hookUrl` comes from the `globalThis` bootstrap (fact 6), so it is empty in prod. |
+| callout 0.1.4 | Loads, `Callout.astro` renders. | Same. |
+| codeblock 0.3.0 | Loads, `CodeBlock.astro` renders with dual theme. | Same. |
+| engage 1.0.0 | Component only. `EngagementBar.astro` renders (the heart button only, since the share and link parts have no data). | Same. |
+| enrichkit 0.1.2 | Loads. Hook skips: `not configured, provider must be "anthropic" or "openai"` (expected with no config). | Same. |
+| fromghost 0.1.2 | Loads (enabled). Import not run (fact 15: no UI or API). | Same. |
+| fromsubstack 0.1.2 | Loads (enabled). Import not run (fact 15). | Same. |
+| heartpost 0.2.2 | Loads, `HeartButton.astro` renders. Hook logs nothing. | Same. |
+| readtime 0.2.2 | Loads. Hook fails: `readtime: afterSave failed { err: "EmDashValidationError: Unknown field 'metadata' in collection 'posts'" }`. `ReadingTime.astro` renders nothing (no metadata). | Same. |
+| sharepost 0.2.4 | Loads. Hook fails: `sharepost: failed to generate share URLs`, `EmDashValidationError: Unknown field 'metadata'`. `ShareButtons.astro` renders nothing. | Same. |
+| shortlink 0.2.4 | Loads. Hook fails: `shortlink: failed to create shortlink`, `EmDashValidationError: Unknown field 'metadata'`. `CopyLink.astro` renders nothing. | Loads. Hook logged nothing (probably skipped on the KV record left by the dev run). `CopyLink.astro` renders nothing. |
+| socialcard 0.1.2 | Loads. Hook fails: `socialcard: afterSave failed { err: 'PluginRouteError: File type not allowed' }` (SVG upload blocked). | Same. |
+| tocgen 0.2.4 | Loads. Hook logs nothing (probably below `minHeadings` 3). `TableOfContents.astro` renders nothing. | Same. |
+
+No plugin crashes the host or the page. Every metadata-writing plugin fails on a stock template for the same reason as on 0.41 (fact 9). Those failures are already the subject of #06, #07, #08, #10, #13.
+
+Peer warning on install: readtime and tocgen want `@portabletext/types ^2`, the site has 4.0.2.
+
+## Issue #6 (sharepost `definePlugin() requires id`)
+
+Fixed. Can be closed.
+
+- The report is against sharepost 0.2.2, whose sandbox entry wrapped its export in `definePlugin()` with no id.
+- Commit cdf20ff (shipped in sharepost 0.2.3) removed `definePlugin()`. `packages/sharepost/src/sandbox-entry.ts:328` now ends with `} satisfies SandboxedPlugin;`.
+- 1.0.1 still throws that error for an object without an id (`plugins/define-plugin.ts:83-90`), so 0.2.2 would still break.
+- sharepost 0.2.4 loaded and ran its hook in both dev and the prod build on 1.0.1.
+- Suggested reply: fixed in 0.2.3, please upgrade to 0.2.4.
+
+## Not done
+
+- Cloudflare Workers / D1 was not run. All runtime checks used the node adapter with sqlite.
+- No marketplace or registry install was tried, so the `plugin:install` path (fact 4) was not exercised.
