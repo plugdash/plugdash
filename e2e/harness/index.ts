@@ -92,6 +92,11 @@ export async function startProd(): Promise<Server> {
 	src.close();
 	const db = new DatabaseSync(join(PROD_DIR, "data.db"));
 	db.exec("DELETE FROM options WHERE name LIKE 'plugin:%config%'");
+	// emdash:site_url is written once from the first request origin (the dev
+	// server), and ctx.site.url would report the dev host in prod otherwise
+	db.prepare("UPDATE options SET value = ? WHERE name = 'emdash:site_url'").run(
+		JSON.stringify(`http://127.0.0.1:${PROD_PORT}`),
+	);
 	db.close();
 	if (existsSync(join(SITE, "uploads")))
 		cpSync(join(SITE, "uploads"), join(PROD_DIR, "uploads"), { recursive: true });

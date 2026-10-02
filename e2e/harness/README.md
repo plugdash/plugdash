@@ -39,7 +39,7 @@ Import everything from `./harness`. Requests run as the dev admin.
 
 - `startDev()`, `startProd()` return `{ baseURL, stop }`. Global setup already calls them; use them directly only for a spec that needs its own server.
 
-Tag a test `@prod` in its title when it should also run against the production build. Prod gets a copy of the dev database with `plugin:%config%` option rows removed, so it starts like a fresh install that already has content.
+Tag a test `@prod` in its title when it should also run against the production build. Prod gets a copy of the dev database with `plugin:%config%` option rows removed, so it starts like a fresh install that already has content. `emdash:site_url` is rewritten to the prod URL, so `ctx.site.url` matches the server you hit.
 
 ## limits
 
