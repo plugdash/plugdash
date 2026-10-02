@@ -57,9 +57,23 @@ for dir in "$ROOT"/packages/*/; do
 	(cd "$dir" && pnpm pack --pack-destination "$TARBALLS" >/dev/null)
 done
 
-# 4. Install the tarballs into the site
+# 4. Install the tarballs into the site. Overrides point every @plugdash dep
+# (including one tarball's dep on another, e.g. import -> fromghost) at the
+# local tarball, so unpublished versions never hit the registry.
 cd "$SITE"
 rm -rf node_modules/@plugdash
+node -e '
+const fs = require("fs");
+const [site, tarballs] = process.argv.slice(1);
+const wsPath = site + "/pnpm-workspace.yaml";
+let ws = fs.readFileSync(wsPath, "utf8").replace(/\n# plugdash-overrides[\s\S]*$/, "\n");
+ws = ws.replace(/\n*$/, "\n") + "\n# plugdash-overrides (written by setup.sh)\noverrides:\n";
+for (const f of fs.readdirSync(tarballs).filter((f) => f.endsWith(".tgz"))) {
+	const pkg = JSON.parse(require("child_process").execSync(`tar -xOzf "${tarballs}/${f}" package/package.json`));
+	ws += `  "${pkg.name}": "file:${tarballs}/${f}"\n`;
+}
+fs.writeFileSync(wsPath, ws);
+' "$SITE" "$TARBALLS"
 pnpm add "$TARBALLS"/*.tgz
 
 # 5. astro.config.mjs (every plugin, no options) and the post page
