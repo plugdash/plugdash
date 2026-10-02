@@ -1,5 +1,8 @@
 ---
-import { getSiteConfig, highlightCode, themeColors } from "./highlight.ts";
+// Only key.ts loads up front. highlight.ts (and Shiki) is imported on a
+// stored-HTML miss, so pages whose blocks were highlighted on save, and pages
+// with no code at all, never load Shiki.
+import { getSiteConfig, highlightKey, resolveOptions, type StoredHighlight } from "./key.ts";
 
 export interface Props {
 	/** Block data from PortableText auto-wiring */
@@ -7,6 +10,8 @@ export interface Props {
 		code?: string;
 		language?: string;
 		filename?: string;
+		/** Written by the plugin's content:beforeSave hook */
+		pdHighlight?: StoredHighlight;
 	};
 	/** Direct-import props */
 	code?: string;
@@ -31,12 +36,13 @@ const {
 
 // Props win; otherwise use what the site passed to codeblockPlugin().
 const site = getSiteConfig();
-const theme = themeProp ?? site.theme;
-// With no theme configured at all, ship the GitHub pair so blocks follow
-// light/dark mode out of the box. Pick a theme and the light one is opt-in.
-const lightTheme = lightThemeProp ?? site.lightTheme ?? (theme ? undefined : "github-light");
-const lineNumbers = lineNumbersProp ?? site.lineNumbers ?? false;
-const options = { theme, lightTheme, langs: site.langs };
+const options = resolveOptions({
+	theme: themeProp ?? site.theme,
+	lightTheme: lightThemeProp ?? site.lightTheme,
+	lineNumbers: lineNumbersProp ?? site.lineNumbers,
+	langs: site.langs,
+});
+const { lightTheme, lineNumbers } = options;
 
 const code = codeProp ?? node?.code ?? "";
 const language = languageProp ?? node?.language;
@@ -44,8 +50,19 @@ const filename = filenameProp ?? node?.filename;
 
 if (!code) return;
 
-const html = await highlightCode(code, language, options);
-const colors = await themeColors(options);
+// Stored HTML is used only when it was made from this exact code, language,
+// themes and plugin version. Anything else highlights now.
+const stored = node?.pdHighlight;
+let html: string;
+let colors: { bg: string; fg: string; lightBg?: string; lightFg?: string };
+if (stored && stored.key === highlightKey({ code, language }, options)) {
+	html = stored.html;
+	colors = stored;
+} else {
+	const { highlightCode, themeColors } = await import("./highlight.ts");
+	html = await highlightCode(code, language, options);
+	colors = await themeColors(options);
+}
 const style = [
 	`--plugdash-codeblock-theme-bg: ${colors.bg}`,
 	`--plugdash-codeblock-theme-fg: ${colors.fg}`,

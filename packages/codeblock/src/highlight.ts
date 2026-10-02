@@ -6,16 +6,16 @@
 // engine rather than the default Oniguruma one, because the WASM engine does
 // not load inside a Cloudflare Worker.
 
-import {
-	bundledLanguages,
-	bundledLanguagesAlias,
-	bundledThemes,
-	createHighlighter,
-	createJavaScriptRegexEngine,
-	type BundledLanguage,
-	type BundledTheme,
-	type Highlighter,
-} from "shiki";
+//
+// The main `shiki` module costs tens of milliseconds to load, so it is only
+// imported when a highlighter is actually built. The language and theme name
+// maps come from shiki's small sub-entries, which hold lazy loaders only.
+
+import { bundledLanguages, bundledLanguagesAlias } from "shiki/langs";
+import { bundledThemes } from "shiki/themes";
+import type { BundledLanguage, BundledTheme, Highlighter } from "shiki";
+
+export { getSiteConfig, setSiteConfig } from "./key.ts";
 
 export interface CodeblockConfig {
 	/** Shiki theme name. Unknown names fall back to the default. */
@@ -62,17 +62,26 @@ const PLAINTEXT_ALIASES = new Set(["", "text", "txt", "plain", "plaintext", "non
 
 const cache = new Map<string, string>();
 
-/** Where createPlugin() leaves the site's config for the auto-wired component. */
-const CONFIG_KEY = "__plugdash_codeblock_config__";
-
 let highlighterPromise: Promise<Highlighter> | null = null;
 
+/** Number of highlighters built in this process. Lets tests and traces see a cold path. */
+let builds = 0;
+
+export function highlighterBuilds(): number {
+	return builds;
+}
+
 function getHighlighter(langs?: string[]): Promise<Highlighter> {
-	highlighterPromise ??= createHighlighter({
-		themes: [DEFAULT_THEME],
-		langs: langs ?? DEFAULT_LANGS,
-		engine: createJavaScriptRegexEngine(),
-	});
+	highlighterPromise ??= (async () => {
+		builds++;
+		console.info("[codeblock] building Shiki highlighter");
+		const { createHighlighter, createJavaScriptRegexEngine } = await import("shiki");
+		return createHighlighter({
+			themes: [DEFAULT_THEME],
+			langs: langs ?? DEFAULT_LANGS,
+			engine: createJavaScriptRegexEngine(),
+		});
+	})();
 	return highlighterPromise;
 }
 
@@ -84,22 +93,6 @@ export function resetHighlighter(): void {
 	void highlighterPromise?.then((highlighter) => highlighter.dispose());
 	highlighterPromise = null;
 	cache.clear();
-}
-
-/**
- * Stores the site's config for the auto-wired component. EmDash calls
- * createPlugin(options) in the server runtime but hands the component only the
- * block node, so this is the only way the options reach it. globalThis rather
- * than a module variable because the component imports this file from src/
- * while createPlugin runs from the bundled dist/, so they are separate modules.
- */
-export function setSiteConfig(config: CodeblockConfig): void {
-	(globalThis as Record<string, unknown>)[CONFIG_KEY] = config;
-}
-
-export function getSiteConfig(): CodeblockConfig {
-	const config = (globalThis as Record<string, unknown>)[CONFIG_KEY];
-	return typeof config === "object" && config !== null ? (config as CodeblockConfig) : {};
 }
 
 /** Number of highlighted results currently held. Lets tests see the cache work. */

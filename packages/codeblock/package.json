@@ -17,7 +17,8 @@
 		"dist",
 		"src/astro",
 		"src/*.astro",
-		"src/highlight.ts"
+		"src/highlight.ts",
+		"src/key.ts"
 	],
 	"scripts": {
 		"build": "tsdown src/index.ts --dts.eager",

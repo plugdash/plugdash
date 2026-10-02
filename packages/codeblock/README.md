@@ -1,13 +1,11 @@
 # @plugdash/codeblock
 
-Shiki syntax highlighting for EmDash code blocks. Highlighting runs on the
-server at render time, so the page ships coloured HTML. The only client
-JavaScript is one small click listener for the copy button.
+Shiki syntax highlighting for EmDash code blocks. Each block is highlighted
+once, when the post is saved, and the HTML is stored on the block, so a page
+view does no highlighting and never loads Shiki. The only client JavaScript is
+one small click listener for the copy button.
 Ships `CodeBlock.astro` for site-side rendering and exports `highlightCode`
 for themes that render code themselves.
-
-Nothing is rewritten on save. Change the theme and every existing post picks
-it up on the next render.
 
 ## Install
 
@@ -15,12 +13,22 @@ it up on the next render.
 pnpm add @plugdash/codeblock
 ```
 
+EmDash templates set `minimumReleaseAge` in `pnpm-workspace.yaml`, which makes
+pnpm skip any release younger than 24 hours and quietly install an older one.
+To get the latest plugdash release, add it to the exclude list:
+
+```yaml
+# pnpm-workspace.yaml
+minimumReleaseAgeExclude:
+  - "@plugdash/*"
+```
+
 ## Register
 
 ```js
 // astro.config.mjs
 import { defineConfig } from "astro/config";
-import emdash from "emdash";
+import emdash from "emdash/astro";
 import { codeblockPlugin } from "@plugdash/codeblock";
 
 export default defineConfig({
@@ -40,9 +48,26 @@ It needs Shiki, which is a Node dependency.
 ## How it works
 
 1. An author writes a code block in the editor and sets its language
-2. EmDash stores it as a `code` block in the Portable Text body, unchanged
-3. On the site, `CodeBlock.astro` runs the code through Shiki
+2. On save, a `content:beforeSave` hook runs each `code` block through Shiki
+   and stores the result on the block as `pdHighlight: { key, html, ... }`
+3. On the site, `CodeBlock.astro` checks the key and prints the stored HTML
 4. The rendered page contains Shiki's `<pre class="shiki ...">` markup
+
+The key is a hash of the code, language, theme, light theme, line numbers
+setting and plugin version. When any of them changes, the stored HTML no
+longer matches and is ignored: the block is highlighted at render time (and
+Shiki loads for that request) until the post is saved again, which stores
+fresh HTML. So after changing the theme, old posts still render correctly in
+the new theme, and re-saving them makes them fast again.
+
+Highlighting never blocks a save. If Shiki fails or takes longer than 30
+seconds, the post saves without stored HTML and renders the slow way. Blocks
+whose HTML is over 100,000 characters are not stored, to keep the content row
+small; they are highlighted at render time.
+
+The admin editor drops unknown fields from code blocks when it saves, so the
+stored HTML is rebuilt on every editor save. Unchanged blocks come from an
+in-memory cache, so in practice only edited blocks cost anything.
 
 Block components are auto-wired into `<PortableText>` - no manual component
 mapping needed. This plugin registers no new block type; it renders the `code`
@@ -177,8 +202,9 @@ Example override:
 ## What it does not do
 
 - No line highlighting or diff view
-- No client-side highlighting. Light/dark switching is CSS only; changing to
-  a different theme pair needs a re-render
+- No client-side highlighting. Light/dark switching is CSS only
 - No new editor block type
-- Does not rewrite stored content, so nothing to migrate
-- No hooks, metadata writes, or KV storage
+- No migration step. Posts saved before this version render at request time
+  until they are saved again
+- No metadata writes or KV storage. The only thing it writes is
+  `pdHighlight` on each `code` block, which declares `content:write`
