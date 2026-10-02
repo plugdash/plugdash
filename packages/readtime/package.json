@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/readtime",
-	"version": "0.2.2",
+	"version": "0.3.0",
 	"description": "Reading time for EmDash posts, computed at render time with no hooks or stored data",
 	"keywords": [
 		"emdash",

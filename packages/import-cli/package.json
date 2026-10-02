@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/import",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Move a Ghost or Substack export into a running EmDash site from the command line",
 	"keywords": [
 		"cli",

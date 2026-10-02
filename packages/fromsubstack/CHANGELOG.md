@@ -1,5 +1,17 @@
 # @plugdash/fromsubstack
 
+## 0.2.0
+
+### Minor Changes
+
+- e047f84: Match the real Substack export format (post_id with slug, no url column), import paid posts as drafts by default (paidPostsAs), drop subscribe and share boilerplate, return warnings from analyze(), and load fflate and linkedom lazily
+
+  Breaking: paid posts (`only_paid`, `founding`) now import as drafts by default, even when `status` is `"published"`. To keep publishing them, pass `paidPostsAs: "publish"` in astro.config.mjs.
+
+### Patch Changes
+
+- 686145c: Keep images that sit inside a paragraph. The HTML converter used to drop `<p>text <img> text</p>` images; it now splits the paragraph into a text block, an image block and a text block
+
 ## 0.1.2
 
 ### Patch Changes

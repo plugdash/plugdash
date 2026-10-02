@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/autobuild",
-	"version": "0.2.2",
+	"version": "0.3.0",
 	"description": "Fires a Cloudflare Pages, Netlify, or Vercel build hook when content is published or unpublished, for static sites that read EmDash at build time",
 	"keywords": [
 		"autobuild",

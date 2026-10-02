@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/shortlink",
-	"version": "0.2.4",
+	"version": "0.3.0",
 	"description": "Short URLs for EmDash posts - one native EmDash redirect per published entry",
 	"keywords": [
 		"emdash",
