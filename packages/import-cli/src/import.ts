@@ -29,6 +29,8 @@ export interface ImportOptions {
 	dryRun?: boolean;
 	/** Publish entries that were published at the source. Default: import as drafts. */
 	publish?: boolean;
+	/** Paid (members-only) posts that were published at the source. Default "draft". */
+	paidPostsAs?: "draft" | "publish";
 }
 
 export interface ImportSummary {
@@ -335,6 +337,7 @@ async function loadSource(
 		const source = ghost.createGhostSource({
 			targetCollection: collection,
 			siteUrl: options.siteUrl,
+			paidPostsAs: options.paidPostsAs ?? "draft",
 			onWarn,
 		});
 		return { source: source as unknown as Source, tagLabels, seo };
@@ -346,6 +349,7 @@ async function loadSource(
 	const config: Record<string, unknown> = {
 		targetCollection: collection,
 		status: "published",
+		paidPostsAs: options.paidPostsAs ?? "draft",
 		onWarn,
 	};
 	const source = substack.createSubstackSource(config);

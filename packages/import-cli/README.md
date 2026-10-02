@@ -66,23 +66,24 @@ Images are downloaded from Substack's CDN, so they need no extra flag. Podcast e
 3. For each entry, skips it if the slug already exists in that collection.
 4. Uploads each image once, then points the Portable Text image blocks and `featured_image` at the media library copy.
 5. Creates the entry with its slug, title, body, excerpt, tags, SEO title and description, and the original created and published dates.
-6. With `--publish`, publishes the entries that were published at the source. Source drafts always stay drafts. Without `--publish`, everything lands as a draft.
+6. With `--publish`, publishes the entries that were published at the source. Source drafts always stay drafts, and so do paid posts unless you pass `--paid-posts-as publish`. Without `--publish`, everything lands as a draft.
 7. Prints a summary and exits with code 1 if any entry failed.
 
 Running it twice is safe. The second run skips every entry the first one created, so a run that failed halfway can be finished by running it again.
 
 ## Options
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `--url <url>` | `EMDASH_URL` | The EmDash site to import into |
-| `--token <token>` | `EMDASH_TOKEN` | API token (see above) |
-| `--cookie <cookie>` | - | Use an admin session cookie instead of a token, handy on a local dev site |
-| `--site-url <url>` | - | Ghost only: the old site, used to download `__GHOST_URL__` images |
-| `--collection <slug>` | `posts` | Collection for posts |
-| `--field <slug>` | `content` | Portable Text field that gets the body |
-| `--dry-run` | off | Analyze and check the schema, write nothing |
-| `--publish` | off | Publish entries that were published at the source |
+| Option                             | Default        | Description                                                               |
+| ---------------------------------- | -------------- | ------------------------------------------------------------------------- |
+| `--url <url>`                      | `EMDASH_URL`   | The EmDash site to import into                                            |
+| `--token <token>`                  | `EMDASH_TOKEN` | API token (see above)                                                     |
+| `--cookie <cookie>`                | -              | Use an admin session cookie instead of a token, handy on a local dev site |
+| `--site-url <url>`                 | -              | Ghost only: the old site, used to download `__GHOST_URL__` images         |
+| `--collection <slug>`              | `posts`        | Collection for posts                                                      |
+| `--field <slug>`                   | `content`      | Portable Text field that gets the body                                    |
+| `--dry-run`                        | off            | Analyze and check the schema, write nothing                               |
+| `--publish`                        | off            | Publish entries that were published at the source                         |
+| `--paid-posts-as <draft\|publish>` | `draft`        | With `--publish`, whether paid posts are published too                    |
 
 ## Limits
 
@@ -90,4 +91,4 @@ Running it twice is safe. The second run skips every entry the first one created
 - Tags need a `tag` taxonomy on the target collection (the blog template has one). Without it, the run prints a warning and imports the posts without tags.
 - An `<img>` inside a `<p>` is dropped by the HTML to Portable Text converter. Images inside `<figure>` (Ghost cards, Substack captioned images) work.
 - Ghost 4 and later keeps custom SEO titles in `posts_meta`. The CLI reads it there and falls back to the fields on the post.
-- Members-only and paid status are not carried over. Every imported entry is public once published.
+- Members-only and paid status are not carried over. Paid posts import as drafts by default so you can review them, but once published every entry is public.

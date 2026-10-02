@@ -16,6 +16,8 @@ Options:
   --field <slug>       Portable Text field for the body (default: content)
   --dry-run            Show what would be imported, write nothing
   --publish            Publish posts that were published at the source (default: drafts)
+  --paid-posts-as <draft|publish>
+                       What --publish does with paid posts (default: draft)
   -h, --help           Show this help`;
 
 async function main(argv: string[]): Promise<number> {
@@ -33,6 +35,7 @@ async function main(argv: string[]): Promise<number> {
 				field: { type: "string" },
 				"dry-run": { type: "boolean" },
 				publish: { type: "boolean" },
+				"paid-posts-as": { type: "string" },
 				help: { type: "boolean", short: "h" },
 			},
 		});
@@ -53,6 +56,11 @@ async function main(argv: string[]): Promise<number> {
 		console.error(USAGE);
 		return 1;
 	}
+	const paidPostsAs = values["paid-posts-as"] ?? "draft";
+	if (paidPostsAs !== "draft" && paidPostsAs !== "publish") {
+		console.error(`--paid-posts-as must be "draft" or "publish", got "${paidPostsAs}"`);
+		return 1;
+	}
 	if (!token && !values.cookie) {
 		console.error("Missing --token (or EMDASH_TOKEN). See the README for how to create one.");
 		return 1;
@@ -70,6 +78,7 @@ async function main(argv: string[]): Promise<number> {
 			field: values.field,
 			dryRun: values["dry-run"],
 			publish: values.publish,
+			paidPostsAs,
 		});
 		return summary.failed.length > 0 ? 1 : 0;
 	} catch (error) {

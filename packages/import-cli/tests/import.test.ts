@@ -184,9 +184,16 @@ describe("ghost import", () => {
 		expect(site.media).toHaveLength(2);
 	});
 
-	it("publishes only source-published items with --publish", async () => {
+	it("publishes only source-published items with --publish, paid posts stay drafts", async () => {
 		const site = fakeSite();
 		await ghost(site, { publish: true });
+		const ids = (slug: string) => site.entries.get(slug)!["id"];
+		expect(site.published.sort()).toEqual([ids("posts/hello-ghost"), ids("pages/about")].sort());
+	});
+
+	it("publishes paid posts too with --paid-posts-as publish", async () => {
+		const site = fakeSite();
+		await ghost(site, { publish: true, paidPostsAs: "publish" });
 		const ids = (slug: string) => site.entries.get(slug)!["id"];
 		expect(site.published.sort()).toEqual(
 			[ids("posts/hello-ghost"), ids("posts/members-only"), ids("pages/about")].sort(),
