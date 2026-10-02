@@ -2,6 +2,23 @@
 	"name": "@plugdash/readtime",
 	"version": "0.2.2",
 	"description": "Reading time for EmDash posts, computed at render time with no hooks or stored data",
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"reading-time",
+		"readtime",
+		"word-count"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/readtime"
+	},
+	"files": [
+		"dist",
+		"src/*.astro"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
@@ -16,33 +33,16 @@
 		},
 		"./ReadingTime.astro": "./src/ReadingTime.astro"
 	},
-	"files": [
-		"dist",
-		"src/*.astro"
-	],
 	"scripts": {
 		"build": "tsdown src/index.ts src/reading-time.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": [
-		"emdash",
-		"emdash-plugin",
-		"readtime",
-		"reading-time",
-		"word-count"
-	],
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/plugdash/plugdash.git",
-		"directory": "packages/readtime"
-	},
-	"peerDependencies": {
-		"emdash": ">=0.13.0"
-	},
 	"devDependencies": {
 		"@plugdash/types": "workspace:*",
 		"vitest": "^2.0.0"
+	},
+	"peerDependencies": {
+		"emdash": ">=0.13.0"
 	}
 }

@@ -90,8 +90,7 @@ function makeKV(settings: ReturnType<typeof makeSettings>) {
 		delete: (key: string) => (([s, k]) => s.delete(k))(pick(key)),
 		compareAndSet: (key: string, e: string | null, v: unknown) =>
 			(([s, k]) => s.compareAndSet(k, e, v))(pick(key)),
-		compareAndDelete: (key: string, e: string) =>
-			(([s, k]) => s.compareAndDelete(k, e))(pick(key)),
+		compareAndDelete: (key: string, e: string) => (([s, k]) => s.compareAndDelete(k, e))(pick(key)),
 		list: async (prefix = "") => {
 			const own = prefix.startsWith(A) ? [] : await store.list(prefix);
 			if (!(A.startsWith(prefix) || prefix.startsWith(A))) return own;
@@ -552,8 +551,15 @@ export async function callRoute(
 					);
 		return out(200, { success: true, data });
 	} catch (error) {
-		const e = error as { name?: string; code?: string; message?: string; status?: number; details?: unknown };
-		if (e?.name === "PluginRouteError") return fail(e.status ?? 400, e.code!, e.message!, e.details);
+		const e = error as {
+			name?: string;
+			code?: string;
+			message?: string;
+			status?: number;
+			details?: unknown;
+		};
+		if (e?.name === "PluginRouteError")
+			return fail(e.status ?? 400, e.code!, e.message!, e.details);
 		// EmDash hides unknown errors behind a generic message (500)
 		return fail(500, "INTERNAL_ERROR", "Plugin route error");
 	}
@@ -592,9 +598,7 @@ export function makePost({
 	};
 }
 
-export function makeContentItem(
-	overrides?: Record<string, unknown>,
-): Record<string, unknown> {
+export function makeContentItem(overrides?: Record<string, unknown>): Record<string, unknown> {
 	const defaults: Record<string, unknown> = {
 		id: "content-001",
 		type: "posts",

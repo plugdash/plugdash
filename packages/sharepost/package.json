@@ -2,6 +2,23 @@
 	"name": "@plugdash/sharepost",
 	"version": "0.2.4",
 	"description": "Share buttons without 200KB of JavaScript - builds sharing links for Twitter/X, LinkedIn, WhatsApp, Bluesky, and email at render time",
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"share-buttons",
+		"sharepost",
+		"social-sharing"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/sharepost"
+	},
+	"files": [
+		"dist",
+		"src/*.astro"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
@@ -16,34 +33,17 @@
 		},
 		"./ShareButtons.astro": "./src/ShareButtons.astro"
 	},
-	"files": [
-		"dist",
-		"src/*.astro"
-	],
 	"scripts": {
 		"build": "tsdown src/index.ts src/utils.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": [
-		"emdash",
-		"emdash-plugin",
-		"sharepost",
-		"social-sharing",
-		"share-buttons"
-	],
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/plugdash/plugdash.git",
-		"directory": "packages/sharepost"
+	"devDependencies": {
+		"@plugdash/testing": "workspace:*",
+		"@plugdash/types": "workspace:*",
+		"vitest": "^2.0.0"
 	},
 	"peerDependencies": {
 		"emdash": ">=0.13.0"
-	},
-	"devDependencies": {
-		"@plugdash/types": "workspace:*",
-		"@plugdash/testing": "workspace:*",
-		"vitest": "^2.0.0"
 	}
 }

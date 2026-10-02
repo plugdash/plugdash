@@ -2,6 +2,26 @@
 	"name": "@plugdash/codeblock",
 	"version": "0.3.0",
 	"description": "Shiki syntax highlighting for EmDash code blocks - rendered server-side, with a copy button",
+	"keywords": [
+		"codeblock",
+		"emdash",
+		"emdash-plugin",
+		"shiki",
+		"syntax-highlighting"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/codeblock"
+	},
+	"files": [
+		"dist",
+		"src/astro",
+		"src/*.astro",
+		"src/highlight.ts",
+		"src/key.ts"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
@@ -13,40 +33,20 @@
 		"./astro": "./src/astro/index.ts",
 		"./CodeBlock.astro": "./src/CodeBlock.astro"
 	},
-	"files": [
-		"dist",
-		"src/astro",
-		"src/*.astro",
-		"src/highlight.ts",
-		"src/key.ts"
-	],
 	"scripts": {
 		"build": "tsdown src/index.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": [
-		"emdash",
-		"emdash-plugin",
-		"codeblock",
-		"shiki",
-		"syntax-highlighting"
-	],
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/plugdash/plugdash.git",
-		"directory": "packages/codeblock"
-	},
-	"peerDependencies": {
-		"emdash": ">=0.13.0"
-	},
 	"dependencies": {
 		"shiki": "^4.0.0"
 	},
 	"devDependencies": {
-		"@plugdash/types": "workspace:*",
 		"@plugdash/testing": "workspace:*",
+		"@plugdash/types": "workspace:*",
 		"vitest": "^2.0.0"
+	},
+	"peerDependencies": {
+		"emdash": ">=0.13.0"
 	}
 }

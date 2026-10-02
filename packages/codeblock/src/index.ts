@@ -29,12 +29,7 @@ export {
 	type ThemeColors,
 } from "./highlight.ts";
 
-export {
-	highlightKey,
-	resolveOptions,
-	type ResolvedOptions,
-	type StoredHighlight,
-} from "./key.ts";
+export { highlightKey, resolveOptions, type ResolvedOptions, type StoredHighlight } from "./key.ts";
 
 import { highlightCode, setSiteConfig, themeColors, type CodeblockConfig } from "./highlight.ts";
 import { highlightKey, resolveOptions, type StoredHighlight } from "./key.ts";
@@ -46,9 +41,7 @@ const VERSION = pkg.version;
 // plugin holding content:write.
 const CAPABILITIES: PluginCapability[] = ["content:write"];
 
-export function codeblockPlugin(
-	config: CodeblockConfig = {},
-): PluginDescriptor<CodeblockConfig> {
+export function codeblockPlugin(config: CodeblockConfig = {}): PluginDescriptor<CodeblockConfig> {
 	return {
 		id: "codeblock",
 		version: VERSION,
@@ -95,7 +88,9 @@ export async function preHighlight(
 		if (!value.some((item) => isRecord(item) && item._type === "code")) continue;
 		const nodes: unknown[] = [];
 		for (const item of value) {
-			nodes.push(isRecord(item) && item._type === "code" ? await highlightNode(item, config) : item);
+			nodes.push(
+				isRecord(item) && item._type === "code" ? await highlightNode(item, config) : item,
+			);
 		}
 		out ??= { ...data };
 		out[field] = nodes;

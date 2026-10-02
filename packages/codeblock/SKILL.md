@@ -40,11 +40,11 @@ import emdash from "emdash/astro";
 import { codeblockPlugin } from "@plugdash/codeblock";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [codeblockPlugin({ theme: "github-dark" })], // must be plugins, not sandboxed
-    }),
-  ],
+	integrations: [
+		emdash({
+			plugins: [codeblockPlugin({ theme: "github-dark" })], // must be plugins, not sandboxed
+		}),
+	],
 });
 ```
 
@@ -71,30 +71,30 @@ const html = await highlightCode(block.code, block.language);
 <Fragment set:html={html} />
 ```
 
-| Token                                  | Default       | Description                  |
-| -------------------------------------- | ------------- | ---------------------------- |
-| `--plugdash-codeblock-radius`           | `6px`         | Border radius                |
-| `--plugdash-codeblock-padding`          | `1rem`        | Padding around the code      |
-| `--plugdash-codeblock-size`             | `0.875rem`    | Font size                    |
-| `--plugdash-codeblock-line-height`      | `1.6`         | Line height                  |
-| `--plugdash-codeblock-font`             | monospace stack | Font family                |
-| `--plugdash-codeblock-header-bg`        | theme bg, tinted | Filename/language bar background |
-| `--plugdash-codeblock-header-color`     | theme text, muted | Filename/language bar text |
-| `--plugdash-codeblock-header-border`    | theme text, faint | Line between header and code |
-| `--plugdash-copy-success-color`         | `#22c55e`     | Copy button after a copy     |
-| `--plugdash-codeblock-gutter-width`     | `2rem`        | Line number column width     |
-| `--plugdash-codeblock-gutter-color`     | theme text, faded | Line number colour       |
+| Token                                | Default           | Description                      |
+| ------------------------------------ | ----------------- | -------------------------------- |
+| `--plugdash-codeblock-radius`        | `6px`             | Border radius                    |
+| `--plugdash-codeblock-padding`       | `1rem`            | Padding around the code          |
+| `--plugdash-codeblock-size`          | `0.875rem`        | Font size                        |
+| `--plugdash-codeblock-line-height`   | `1.6`             | Line height                      |
+| `--plugdash-codeblock-font`          | monospace stack   | Font family                      |
+| `--plugdash-codeblock-header-bg`     | theme bg, tinted  | Filename/language bar background |
+| `--plugdash-codeblock-header-color`  | theme text, muted | Filename/language bar text       |
+| `--plugdash-codeblock-header-border` | theme text, faint | Line between header and code     |
+| `--plugdash-copy-success-color`      | `#22c55e`         | Copy button after a copy         |
+| `--plugdash-codeblock-gutter-width`  | `2rem`            | Line number column width         |
+| `--plugdash-codeblock-gutter-color`  | theme text, faded | Line number colour               |
 
 Background and token colours come from the Shiki theme, not from these tokens.
 
 ## configuration
 
-| Option       | Type       | Default        | Description                                        |
-| ------------ | ---------- | -------------- | -------------------------------------------------- |
-| `theme`      | `string`   | `github-dark`  | Shiki theme name. Unknown names fall back to the default. |
-| `lightTheme` | `string`   | `github-light` if `theme` unset, else none | Second theme for light mode, emitted as CSS variables. |
-| `langs`      | `string[]` | common set     | Languages loaded up front. Anything else loads on first use. |
-| `lineNumbers`| `boolean`  | `false`        | Render line numbers in the gutter.                 |
+| Option        | Type       | Default                                    | Description                                                  |
+| ------------- | ---------- | ------------------------------------------ | ------------------------------------------------------------ |
+| `theme`       | `string`   | `github-dark`                              | Shiki theme name. Unknown names fall back to the default.    |
+| `lightTheme`  | `string`   | `github-light` if `theme` unset, else none | Second theme for light mode, emitted as CSS variables.       |
+| `langs`       | `string[]` | common set                                 | Languages loaded up front. Anything else loads on first use. |
+| `lineNumbers` | `boolean`  | `false`                                    | Render line numbers in the gutter.                           |
 
 Preloaded by default: TypeScript, JavaScript, Python, Go, Rust, Shell, JSON, YAML, Markdown, HTML, CSS, SQL.
 
@@ -115,10 +115,13 @@ After installing @plugdash/codeblock and registering it in astro.config.mjs:
    into `<PortableText>`. Existing `code` blocks start rendering highlighted.
 
 2. For direct usage outside Portable Text, import the component:
+
    ```
    import CodeBlock from "@plugdash/codeblock/CodeBlock.astro"
    ```
+
    Usage:
+
    ```
    <CodeBlock code={source} language="python" />
    <CodeBlock node={block} lineNumbers theme="nord" />
@@ -142,9 +145,11 @@ After installing @plugdash/codeblock and registering it in astro.config.mjs:
 
 7. With no config, blocks switch between github-dark and github-light. For a
    custom pair, set both themes and let the CSS variables switch:
+
    ```
    codeblockPlugin({ theme: "tokyo-night", lightTheme: "catppuccin-latte" })
    ```
+
    Light mode follows prefers-color-scheme, overridden by `data-theme="light|dark"`
    or a `.light` / `.dark` class on `<html>`. A site that is dark with no marker
    on `<html>` should set `data-theme="dark"`, or light-OS visitors get light blocks.

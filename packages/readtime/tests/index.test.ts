@@ -20,9 +20,9 @@ describe("getReadingTime", () => {
 	});
 
 	it("honours wordsPerMinute", () => {
-		expect(getReadingTime(post({ content: [para(words(1200))] }), { wordsPerMinute: 100 }).minutes).toBe(
-			12,
-		);
+		expect(
+			getReadingTime(post({ content: [para(words(1200))] }), { wordsPerMinute: 100 }).minutes,
+		).toBe(12);
 	});
 
 	it("never returns less than 1 minute, even with no body", () => {
@@ -53,7 +53,10 @@ describe("getReadingTime", () => {
 	});
 
 	it("ignores non-span children", () => {
-		const b = { _type: "block", children: [{ _type: "span", text: "a b" }, { _type: "inlineThing" }] };
+		const b = {
+			_type: "block",
+			children: [{ _type: "span", text: "a b" }, { _type: "inlineThing" }],
+		};
 		expect(getReadingTime([b]).wordCount).toBe(2);
 	});
 });

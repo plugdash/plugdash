@@ -46,9 +46,7 @@ export function ghostV5Export() {
 						{ id: "t1", name: "News", slug: "news", visibility: "public" },
 						{ id: "t2", name: "Internal", slug: "internal", visibility: "internal" },
 					],
-					users: [
-						{ id: "u1", name: "Ada Lovelace", slug: "ada", email: "ada@example.com" },
-					],
+					users: [{ id: "u1", name: "Ada Lovelace", slug: "ada", email: "ada@example.com" }],
 					posts_tags: [
 						{ post_id: "1", tag_id: "t1", sort_order: 0 },
 						{ post_id: "1", tag_id: "t2", sort_order: 1 },

@@ -2,6 +2,23 @@
 	"name": "@plugdash/callout",
 	"version": "0.1.4",
 	"description": "Callout blocks for EmDash - the block type WordPress themes always hacked with shortcodes",
+	"keywords": [
+		"admonition",
+		"callout",
+		"emdash",
+		"emdash-plugin"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/callout"
+	},
+	"files": [
+		"dist",
+		"src/astro",
+		"src/*.astro"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
@@ -13,34 +30,17 @@
 		"./astro": "./src/astro/index.ts",
 		"./Callout.astro": "./src/Callout.astro"
 	},
-	"files": [
-		"dist",
-		"src/astro",
-		"src/*.astro"
-	],
 	"scripts": {
 		"build": "tsdown src/index.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": [
-		"emdash",
-		"emdash-plugin",
-		"callout",
-		"admonition"
-	],
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/plugdash/plugdash.git",
-		"directory": "packages/callout"
+	"devDependencies": {
+		"@plugdash/testing": "workspace:*",
+		"@plugdash/types": "workspace:*",
+		"vitest": "^2.0.0"
 	},
 	"peerDependencies": {
 		"emdash": ">=0.13.0"
-	},
-	"devDependencies": {
-		"@plugdash/types": "workspace:*",
-		"@plugdash/testing": "workspace:*",
-		"vitest": "^2.0.0"
 	}
 }

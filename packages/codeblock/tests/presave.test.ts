@@ -145,7 +145,10 @@ describe("content:beforeSave handler", () => {
 		const ctx = makeContext();
 		const handler = createPlugin().hooks["content:beforeSave"]!.handler;
 		// biome-ignore lint: deliberately malformed event
-		const result = await handler({ content: null, collection: "posts", isNew: true } as never, ctx as never);
+		const result = await handler(
+			{ content: null, collection: "posts", isNew: true } as never,
+			ctx as never,
+		);
 		expect(result).toBeUndefined();
 		expect(ctx.log.warn).toHaveBeenCalledOnce();
 	});
@@ -154,7 +157,10 @@ describe("content:beforeSave handler", () => {
 		const before = highlighterBuilds();
 		const node = code({ code: "y", language: "ts" });
 		const key = highlightKey(node, resolveOptions({}));
-		await preHighlight({ content: [{ ...node, pdHighlight: { key, html: "h", bg: "", fg: "" } }] }, {});
+		await preHighlight(
+			{ content: [{ ...node, pdHighlight: { key, html: "h", bg: "", fg: "" } }] },
+			{},
+		);
 		expect(highlighterBuilds()).toBe(before);
 	});
 });

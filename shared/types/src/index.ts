@@ -113,32 +113,15 @@ export interface ContentListOptions {
 
 export interface ContentAccess {
 	get(collection: string, id: string): Promise<ContentItem | null>;
-	list(
-		collection: string,
-		options?: ContentListOptions,
-	): Promise<PaginatedResult<ContentItem>>;
-	create?(
-		collection: string,
-		data: Record<string, unknown>,
-	): Promise<ContentItem>;
-	update?(
-		collection: string,
-		id: string,
-		data: Record<string, unknown>,
-	): Promise<ContentItem>;
+	list(collection: string, options?: ContentListOptions): Promise<PaginatedResult<ContentItem>>;
+	create?(collection: string, data: Record<string, unknown>): Promise<ContentItem>;
+	update?(collection: string, id: string, data: Record<string, unknown>): Promise<ContentItem>;
 	delete?(collection: string, id: string): Promise<boolean>;
 }
 
 export interface ContentAccessWithWrite extends ContentAccess {
-	create(
-		collection: string,
-		data: Record<string, unknown>,
-	): Promise<ContentItem>;
-	update(
-		collection: string,
-		id: string,
-		data: Record<string, unknown>,
-	): Promise<ContentItem>;
+	create(collection: string, data: Record<string, unknown>): Promise<ContentItem>;
+	update(collection: string, id: string, data: Record<string, unknown>): Promise<ContentItem>;
 	delete(collection: string, id: string): Promise<boolean>;
 }
 
@@ -146,9 +129,10 @@ export interface ContentAccessWithWrite extends ContentAccess {
 
 export interface MediaAccess {
 	get(id: string): Promise<Record<string, unknown> | null>;
-	list(options?: { limit?: number; cursor?: string }): Promise<
-		PaginatedResult<Record<string, unknown>>
-	>;
+	list(options?: {
+		limit?: number;
+		cursor?: string;
+	}): Promise<PaginatedResult<Record<string, unknown>>>;
 	getUploadUrl?(): Promise<{ url: string; id: string }>;
 	delete?(id: string): Promise<boolean>;
 }
@@ -163,9 +147,10 @@ export interface HttpAccess {
 
 export interface UserAccess {
 	get(id: string): Promise<Record<string, unknown> | null>;
-	list(options?: { limit?: number; cursor?: string }): Promise<
-		PaginatedResult<Record<string, unknown>>
-	>;
+	list(options?: {
+		limit?: number;
+		cursor?: string;
+	}): Promise<PaginatedResult<Record<string, unknown>>>;
 	getByEmail?(email: string): Promise<Record<string, unknown> | null>;
 }
 
@@ -183,11 +168,7 @@ export interface EmailAccess {
 // ── Cron ──
 
 export interface CronAccess {
-	schedule(
-		name: string,
-		cron: string,
-		handler: () => Promise<void>,
-	): void;
+	schedule(name: string, cron: string, handler: () => Promise<void>): void;
 }
 
 // ── Site ──

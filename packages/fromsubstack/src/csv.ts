@@ -69,7 +69,5 @@ export function parseCsv(text: string): Array<Record<string, string>> {
 	const header = rows.shift();
 	if (!header) return [];
 	const keys = header.map((h) => h.trim());
-	return rows.map((r) =>
-		Object.fromEntries(keys.map((key, i) => [key, r[i] ?? ""])),
-	);
+	return rows.map((r) => Object.fromEntries(keys.map((key, i) => [key, r[i] ?? ""])));
 }

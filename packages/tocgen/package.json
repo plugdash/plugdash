@@ -2,6 +2,22 @@
 	"name": "@plugdash/tocgen",
 	"version": "0.2.4",
 	"description": "Table of contents for EmDash posts, computed at render time with no hooks or stored data",
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"table-of-contents",
+		"tocgen"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/tocgen"
+	},
+	"files": [
+		"dist",
+		"src/*.astro"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
@@ -17,34 +33,18 @@
 		"./TableOfContents.astro": "./src/TableOfContents.astro",
 		"./HeadingAnchors.astro": "./src/HeadingAnchors.astro"
 	},
-	"files": [
-		"dist",
-		"src/*.astro"
-	],
 	"scripts": {
 		"build": "tsdown src/index.ts src/toc.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
-	"keywords": [
-		"emdash",
-		"emdash-plugin",
-		"tocgen",
-		"table-of-contents"
-	],
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/plugdash/plugdash.git",
-		"directory": "packages/tocgen"
+	"devDependencies": {
+		"@plugdash/testing": "workspace:*",
+		"@plugdash/types": "workspace:*",
+		"@portabletext/types": "^2.0.0",
+		"vitest": "^2.0.0"
 	},
 	"peerDependencies": {
 		"emdash": ">=0.13.0"
-	},
-	"devDependencies": {
-		"@plugdash/types": "workspace:*",
-		"@plugdash/testing": "workspace:*",
-		"@portabletext/types": "^2.0.0",
-		"vitest": "^2.0.0"
 	}
 }

@@ -88,31 +88,47 @@ describe("highlightCode", () => {
 		resetHighlighter();
 	});
 
-	it("returns highlighted HTML for TypeScript", async () => {
-		const html = await highlightCode("const answer: number = 42;", "typescript");
-		expect(html).toContain("<pre");
-		expect(html).toContain("<code");
-		expect(html).toContain("answer");
-		// Shiki writes per-token colours inline; without them nothing was highlighted.
-		expect(html).toContain("color:");
-	}, SLOW);
+	it(
+		"returns highlighted HTML for TypeScript",
+		async () => {
+			const html = await highlightCode("const answer: number = 42;", "typescript");
+			expect(html).toContain("<pre");
+			expect(html).toContain("<code");
+			expect(html).toContain("answer");
+			// Shiki writes per-token colours inline; without them nothing was highlighted.
+			expect(html).toContain("color:");
+		},
+		SLOW,
+	);
 
-	it("returns highlighted HTML for Python", async () => {
-		const html = await highlightCode("def greet(name):\n    return name", "python");
-		expect(html).toContain("<pre");
-		expect(html).toContain("greet");
-		expect(html).toContain("color:");
-	}, SLOW);
+	it(
+		"returns highlighted HTML for Python",
+		async () => {
+			const html = await highlightCode("def greet(name):\n    return name", "python");
+			expect(html).toContain("<pre");
+			expect(html).toContain("greet");
+			expect(html).toContain("color:");
+		},
+		SLOW,
+	);
 
-	it("falls back to plaintext for an unknown language instead of throwing", async () => {
-		const html = await highlightCode("some code", "klingon");
-		expect(html).toContain("some code");
-	}, SLOW);
+	it(
+		"falls back to plaintext for an unknown language instead of throwing",
+		async () => {
+			const html = await highlightCode("some code", "klingon");
+			expect(html).toContain("some code");
+		},
+		SLOW,
+	);
 
-	it("handles a null or undefined language", async () => {
-		await expect(highlightCode("plain", null)).resolves.toContain("plain");
-		await expect(highlightCode("plain", undefined)).resolves.toContain("plain");
-	}, SLOW);
+	it(
+		"handles a null or undefined language",
+		async () => {
+			await expect(highlightCode("plain", null)).resolves.toContain("plain");
+			await expect(highlightCode("plain", undefined)).resolves.toContain("plain");
+		},
+		SLOW,
+	);
 
 	it("returns an empty pre block for empty code", async () => {
 		const html = await highlightCode("", "typescript");
@@ -120,78 +136,122 @@ describe("highlightCode", () => {
 		expect(cacheSize()).toBe(0);
 	});
 
-	it("applies the requested theme as a class", async () => {
-		const html = await highlightCode("const x = 1;", "typescript", { theme: "nord" });
-		expect(html).toContain("nord");
-	}, SLOW);
+	it(
+		"applies the requested theme as a class",
+		async () => {
+			const html = await highlightCode("const x = 1;", "typescript", { theme: "nord" });
+			expect(html).toContain("nord");
+		},
+		SLOW,
+	);
 
-	it("applies the default theme when none is given", async () => {
-		const html = await highlightCode("const x = 1;", "typescript");
-		expect(html).toContain(DEFAULT_THEME);
-	}, SLOW);
+	it(
+		"applies the default theme when none is given",
+		async () => {
+			const html = await highlightCode("const x = 1;", "typescript");
+			expect(html).toContain(DEFAULT_THEME);
+		},
+		SLOW,
+	);
 
-	it("falls back to the default theme for an unknown theme name", async () => {
-		const html = await highlightCode("const x = 1;", "typescript", { theme: "nope" });
-		expect(html).toContain(DEFAULT_THEME);
-	}, SLOW);
+	it(
+		"falls back to the default theme for an unknown theme name",
+		async () => {
+			const html = await highlightCode("const x = 1;", "typescript", { theme: "nope" });
+			expect(html).toContain(DEFAULT_THEME);
+		},
+		SLOW,
+	);
 
-	it("emits light-mode CSS variables when a light theme is configured", async () => {
-		const html = await highlightCode("const x = 1;", "typescript", {
-			theme: "github-dark",
-			lightTheme: "github-light",
-		});
-		expect(html).toContain("--shiki-light");
-	}, SLOW);
+	it(
+		"emits light-mode CSS variables when a light theme is configured",
+		async () => {
+			const html = await highlightCode("const x = 1;", "typescript", {
+				theme: "github-dark",
+				lightTheme: "github-light",
+			});
+			expect(html).toContain("--shiki-light");
+		},
+		SLOW,
+	);
 
-	it("escapes HTML characters in the source", async () => {
-		const html = await highlightCode('const tag = "<script>&</script>";', "typescript");
-		expect(html).toContain("&#x3C;");
-		expect(html).not.toContain("<script>");
-	}, SLOW);
+	it(
+		"escapes HTML characters in the source",
+		async () => {
+			const html = await highlightCode('const tag = "<script>&</script>";', "typescript");
+			expect(html).toContain("&#x3C;");
+			expect(html).not.toContain("<script>");
+		},
+		SLOW,
+	);
 
-	it("caches repeated identical calls", async () => {
-		const first = await highlightCode("const x = 1;", "typescript");
-		expect(cacheSize()).toBe(1);
-		const second = await highlightCode("const x = 1;", "typescript");
-		expect(second).toBe(first);
-		expect(cacheSize()).toBe(1);
-	}, SLOW);
+	it(
+		"caches repeated identical calls",
+		async () => {
+			const first = await highlightCode("const x = 1;", "typescript");
+			expect(cacheSize()).toBe(1);
+			const second = await highlightCode("const x = 1;", "typescript");
+			expect(second).toBe(first);
+			expect(cacheSize()).toBe(1);
+		},
+		SLOW,
+	);
 
-	it("caches separately per theme", async () => {
-		await highlightCode("const x = 1;", "typescript", { theme: "github-dark" });
-		await highlightCode("const x = 1;", "typescript", { theme: "nord" });
-		expect(cacheSize()).toBe(2);
-	}, SLOW);
+	it(
+		"caches separately per theme",
+		async () => {
+			await highlightCode("const x = 1;", "typescript", { theme: "github-dark" });
+			await highlightCode("const x = 1;", "typescript", { theme: "nord" });
+			expect(cacheSize()).toBe(2);
+		},
+		SLOW,
+	);
 
-	it("evicts the oldest entry once the cache is full", async () => {
-		for (let i = 0; i < CACHE_MAX + 5; i += 1) {
-			await highlightCode(`line ${i}`, "text");
-		}
-		expect(cacheSize()).toBe(CACHE_MAX);
+	it(
+		"evicts the oldest entry once the cache is full",
+		async () => {
+			for (let i = 0; i < CACHE_MAX + 5; i += 1) {
+				await highlightCode(`line ${i}`, "text");
+			}
+			expect(cacheSize()).toBe(CACHE_MAX);
 
-		// The first entry is gone, the most recent one is still there.
-		await highlightCode("line 0", "text");
-		expect(cacheSize()).toBe(CACHE_MAX);
-	}, SLOW);
+			// The first entry is gone, the most recent one is still there.
+			await highlightCode("line 0", "text");
+			expect(cacheSize()).toBe(CACHE_MAX);
+		},
+		SLOW,
+	);
 
-	it("truncates code over the line limit before highlighting", async () => {
-		const code = Array.from({ length: MAX_LINES + 3 }, () => "x").join("\n");
-		const html = await highlightCode(code, "text");
-		expect(html).toContain("truncated, 3 more lines not shown");
-	}, SLOW);
+	it(
+		"truncates code over the line limit before highlighting",
+		async () => {
+			const code = Array.from({ length: MAX_LINES + 3 }, () => "x").join("\n");
+			const html = await highlightCode(code, "text");
+			expect(html).toContain("truncated, 3 more lines not shown");
+		},
+		SLOW,
+	);
 });
 
 describe("themeColors", () => {
-	it("returns the background and foreground of a single theme", async () => {
-		const colors = await themeColors({ theme: "tokyo-night" });
-		expect(colors.bg).toMatch(/^#/);
-		expect(colors.fg).toMatch(/^#/);
-		expect(colors.lightBg).toBeUndefined();
-	}, SLOW);
+	it(
+		"returns the background and foreground of a single theme",
+		async () => {
+			const colors = await themeColors({ theme: "tokyo-night" });
+			expect(colors.bg).toMatch(/^#/);
+			expect(colors.fg).toMatch(/^#/);
+			expect(colors.lightBg).toBeUndefined();
+		},
+		SLOW,
+	);
 
-	it("adds the light theme's colours when one is configured", async () => {
-		const colors = await themeColors({ theme: "tokyo-night", lightTheme: "catppuccin-latte" });
-		expect(colors.lightBg).toMatch(/^#/);
-		expect(colors.lightBg).not.toBe(colors.bg);
-	}, SLOW);
+	it(
+		"adds the light theme's colours when one is configured",
+		async () => {
+			const colors = await themeColors({ theme: "tokyo-night", lightTheme: "catppuccin-latte" });
+			expect(colors.lightBg).toMatch(/^#/);
+			expect(colors.lightBg).not.toBe(colors.bg);
+		},
+		SLOW,
+	);
 });

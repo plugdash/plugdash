@@ -31,12 +31,7 @@ import {
 	parseGhostExport,
 	resolveGhostUrl,
 } from "./ghost-export.ts";
-import type {
-	GhostData,
-	GhostPost,
-	GhostTag,
-	GhostUser,
-} from "./ghost-export.ts";
+import type { GhostData, GhostPost, GhostTag, GhostUser } from "./ghost-export.ts";
 import pkg from "../package.json" with { type: "json" };
 
 const VERSION = pkg.version;
@@ -167,14 +162,10 @@ function convertBody(
 	if (post.lexical) {
 		const recovered = lexicalToHtml(post.lexical);
 		if (recovered) {
-			config.warn(
-				`"${title}": no rendered HTML, recovered plain text from the Lexical draft`,
-			);
+			config.warn(`"${title}": no rendered HTML, recovered plain text from the Lexical draft`);
 			return convert(recovered);
 		}
-		config.warn(
-			`"${title}": Lexical content could not be converted, body left empty`,
-		);
+		config.warn(`"${title}": Lexical content could not be converted, body left empty`);
 		return [];
 	}
 
@@ -212,11 +203,7 @@ function buildMappingContext(
 	};
 }
 
-function resolveTags(
-	postId: string,
-	title: string,
-	ctx: MappingContext,
-): string[] | undefined {
+function resolveTags(postId: string, title: string, ctx: MappingContext): string[] | undefined {
 	const tagIds = ctx.tagsByPost.get(postId);
 	if (!tagIds || tagIds.length === 0) return undefined;
 
@@ -235,17 +222,19 @@ function resolveTags(
 	return slugs.length > 0 ? slugs : undefined;
 }
 
-function resolveAuthor(
-	postId: string,
-	ctx: MappingContext,
-): string | undefined {
+function resolveAuthor(postId: string, ctx: MappingContext): string | undefined {
 	const authorId = ctx.authorsByPost.get(postId)?.[0];
 	if (!authorId) return undefined;
 	const user = ctx.users.get(authorId);
 	return user?.slug ?? user?.name ?? undefined;
 }
 
-function resolveSlug(post: GhostPost, title: string, index: number, config: ResolvedConfig): string {
+function resolveSlug(
+	post: GhostPost,
+	title: string,
+	index: number,
+	config: ResolvedConfig,
+): string {
 	if (config.preserveSlugs && post.slug) return post.slug;
 	return slugify(title) || `ghost-${post.id ?? index}`;
 }
@@ -292,10 +281,7 @@ export function toNormalizedItem(
 		title,
 		content: toImportContent(resolveBody(post, title, config, ctx.convert)),
 		excerpt: (post.custom_excerpt ?? post.excerpt) || undefined,
-		date:
-			parseGhostDate(post.published_at) ??
-			parseGhostDate(post.created_at) ??
-			new Date(),
+		date: parseGhostDate(post.published_at) ?? parseGhostDate(post.created_at) ?? new Date(),
 		modified: parseGhostDate(post.updated_at),
 		author: resolveAuthor(postId, ctx),
 		tags: config.importTags ? resolveTags(postId, title, ctx) : undefined,
@@ -306,10 +292,7 @@ export function toNormalizedItem(
 
 // ── Analysis ──
 
-type ExistingCollections = Map<
-	string,
-	{ slug: string; fields: Map<string, { type: string }> }
->;
+type ExistingCollections = Map<string, { slug: string; fields: Map<string, { type: string }> }>;
 
 const BASE_FIELDS: ImportFieldDef[] = [
 	{ slug: "title", label: "Title", type: "string", required: true, searchable: true },
@@ -449,8 +432,7 @@ export function analyzeGhostExport(
 
 	const postTypes = [...counts.entries()]
 		.map(([name, count]) => {
-			const suggestedCollection =
-				name === "post" ? config.targetCollection : "pages";
+			const suggestedCollection = name === "post" ? config.targetCollection : "pages";
 			const requiredFields = typesWithFeatureImage.has(name)
 				? [...BASE_FIELDS, FEATURED_IMAGE_FIELD]
 				: [...BASE_FIELDS];
@@ -459,10 +441,7 @@ export function analyzeGhostExport(
 				count,
 				suggestedCollection,
 				requiredFields,
-				schemaStatus: checkSchema(
-					requiredFields,
-					existingCollections.get(suggestedCollection),
-				),
+				schemaStatus: checkSchema(requiredFields, existingCollections.get(suggestedCollection)),
 			};
 		})
 		.sort((a, b) => b.count - a.count);
@@ -509,16 +488,12 @@ export function createGhostSource(config: FromghostConfig = {}): ImportSource {
 	return {
 		id: SOURCE_ID,
 		name: "Ghost Export File",
-		description:
-			"Upload a Ghost JSON export (Ghost admin: Settings > Labs > Export your content)",
+		description: "Upload a Ghost JSON export (Ghost admin: Settings > Labs > Export your content)",
 		icon: "upload",
 		requiresFile: true,
 		canProbe: false,
 
-		async analyze(
-			input: SourceInput,
-			context: ImportContext,
-		): Promise<GhostImportAnalysis> {
+		async analyze(input: SourceInput, context: ImportContext): Promise<GhostImportAnalysis> {
 			const { data } = await readExport(input);
 			const convert = await loadConverter();
 			const existing = context.getExistingCollections
@@ -527,10 +502,7 @@ export function createGhostSource(config: FromghostConfig = {}): ImportSource {
 			return analyzeGhostExport(data, existing, resolved, convert);
 		},
 
-		async *fetchContent(
-			input: SourceInput,
-			options: FetchOptions,
-		): AsyncGenerator<NormalizedItem> {
+		async *fetchContent(input: SourceInput, options: FetchOptions): AsyncGenerator<NormalizedItem> {
 			const { data } = await readExport(input);
 			const ctx = buildMappingContext(data, resolved, await loadConverter());
 			const seen = new Set<string>();
@@ -550,16 +522,16 @@ export function createGhostSource(config: FromghostConfig = {}): ImportSource {
 					resolved.warn(`"${title}": duplicate slug "${slug}", skipping`);
 					continue;
 				}
-			seen.add(seenKey);
+				seen.add(seenKey);
 
-			if (
-				resolved.paidPostsAs === "skip" &&
-				isRestricted(post) &&
-				mapGhostStatus(post.status) === "publish"
-			) {
-				resolved.warn(`"${title}": ${post.visibility} post, skipping`);
-				continue;
-			}
+				if (
+					resolved.paidPostsAs === "skip" &&
+					isRestricted(post) &&
+					mapGhostStatus(post.status) === "publish"
+				) {
+					resolved.warn(`"${title}": ${post.visibility} post, skipping`);
+					continue;
+				}
 
 				yield toNormalizedItem(post, slug, ctx);
 
@@ -575,9 +547,7 @@ export const ghostSource: ImportSource = createGhostSource();
 
 // ── Plugin ──
 
-export function fromghostPlugin(
-	config: FromghostConfig = {},
-): PluginDescriptor<FromghostConfig> {
+export function fromghostPlugin(config: FromghostConfig = {}): PluginDescriptor<FromghostConfig> {
 	return {
 		id: "fromghost",
 		version: VERSION,

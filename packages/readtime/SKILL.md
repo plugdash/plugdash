@@ -43,17 +43,17 @@ import ReadingTime from "@plugdash/readtime/ReadingTime.astro";
 <ReadingTime post={post} />
 ```
 
-| Prop           | Default      | Description                                           |
-| -------------- | ------------ | ----------------------------------------------------- |
-| wordsPerMinute | `238`        | Reading speed                                         |
+| Prop           | Default      | Description                                                       |
+| -------------- | ------------ | ----------------------------------------------------------------- |
+| wordsPerMinute | `238`        | Reading speed                                                     |
 | field          | auto         | Portable Text field (`content`, then `body`, then first PT array) |
-| label          | `"min read"` | Text after the number                                 |
-| variant        | `"inline"`   | `badge` / `pill` / `inline` / `minimal`               |
-| size           | `"md"`       | `sm` / `md` / `lg`                                    |
-| theme          | `"auto"`     | `auto` / `dark` / `light`                             |
-| showWords      | `false`      | Show word count                                       |
-| attribution    | `false`      | Show "plugdash" link                                  |
-| class          | -            | Extra class                                           |
+| label          | `"min read"` | Text after the number                                             |
+| variant        | `"inline"`   | `badge` / `pill` / `inline` / `minimal`                           |
+| size           | `"md"`       | `sm` / `md` / `lg`                                                |
+| theme          | `"auto"`     | `auto` / `dark` / `light`                                         |
+| showWords      | `false`      | Show word count                                                   |
+| attribution    | `false`      | Show "plugdash" link                                              |
+| class          | -            | Extra class                                                       |
 
 CSS tokens: `--plugdash-rt-color`, `--plugdash-rt-size`, `--plugdash-rt-font`, `--plugdash-rt-bg`, `--plugdash-rt-border`, `--plugdash-rt-radius`, `--plugdash-rt-padding`.
 
@@ -74,11 +74,13 @@ Props only. See the table above.
 After installing @plugdash/readtime (no registration needed):
 
 1. Import the component in the post layout:
+
    ```
    import ReadingTime from "@plugdash/readtime/ReadingTime.astro"
    ```
 
 2. Add it where reading time should show. On the blog template, replace `<span>{readingTime} min read</span>` in `src/pages/posts/[slug].astro`:
+
    ```
    <ReadingTime post={post} />
    ```

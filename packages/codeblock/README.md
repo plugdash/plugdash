@@ -32,13 +32,11 @@ import emdash from "emdash/astro";
 import { codeblockPlugin } from "@plugdash/codeblock";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [
-        codeblockPlugin({ theme: "github-dark", lineNumbers: true }),
-      ], // native - must be in plugins, not sandboxed
-    }),
-  ],
+	integrations: [
+		emdash({
+			plugins: [codeblockPlugin({ theme: "github-dark", lineNumbers: true })], // native - must be in plugins, not sandboxed
+		}),
+	],
 });
 ```
 
@@ -116,16 +114,16 @@ the component uses the site config.
 
 ### Props
 
-| Prop          | Type      | Default | Description                              |
-| ------------- | --------- | ------- | ---------------------------------------- |
-| `code`        | `string`  | -       | Source to highlight (required to render) |
-| `language`    | `string`  | -       | Language name. Unknown ones render as plaintext. |
-| `filename`    | `string`  | -       | Shown in the header bar                  |
-| `theme`       | `string`  | site config | Shiki theme name                   |
-| `lightTheme`  | `string`  | site config | Second theme for light mode        |
-| `lineNumbers` | `boolean` | site config | Show the line number gutter        |
-| `class`       | `string`  | -       | Additional CSS class                     |
-| `node`        | `object`  | -       | Block data from PortableText auto-wiring |
+| Prop          | Type      | Default     | Description                                      |
+| ------------- | --------- | ----------- | ------------------------------------------------ |
+| `code`        | `string`  | -           | Source to highlight (required to render)         |
+| `language`    | `string`  | -           | Language name. Unknown ones render as plaintext. |
+| `filename`    | `string`  | -           | Shown in the header bar                          |
+| `theme`       | `string`  | site config | Shiki theme name                                 |
+| `lightTheme`  | `string`  | site config | Second theme for light mode                      |
+| `lineNumbers` | `boolean` | site config | Show the line number gutter                      |
+| `class`       | `string`  | -           | Additional CSS class                             |
+| `node`        | `object`  | -           | Block data from PortableText auto-wiring         |
 
 Renders nothing when `code` is missing or empty.
 
@@ -147,20 +145,20 @@ keyed by theme and source, with the hundred most recent kept.
 Token and background colours come from the Shiki theme. Everything around the
 code is overridable:
 
-| Property                           | Default         | Description                      |
-| ---------------------------------- | --------------- | -------------------------------- |
-| `--plugdash-codeblock-radius`      | `6px`           | Border radius                    |
-| `--plugdash-codeblock-padding`     | `1rem`          | Padding around the code          |
-| `--plugdash-codeblock-size`        | `0.875rem`      | Font size                        |
-| `--plugdash-codeblock-line-height` | `1.6`           | Line height                      |
-| `--plugdash-codeblock-font`        | monospace stack | Font family                      |
-| `--plugdash-codeblock-header-padding` | `0.5rem 1rem` | Header bar padding             |
-| `--plugdash-codeblock-header-bg`   | theme bg, tinted | Header bar background           |
-| `--plugdash-codeblock-header-color`| theme text, muted | Header bar text                |
-| `--plugdash-codeblock-header-border`| theme text, faint | Line between header and code  |
-| `--plugdash-copy-success-color`    | `#22c55e`       | Copy button after a copy         |
-| `--plugdash-codeblock-gutter-width`| `2rem`          | Line number column width         |
-| `--plugdash-codeblock-gutter-color`| theme text, faded | Line number colour             |
+| Property                              | Default           | Description                  |
+| ------------------------------------- | ----------------- | ---------------------------- |
+| `--plugdash-codeblock-radius`         | `6px`             | Border radius                |
+| `--plugdash-codeblock-padding`        | `1rem`            | Padding around the code      |
+| `--plugdash-codeblock-size`           | `0.875rem`        | Font size                    |
+| `--plugdash-codeblock-line-height`    | `1.6`             | Line height                  |
+| `--plugdash-codeblock-font`           | monospace stack   | Font family                  |
+| `--plugdash-codeblock-header-padding` | `0.5rem 1rem`     | Header bar padding           |
+| `--plugdash-codeblock-header-bg`      | theme bg, tinted  | Header bar background        |
+| `--plugdash-codeblock-header-color`   | theme text, muted | Header bar text              |
+| `--plugdash-codeblock-header-border`  | theme text, faint | Line between header and code |
+| `--plugdash-copy-success-color`       | `#22c55e`         | Copy button after a copy     |
+| `--plugdash-codeblock-gutter-width`   | `2rem`            | Line number column width     |
+| `--plugdash-codeblock-gutter-color`   | theme text, faded | Line number colour           |
 
 The header and gutter defaults are mixed from the theme's own background and
 text colours, so they match any theme, light or dark.
@@ -173,7 +171,7 @@ stays dark. To switch with your own pair, set both. Any
 [Shiki theme](https://shiki.style/themes) works:
 
 ```js
-codeblockPlugin({ theme: "tokyo-night", lightTheme: "catppuccin-latte" })
+codeblockPlugin({ theme: "tokyo-night", lightTheme: "catppuccin-latte" });
 ```
 
 The light theme is used when the OS prefers light, unless the site forces a
@@ -186,8 +184,8 @@ Example override:
 
 ```css
 :root {
-  --plugdash-codeblock-radius: 0;
-  --plugdash-codeblock-size: 0.8125rem;
+	--plugdash-codeblock-radius: 0;
+	--plugdash-codeblock-size: 0.8125rem;
 }
 ```
 
