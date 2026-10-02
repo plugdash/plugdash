@@ -1,5 +1,18 @@
 # @plugdash/heartpost
 
+## 0.3.0
+
+### Minor Changes
+
+- 2188e23: Store one count per post instead of one row per visitor, keep hearted state in localStorage, rate limit on the trusted client IP, and fetch the count only when the button scrolls into view
+
+  Breaking: heartpost is now a native plugin, the `./sandbox` export and the `content:afterSave` hook are removed, and `collections` now defaults to `["posts"]` instead of every collection. To upgrade, register `heartpostPlugin()` under `plugins` (not `sandboxed`) in astro.config.mjs and pass `collections` if you heart anything other than posts. Existing counts carry over on the first new heart; old per-visitor rows stay until you run "Remove old visitor rows" in the Heart Post admin page.
+
+### Patch Changes
+
+- 6a2207e: Read the count and hearted state from EmDash's wrapped route response, so the heart button shows the real count after a page load
+- 2cde086: Bad or unknown post ids now return 400/404 (and rate limits 429) instead of a generic 500, by tagging the package `astro-component` so Astro bundles it with the site's own emdash
+
 ## 0.2.2
 
 ### Patch Changes

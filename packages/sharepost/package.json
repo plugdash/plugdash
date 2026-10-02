@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/sharepost",
-	"version": "0.2.4",
+	"version": "0.3.0",
 	"description": "Share buttons without 200KB of JavaScript - builds sharing links for Twitter/X, LinkedIn, WhatsApp, Bluesky, and email at render time",
 	"keywords": [
 		"emdash",

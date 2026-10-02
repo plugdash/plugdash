@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/heartpost",
-	"version": "0.2.2",
+	"version": "0.3.0",
 	"description": "Like button for EmDash posts with one count per post, no per-visitor rows",
 	"keywords": [
 		"astro-component",

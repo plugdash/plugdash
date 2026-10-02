@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/enrichkit",
-	"version": "0.1.2",
+	"version": "0.2.0",
 	"description": "Adds an AI summary, topics, tags and a tweet draft to EmDash posts with one LLM call per changed publish",
 	"keywords": [
 		"ai",

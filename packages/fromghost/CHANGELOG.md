@@ -1,5 +1,17 @@
 # @plugdash/fromghost
 
+## 0.2.0
+
+### Minor Changes
+
+- 2062e8b: Register the source in createPlugin so options reach production, resolve `__GHOST_URL__` in post HTML, list inline images as attachments, import paid posts as drafts (paidPostsAs), return warnings on the analysis, load the HTML converter lazily, and read SEO title and description from Ghost 4+ posts_meta
+
+  Breaking: posts with Ghost visibility `members`, `paid` or `tiers` now import as drafts by default. To keep publishing them, pass `paidPostsAs: "publish"` in astro.config.mjs.
+
+### Patch Changes
+
+- 686145c: Keep images that sit inside a paragraph. The HTML converter used to drop `<p>text <img> text</p>` images; it now splits the paragraph into a text block, an image block and a text block
+
 ## 0.1.2
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/tocgen",
-	"version": "0.2.4",
+	"version": "0.3.0",
 	"description": "Table of contents for EmDash posts, computed at render time with no hooks or stored data",
 	"keywords": [
 		"emdash",

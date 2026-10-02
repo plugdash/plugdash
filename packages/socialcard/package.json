@@ -1,6 +1,6 @@
 {
 	"name": "@plugdash/socialcard",
-	"version": "0.1.2",
+	"version": "0.2.0",
 	"description": "Share images for EmDash posts - renders a PNG card on publish and sets it as the post's SEO image",
 	"keywords": [
 		"emdash",
