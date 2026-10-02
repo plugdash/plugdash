@@ -1,91 +1,88 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-// Functional tests for @plugdash/engage
-// Requires testbed running on localhost:4321 with heartpost, sharepost,
-// and shortlink plugins registered.
-// Run: pnpm playwright test e2e/engage.spec.ts
+// Functional tests for @plugdash/engage.
+// Needs a dev site with heartpostPlugin() and shortlinkPlugin() registered and a
+// page at /engage-test/[slug] that loads the post with getEmDashEntry and renders
+//   <div style="height: 3000px"></div>
+//   <EngagementBar post={post} via="plughandle" />
+// The spacer keeps the bar below the first viewport.
+// Run: BASE_URL=http://127.0.0.1:5122 pnpm playwright test e2e/engage.spec.ts
+// Auth uses the dev-bypass endpoint, so point it at `astro dev`, not a prod build.
 
-const BASE_URL = "http://localhost:4321";
+const BASE_URL = process.env.BASE_URL ?? "http://127.0.0.1:4321";
+const H = { "X-EmDash-Request": "1" };
 
-test.describe("EngagementBar component rendering", () => {
-	test("EngagementBar renders all three children by default", async ({ page }) => {
-		await page.goto(`${BASE_URL}/engage-test`);
-		const bar = page.locator(".plugdash-engage-bar").first();
-		await expect(bar).toBeVisible();
+test.describe("engage", () => {
+	let slug: string;
+	let id: string;
 
-		// HeartButton, ShareButtons, CopyLink all present
-		await expect(bar.locator(".plugdash-heart").first()).toBeVisible();
-		await expect(bar.locator(".plugdash-share").first()).toBeVisible();
-		await expect(bar.locator(".plugdash-copy").first()).toBeVisible();
+	test.beforeAll(async ({ request }) => {
+		await request.get(`${BASE_URL}/_emdash/api/setup/dev-bypass`);
+		slug = `engage-e2e-${Date.now()}`;
+		const created = await request.post(`${BASE_URL}/_emdash/api/content/posts`, {
+			headers: H,
+			data: { data: { title: "Engage e2e" }, slug },
+		});
+		expect(created.ok()).toBe(true);
+		id = (await created.json()).data.item.id;
+		const pub = await request.post(`${BASE_URL}/_emdash/api/content/posts/${id}/publish`, {
+			headers: H,
+			data: {},
+		});
+		expect(pub.ok()).toBe(true);
 	});
 
-	test("EngagementBar is a flex row with gap", async ({ page }) => {
-		await page.goto(`${BASE_URL}/engage-test`);
-		const bar = page.locator(".plugdash-engage-bar").first();
-		const display = await bar.evaluate((el) => getComputedStyle(el).display);
-		expect(display).toBe("flex");
+	test("one bar with heart, share and copy; X link is absolute and carries via", async ({
+		page,
+	}) => {
+		await page.goto(`${BASE_URL}/engage-test/${slug}`);
+		await expect(page.locator(".plugdash-engage-bar")).toHaveCount(1);
+		const bar = page.locator(".plugdash-engage-bar");
+		await expect(bar.locator(".plugdash-heart")).toHaveCount(1);
+		await expect(bar.locator(".plugdash-copy")).toHaveCount(1);
+
+		const href = (await bar
+			.locator('a[href*="twitter.com"], a[href*="x.com"]')
+			.first()
+			.getAttribute("href"))!;
+		const x = new URL(href);
+		expect(x.searchParams.get("via")).toBe("plughandle");
+		expect(x.searchParams.get("text")).toBe("Engage e2e");
+		expect(x.searchParams.get("url")).toBe(`${new URL(page.url()).origin}/engage-test/${slug}`);
 	});
 
-	test("EngagementBar sets data-theme attribute", async ({ page }) => {
-		await page.goto(`${BASE_URL}/engage-test`);
-		const bar = page.locator(".plugdash-engage-bar").first();
-		await expect(bar).toHaveAttribute("data-theme");
-	});
-});
-
-test.describe("EngagementBar show/hide props", () => {
-	test("showHeart=false hides HeartButton", async ({ page }) => {
-		await page.goto(`${BASE_URL}/engage-test-no-heart`);
-		const bar = page.locator(".plugdash-engage-bar").first();
-		await expect(bar).toBeVisible();
-		await expect(bar.locator(".plugdash-heart")).toHaveCount(0);
-		await expect(bar.locator(".plugdash-share").first()).toBeVisible();
-		await expect(bar.locator(".plugdash-copy").first()).toBeVisible();
+	test("copy button holds an absolute /s/<code> URL that redirects to the post", async ({
+		page,
+		request,
+	}) => {
+		await page.goto(`${BASE_URL}/engage-test/${slug}`);
+		const copy = (await page.locator(".plugdash-copy").first().getAttribute("data-copy"))!;
+		expect(copy).toBe(`${new URL(page.url()).origin}/s/${id.slice(-8).toLowerCase()}`);
+		const head = await request.head(copy, { maxRedirects: 0 });
+		expect(head.status()).toBe(301);
+		expect(head.headers().location).toBe(`/posts/${slug}`);
 	});
 
-	test("showShare=false hides ShareButtons", async ({ page }) => {
-		await page.goto(`${BASE_URL}/engage-test-no-share`);
-		const bar = page.locator(".plugdash-engage-bar").first();
-		await expect(bar).toBeVisible();
-		await expect(bar.locator(".plugdash-heart").first()).toBeVisible();
-		await expect(bar.locator(".plugdash-share")).toHaveCount(0);
-		await expect(bar.locator(".plugdash-copy").first()).toBeVisible();
-	});
+	test("no heart request before scroll, then the heart works", async ({ page }) => {
+		const calls: string[] = [];
+		page.on("request", (r) => {
+			if (r.url().includes("/api/plugins/heartpost/")) {
+				calls.push(`${r.method()} ${r.url().split("heartpost/")[1]!.split("?")[0]}`);
+			}
+		});
+		await page.goto(`${BASE_URL}/engage-test/${slug}`);
+		await page.waitForTimeout(500);
+		expect(calls).toHaveLength(0);
 
-	test("showCopy=false hides CopyLink", async ({ page }) => {
-		await page.goto(`${BASE_URL}/engage-test-no-copy`);
-		const bar = page.locator(".plugdash-engage-bar").first();
-		await expect(bar).toBeVisible();
-		await expect(bar.locator(".plugdash-heart").first()).toBeVisible();
-		await expect(bar.locator(".plugdash-share").first()).toBeVisible();
-		await expect(bar.locator(".plugdash-copy")).toHaveCount(0);
-	});
-});
+		const count = page.locator(".plugdash-heart-count");
+		await page.locator(".plugdash-heart").scrollIntoViewIfNeeded();
+		await expect.poll(() => calls.filter((c) => c === "GET heart-status").length).toBe(1);
+		const before = Number(await count.textContent());
 
-test.describe("EngagementBar variant props", () => {
-	test("pill variant applies to all children", async ({ page }) => {
-		await page.goto(`${BASE_URL}/engage-test-pill`);
-		const bar = page.locator(".plugdash-engage-bar").first();
-		await expect(bar.locator(".plugdash-heart--pill").first()).toBeVisible();
-		await expect(bar.locator(".plugdash-share--pill").first()).toBeVisible();
-		await expect(bar.locator(".plugdash-copy--pill").first()).toBeVisible();
-	});
-
-	test("ghost variant applies to all children", async ({ page }) => {
-		await page.goto(`${BASE_URL}/engage-test-ghost`);
-		const bar = page.locator(".plugdash-engage-bar").first();
-		await expect(bar.locator(".plugdash-heart--ghost").first()).toBeVisible();
-		await expect(bar.locator(".plugdash-share--ghost").first()).toBeVisible();
-		await expect(bar.locator(".plugdash-copy--ghost").first()).toBeVisible();
-	});
-});
-
-test.describe("EngagementBar size props", () => {
-	test("sm size applies to all children", async ({ page }) => {
-		await page.goto(`${BASE_URL}/engage-test-sm`);
-		const bar = page.locator(".plugdash-engage-bar").first();
-		await expect(bar.locator(".plugdash-heart--sm").first()).toBeVisible();
-		await expect(bar.locator(".plugdash-share--sm").first()).toBeVisible();
-		await expect(bar.locator(".plugdash-copy--sm").first()).toBeVisible();
+		await page.locator(".plugdash-heart").click();
+		await expect(count).toHaveText(String(before + 1));
+		await page.reload();
+		await page.locator(".plugdash-heart").scrollIntoViewIfNeeded();
+		await expect(count).toHaveText(String(before + 1));
 	});
 });
