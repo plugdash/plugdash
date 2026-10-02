@@ -1,12 +1,5 @@
-// Build-time config bridge. The descriptor factory writes to this global so
-// the sandbox-entry can seed KV on plugin:install. Only populated in trusted
-// mode (same process). Sandboxed isolates don't share globals.
-
-import type { SocialcardConfig } from "./index.ts";
-
-declare global {
-	// eslint-disable-next-line no-var
-	var __plugdash_socialcard_config__: SocialcardConfig | undefined;
+// Workers bundlers resolve a `?module` WASM import to a compiled module.
+declare module "*.wasm?module" {
+	const mod: WebAssembly.Module;
+	export default mod;
 }
-
-export {};
