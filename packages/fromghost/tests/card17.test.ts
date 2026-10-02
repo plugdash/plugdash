@@ -3,8 +3,7 @@ import { createGhostSource } from "../src/index.ts";
 import type { FromghostConfig } from "../src/index.ts";
 import fixture from "./fixtures/ghost-export.json";
 
-const file = () =>
-	new File([JSON.stringify(fixture)], "export.json", { type: "application/json" });
+const file = () => new File([JSON.stringify(fixture)], "export.json", { type: "application/json" });
 
 async function run(config: FromghostConfig, postTypes = ["post", "page"]) {
 	const source = createGhostSource(config);
@@ -73,5 +72,15 @@ describe("fixture coverage", () => {
 		expect(items.find((i) => i.sourceId === "p4")?.content.length).toBeGreaterThan(0);
 		expect(items.find((i) => i.sourceId === "p1")?.tags).toEqual(["news"]);
 		expect(JSON.stringify(items)).not.toContain("ada@example.com");
+	});
+});
+
+describe("posts_meta", () => {
+	it("reads SEO fields from Ghost 4+ posts_meta", async () => {
+		const items = await run({});
+		const hello = items.find((i) => i.sourceId === "p1");
+		expect(hello?.meta?.["seoTitle"]).toBe("Hello Ghost | SEO title");
+		expect(hello?.meta?.["seoDescription"]).toBe("SEO description from posts_meta");
+		expect(items.find((i) => i.sourceId === "p2")?.meta?.["seoTitle"]).toBeUndefined();
 	});
 });
