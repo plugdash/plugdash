@@ -1,16 +1,28 @@
 ---
+/**
+ * @plugdash/tocgen - TableOfContents.astro
+ *
+ * Builds the table of contents from the post body at render time. No plugin
+ * registration, hooks or stored data. Renders nothing when there are fewer
+ * than minHeadings headings. Pair it with <HeadingAnchors /> so every link
+ * has a target.
+ *
+ * Props:
+ *   post        - EmDash content item (required)
+ *   maxDepth    - deepest heading level, 2 | 3 | 4, default 3
+ *   minHeadings - headings needed before a TOC shows, default 3
+ *   field       - Portable Text field name, default content, then body
+ *   sticky      - stick to the top while scrolling, default false
+ *   class       - additional CSS class
+ */
 import TocList from "./TocList.astro";
-
-interface TocEntry {
-	id: string;
-	text: string;
-	level: 2 | 3 | 4;
-	children: TocEntry[];
-}
+import { getBodyBlocks, getToc, type TocEntry } from "@plugdash/tocgen/utils";
 
 interface Props {
 	post: Record<string, unknown>;
 	maxDepth?: 2 | 3 | 4;
+	minHeadings?: number;
+	field?: string;
 	sticky?: boolean;
 	class?: string;
 }
@@ -18,14 +30,19 @@ interface Props {
 const {
 	post,
 	maxDepth = 3,
+	minHeadings = 3,
+	field,
 	sticky = false,
 	class: className = "",
 } = Astro.props;
 
-const data = post?.data as Record<string, unknown> | undefined;
-const metadata = data?.metadata as Record<string, unknown> | undefined;
-const tocgen = metadata?.tocgen as { entries: TocEntry[] } | undefined;
-const entries = tocgen?.entries ?? [];
+// Old tocgen versions stored entries in metadata. Used only when no body is found.
+const legacy = (post?.data as Record<string, any> | undefined)?.metadata?.tocgen?.entries;
+const entries: TocEntry[] = getBodyBlocks(post, field)
+	? getToc(post, { maxDepth, minHeadings, field })
+	: Array.isArray(legacy)
+		? legacy
+		: [];
 ---
 
 {
