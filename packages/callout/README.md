@@ -20,11 +20,11 @@ import emdash from "emdash/astro";
 import { calloutPlugin } from "@plugdash/callout";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [calloutPlugin()], // native - must be in plugins, not sandboxed
-    }),
-  ],
+	integrations: [
+		emdash({
+			plugins: [calloutPlugin()], // native - must be in plugins, not sandboxed
+		}),
+	],
 });
 ```
 
@@ -72,14 +72,14 @@ import Callout from "@plugdash/callout/Callout.astro"
 
 ### Props
 
-| Prop      | Type                                       | Default  | Description                        |
-| --------- | ------------------------------------------ | -------- | ---------------------------------- |
-| `variant` | `"info" \| "warning" \| "tip" \| "danger"` | `"info"` | Visual style and icon              |
-| `title`   | `string`                                   | -        | Optional heading above the body    |
-| `body`    | `string`                                   | -        | Callout content (required to render) |
-| `icon`    | `boolean`                                  | `true`   | Show the variant icon              |
-| `theme`   | `"auto" \| "dark" \| "light"`              | `"auto"` | Color scheme                       |
-| `class`   | `string`                                   | -        | Additional CSS class               |
+| Prop      | Type                                       | Default  | Description                              |
+| --------- | ------------------------------------------ | -------- | ---------------------------------------- |
+| `variant` | `"info" \| "warning" \| "tip" \| "danger"` | `"info"` | Visual style and icon                    |
+| `title`   | `string`                                   | -        | Optional heading above the body          |
+| `body`    | `string`                                   | -        | Callout content (required to render)     |
+| `icon`    | `boolean`                                  | `true`   | Show the variant icon                    |
+| `theme`   | `"auto" \| "dark" \| "light"`              | `"auto"` | Color scheme                             |
+| `class`   | `string`                                   | -        | Additional CSS class                     |
 | `node`    | `object`                                   | -        | Block data from PortableText auto-wiring |
 
 Renders nothing when `body` is missing or empty.
@@ -88,30 +88,30 @@ Renders nothing when `body` is missing or empty.
 
 All visual values are overridable via CSS custom properties:
 
-| Property                            | Default         | Description                    |
-| ----------------------------------- | --------------- | ------------------------------ |
-| `--plugdash-callout-info-accent`    | `#3b82f6`       | Info variant border and icon   |
-| `--plugdash-callout-info-bg`        | accent at 8%    | Info variant background        |
+| Property                            | Default         | Description                     |
+| ----------------------------------- | --------------- | ------------------------------- |
+| `--plugdash-callout-info-accent`    | `#3b82f6`       | Info variant border and icon    |
+| `--plugdash-callout-info-bg`        | accent at 8%    | Info variant background         |
 | `--plugdash-callout-warning-accent` | `#f59e0b`       | Warning variant border and icon |
-| `--plugdash-callout-warning-bg`     | accent at 8%    | Warning variant background     |
-| `--plugdash-callout-tip-accent`     | `#22c55e`       | Tip variant border and icon    |
-| `--plugdash-callout-tip-bg`         | accent at 8%    | Tip variant background         |
-| `--plugdash-callout-danger-accent`  | `#ef4444`       | Danger variant border and icon |
-| `--plugdash-callout-danger-bg`      | accent at 8%    | Danger variant background      |
-| `--plugdash-callout-border-width`   | `3px`           | Left border thickness          |
-| `--plugdash-callout-radius`         | `6px`           | Border radius                  |
-| `--plugdash-callout-padding`        | `1rem 1.25rem`  | Inner padding                  |
-| `--plugdash-callout-font`           | Lexend fallback | Font family                    |
-| `--plugdash-callout-title-weight`   | `600`           | Title font weight              |
-| `--plugdash-callout-icon-size`      | `20px`          | Icon dimensions                |
+| `--plugdash-callout-warning-bg`     | accent at 8%    | Warning variant background      |
+| `--plugdash-callout-tip-accent`     | `#22c55e`       | Tip variant border and icon     |
+| `--plugdash-callout-tip-bg`         | accent at 8%    | Tip variant background          |
+| `--plugdash-callout-danger-accent`  | `#ef4444`       | Danger variant border and icon  |
+| `--plugdash-callout-danger-bg`      | accent at 8%    | Danger variant background       |
+| `--plugdash-callout-border-width`   | `3px`           | Left border thickness           |
+| `--plugdash-callout-radius`         | `6px`           | Border radius                   |
+| `--plugdash-callout-padding`        | `1rem 1.25rem`  | Inner padding                   |
+| `--plugdash-callout-font`           | Lexend fallback | Font family                     |
+| `--plugdash-callout-title-weight`   | `600`           | Title font weight               |
+| `--plugdash-callout-icon-size`      | `20px`          | Icon dimensions                 |
 
 Example override:
 
 ```css
 :root {
-  --plugdash-callout-info-accent: #2563eb;
-  --plugdash-callout-radius: 0;
-  --plugdash-callout-border-width: 4px;
+	--plugdash-callout-info-accent: #2563eb;
+	--plugdash-callout-radius: 0;
+	--plugdash-callout-border-width: 4px;
 }
 ```
 

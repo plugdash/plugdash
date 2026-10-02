@@ -2,6 +2,24 @@
 	"name": "@plugdash/heartpost",
 	"version": "0.2.2",
 	"description": "Like button for EmDash posts with one count per post, no per-visitor rows",
+	"keywords": [
+		"astro-component",
+		"emdash",
+		"emdash-plugin",
+		"heartpost",
+		"like-button"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/heartpost"
+	},
+	"files": [
+		"dist",
+		"src/*.astro",
+		"src/client.ts"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
@@ -12,36 +30,18 @@
 		},
 		"./HeartButton.astro": "./src/HeartButton.astro"
 	},
-	"files": [
-		"dist",
-		"src/*.astro",
-		"src/client.ts"
-	],
 	"scripts": {
 		"build": "tsdown src/index.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
-	},
-	"keywords": [
-		"emdash",
-		"emdash-plugin",
-		"heartpost",
-		"like-button",
-		"astro-component"
-	],
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/plugdash/plugdash.git",
-		"directory": "packages/heartpost"
-	},
-	"peerDependencies": {
-		"emdash": ">=1.0.0"
 	},
 	"devDependencies": {
 		"@plugdash/testing": "workspace:*",
 		"@plugdash/types": "workspace:*",
 		"emdash": "^1.0.1",
 		"vitest": "^2.0.0"
+	},
+	"peerDependencies": {
+		"emdash": ">=1.0.0"
 	}
 }

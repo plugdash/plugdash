@@ -116,9 +116,7 @@ describe("import pipeline", () => {
 			items.push(item);
 		}
 		const hello = items.find((i) => i.sourceId === "1")!;
-		expect(hello.featuredImage).toBe(
-			"https://ada.example.com/content/images/2024/01/cover.jpg",
-		);
+		expect(hello.featuredImage).toBe("https://ada.example.com/content/images/2024/01/cover.jpg");
 	});
 
 	it("skips the feature image (continues the import) when it can't be resolved to an absolute URL", async () => {
@@ -284,8 +282,8 @@ describe("createGhostSource", () => {
 	it("rejects a file that isn't valid JSON", async () => {
 		const source = createGhostSource();
 		const file = new File(["not json"], "export.json", { type: "application/json" });
-		await expect(
-			source.analyze({ type: "file", file }, emptyContext),
-		).rejects.toThrow(/not valid JSON/);
+		await expect(source.analyze({ type: "file", file }, emptyContext)).rejects.toThrow(
+			/not valid JSON/,
+		);
 	});
 });

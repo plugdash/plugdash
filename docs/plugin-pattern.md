@@ -11,19 +11,19 @@ with `node dist/server/entry.mjs` from an empty directory. The working plugin is
 
 ## Results
 
-| # | Check | Result |
-| --- | --- | --- |
-| a | `content:afterPublish` fires on publish and can read options | Pass, dev and prod |
-| b | `content:afterSave` fires on autosave (`PUT` with `skipRevision: true`) | Pass. Full entry shape, see below |
-| c | `content:beforeSave` changes a `code` node in the same write | Pass, but only with `content:write` declared |
-| d | Public route at `/_emdash/api/plugins/<id>/<route>` | Pass. Envelope `{ success, data }` |
-| e | Block Kit admin page in native format | Pass. Config lives in `definePlugin({ admin })` |
-| f | `type: "secret"` setting | Pass. AES-GCM in `options`, needs `EMDASH_ENCRYPTION_KEY` |
-| g | Hook `timeout: 60_000` with a 10 s sleep | Pass. Publish response returns in ~20 ms, hook finishes after |
-| h | `ctx.redirects.create` with `redirects:write` | Pass. Redirect live at once |
-| i | `ctx.storage` collection with index: put, query, delete | Pass. Non-indexed queries throw |
-| j | Production build from an empty dir | Pass. Options, hooks, cron, secret all work |
-| k | Native plugin in `sandboxed: []` | Rejected at config load, as expected |
+| #   | Check                                                                   | Result                                                        |
+| --- | ----------------------------------------------------------------------- | ------------------------------------------------------------- |
+| a   | `content:afterPublish` fires on publish and can read options            | Pass, dev and prod                                            |
+| b   | `content:afterSave` fires on autosave (`PUT` with `skipRevision: true`) | Pass. Full entry shape, see below                             |
+| c   | `content:beforeSave` changes a `code` node in the same write            | Pass, but only with `content:write` declared                  |
+| d   | Public route at `/_emdash/api/plugins/<id>/<route>`                     | Pass. Envelope `{ success, data }`                            |
+| e   | Block Kit admin page in native format                                   | Pass. Config lives in `definePlugin({ admin })`               |
+| f   | `type: "secret"` setting                                                | Pass. AES-GCM in `options`, needs `EMDASH_ENCRYPTION_KEY`     |
+| g   | Hook `timeout: 60_000` with a 10 s sleep                                | Pass. Publish response returns in ~20 ms, hook finishes after |
+| h   | `ctx.redirects.create` with `redirects:write`                           | Pass. Redirect live at once                                   |
+| i   | `ctx.storage` collection with index: put, query, delete                 | Pass. Non-indexed queries throw                               |
+| j   | Production build from an empty dir                                      | Pass. Options, hooks, cron, secret all work                   |
+| k   | Native plugin in `sandboxed: []`                                        | Rejected at config load, as expected                          |
 
 ### Evidence
 
@@ -89,7 +89,7 @@ defaults to `"abort"`).
 **d.** `GET` and `POST /_emdash/api/plugins/native-example/ping`:
 
 ```json
-{"success":true,"data":{"greeting":"hi-from-astro-config","collections":["posts"]}}
+{ "success": true, "data": { "greeting": "hi-from-astro-config", "collections": ["posts"] } }
 ```
 
 The handler's return value goes under `data`. Routes without `public: true`
@@ -112,7 +112,13 @@ there are admin pages or widgets but no `routes.admin`
 Saving one without `EMDASH_ENCRYPTION_KEY` fails:
 
 ```json
-{"success":false,"error":{"code":"PLUGIN_SETTING_ENCRYPTION_KEY_MISSING","message":"Plugin secret settings require EMDASH_ENCRYPTION_KEY"}}
+{
+	"success": false,
+	"error": {
+		"code": "PLUGIN_SETTING_ENCRYPTION_KEY_MISSING",
+		"message": "Plugin secret settings require EMDASH_ENCRYPTION_KEY"
+	}
+}
 ```
 
 (`plugins/settings.ts:85-96`). Generate a key with
@@ -184,15 +190,15 @@ from the `emdash:site_url` option saved at setup, not from the current request
 Hooks are dropped silently (one `console.warn`) when the capability is missing
 (`plugins/hooks.ts:325-360`):
 
-| Hook | Needs |
-| --- | --- |
-| `content:beforeSave` | `content:write` |
-| `content:afterSave`, `beforeDelete`, `afterDelete`, `afterPublish`, `afterUnpublish`, `afterRestore`, `afterSchedule`, `afterUnschedule` | `content:read` |
-| `content:beforePublish`, `beforeSchedule`, `beforeUnpublish` | `hooks.content-policy:register` |
-| `media:beforeUpload` / `media:afterUpload` | `media:write` / `media:read` |
-| `comment:*` | `users:read` |
-| `page:fragments` | `hooks.page-fragments:register` |
-| `cron`, `plugin:*` | nothing |
+| Hook                                                                                                                                     | Needs                           |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `content:beforeSave`                                                                                                                     | `content:write`                 |
+| `content:afterSave`, `beforeDelete`, `afterDelete`, `afterPublish`, `afterUnpublish`, `afterRestore`, `afterSchedule`, `afterUnschedule` | `content:read`                  |
+| `content:beforePublish`, `beforeSchedule`, `beforeUnpublish`                                                                             | `hooks.content-policy:register` |
+| `media:beforeUpload` / `media:afterUpload`                                                                                               | `media:write` / `media:read`    |
+| `comment:*`                                                                                                                              | `users:read`                    |
+| `page:fragments`                                                                                                                         | `hooks.page-fragments:register` |
+| `cron`, `plugin:*`                                                                                                                       | nothing                         |
 
 ## Rules the templates follow
 

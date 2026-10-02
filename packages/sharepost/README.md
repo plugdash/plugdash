@@ -27,8 +27,8 @@ import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
 
 export default defineConfig({
-  site: "https://example.com",
-  integrations: [emdash({})],
+	site: "https://example.com",
+	integrations: [emdash({})],
 });
 ```
 
@@ -44,60 +44,63 @@ import ShareButtons from "@plugdash/sharepost/ShareButtons.astro";
 
 ### Props
 
-| Prop        | Type                                                         | Default                             | Description                       |
-| ----------- | ------------------------------------------------------------ | ----------------------------------- | --------------------------------- |
-| post        | `Record<string, unknown>`                                    | none                                | Post from `getEmDashEntry()`. Only used for the title |
-| url         | `string`                                                     | current page, as an absolute URL    | URL to share                      |
-| title       | `string`                                                     | `post.data.title`                   | Share text                        |
-| via         | `string`                                                     | none                                | X/Twitter handle without the @, X link only |
-| hashtags    | `string[]`                                                   | none                                | X/Twitter hashtags without #, X link only |
-| platforms   | `Array<"twitter" \| "linkedin" \| "whatsapp" \| "bluesky" \| "email">` | `["twitter", "linkedin", "bluesky"]` | Which buttons to show             |
-| variant     | `"circle" \| "pill" \| "ghost" \| "filled"`                 | `"circle"`                          | Visual style                      |
-| size        | `"sm" \| "md" \| "lg"`                                      | `"md"`                              | Button size                       |
-| theme       | `"auto" \| "dark" \| "light"`                               | `"auto"`                            | Color theme                       |
-| attribution | `boolean`                                                    | `false`                             | Show "by plugdash" link           |
-| class       | `string`                                                     | `""`                                | Additional CSS class              |
+| Prop        | Type                                                                   | Default                              | Description                                           |
+| ----------- | ---------------------------------------------------------------------- | ------------------------------------ | ----------------------------------------------------- |
+| post        | `Record<string, unknown>`                                              | none                                 | Post from `getEmDashEntry()`. Only used for the title |
+| url         | `string`                                                               | current page, as an absolute URL     | URL to share                                          |
+| title       | `string`                                                               | `post.data.title`                    | Share text                                            |
+| via         | `string`                                                               | none                                 | X/Twitter handle without the @, X link only           |
+| hashtags    | `string[]`                                                             | none                                 | X/Twitter hashtags without #, X link only             |
+| platforms   | `Array<"twitter" \| "linkedin" \| "whatsapp" \| "bluesky" \| "email">` | `["twitter", "linkedin", "bluesky"]` | Which buttons to show                                 |
+| variant     | `"circle" \| "pill" \| "ghost" \| "filled"`                            | `"circle"`                           | Visual style                                          |
+| size        | `"sm" \| "md" \| "lg"`                                                 | `"md"`                               | Button size                                           |
+| theme       | `"auto" \| "dark" \| "light"`                                          | `"auto"`                             | Color theme                                           |
+| attribution | `boolean`                                                              | `false`                              | Show "by plugdash" link                               |
+| class       | `string`                                                               | `""`                                 | Additional CSS class                                  |
 
 ### CSS custom properties
 
-| Token                          | Default                                | Description       |
-| ------------------------------ | -------------------------------------- | ----------------- |
-| `--plugdash-engage-gap`        | `0.375rem`                             | Button spacing    |
-| `--plugdash-engage-size`       | `2rem`                                 | Circle button size |
-| `--plugdash-engage-radius`     | `9999px`                               | Border radius     |
-| `--plugdash-engage-border`     | `rgb(from currentColor r g b / 0.15)`  | Border color      |
-| `--plugdash-engage-bg`         | `rgb(from currentColor r g b / 0.04)`  | Background        |
-| `--plugdash-engage-bg-hover`   | `rgb(from currentColor r g b / 0.08)`  | Hover background  |
-| `--plugdash-engage-transition` | `150ms ease`                           | Transition timing |
-| `--plugdash-accent`            | `#6366f1`                              | Filled variant bg |
-| `--plugdash-accent-fg`         | `#ffffff`                              | Filled variant fg |
-| `--plugdash-font-ui`           | `"Lexend", system-ui, sans-serif`      | UI font family    |
+| Token                          | Default                               | Description        |
+| ------------------------------ | ------------------------------------- | ------------------ |
+| `--plugdash-engage-gap`        | `0.375rem`                            | Button spacing     |
+| `--plugdash-engage-size`       | `2rem`                                | Circle button size |
+| `--plugdash-engage-radius`     | `9999px`                              | Border radius      |
+| `--plugdash-engage-border`     | `rgb(from currentColor r g b / 0.15)` | Border color       |
+| `--plugdash-engage-bg`         | `rgb(from currentColor r g b / 0.04)` | Background         |
+| `--plugdash-engage-bg-hover`   | `rgb(from currentColor r g b / 0.08)` | Hover background   |
+| `--plugdash-engage-transition` | `150ms ease`                          | Transition timing  |
+| `--plugdash-accent`            | `#6366f1`                             | Filled variant bg  |
+| `--plugdash-accent-fg`         | `#ffffff`                             | Filled variant fg  |
+| `--plugdash-font-ui`           | `"Lexend", system-ui, sans-serif`     | UI font family     |
 
 ## Platform hover colours
 
 Each button tints to its platform brand colour on hover by default.
 
-| Platform  | Default hover colour | CSS variable                         |
-| --------- | -------------------- | ------------------------------------ |
-| X/Twitter | `#1d9bf0`            | `--plugdash-share-twitter-color`     |
-| LinkedIn  | `#0a66c2`            | `--plugdash-share-linkedin-color`    |
-| Bluesky   | `#0085ff`            | `--plugdash-share-bluesky-color`     |
-| WhatsApp  | `#25d366`            | `--plugdash-share-whatsapp-color`    |
-| Email     | `--plugdash-accent`  | `--plugdash-share-email-color`       |
+| Platform  | Default hover colour | CSS variable                      |
+| --------- | -------------------- | --------------------------------- |
+| X/Twitter | `#1d9bf0`            | `--plugdash-share-twitter-color`  |
+| LinkedIn  | `#0a66c2`            | `--plugdash-share-linkedin-color` |
+| Bluesky   | `#0085ff`            | `--plugdash-share-bluesky-color`  |
+| WhatsApp  | `#25d366`            | `--plugdash-share-whatsapp-color` |
+| Email     | `--plugdash-accent`  | `--plugdash-share-email-color`    |
 
 Override a platform's colour via the CSS variable:
 
 ```css
 :root {
-  --plugdash-share-twitter-color: #000000;  /* X black branding */
-  --plugdash-share-linkedin-color: #004182;
+	--plugdash-share-twitter-color: #000000; /* X black branding */
+	--plugdash-share-linkedin-color: #004182;
 }
 ```
 
 Or target the per-platform class directly for custom hover treatments:
 
 ```css
-.plugdash-share-btn--bluesky:hover { background: #0085ff; color: #fff; }
+.plugdash-share-btn--bluesky:hover {
+	background: #0085ff;
+	color: #fff;
+}
 ```
 
 ## What it does

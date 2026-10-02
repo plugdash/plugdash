@@ -6,11 +6,11 @@
 	"exports": {
 		".": "./src/index.ts"
 	},
+	"dependencies": {
+		"linkedom": "^0.18.0"
+	},
 	"devDependencies": {
 		"emdash": ">=0.13.0",
 		"vitest": "^2.0.0"
-	},
-	"dependencies": {
-		"linkedom": "^0.18.0"
 	}
 }

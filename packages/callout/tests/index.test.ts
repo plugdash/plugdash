@@ -1,9 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { calloutPlugin, createPlugin } from "../src/index.js";
-import type {
-	PluginDescriptor,
-	PortableTextBlockConfig,
-} from "@plugdash/types";
+import type { PluginDescriptor, PortableTextBlockConfig } from "@plugdash/types";
 import pkg from "../package.json" with { type: "json" };
 
 // ── Descriptor factory ──

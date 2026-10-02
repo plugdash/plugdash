@@ -37,11 +37,11 @@ import emdash from "emdash";
 import { fromsubstackPlugin } from "@plugdash/fromsubstack";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [fromsubstackPlugin()],
-    }),
-  ],
+	integrations: [
+		emdash({
+			plugins: [fromsubstackPlugin()],
+		}),
+	],
 });
 ```
 
@@ -49,13 +49,13 @@ Once registered, "Substack" appears as an import source in EmDash's admin import
 
 ## Configuration
 
-| Option           | Type                      | Default    | Description                                      |
-| ---------------- | ------------------------- | ---------- | ------------------------------------------------- |
-| targetCollection | `string`                  | `"posts"`  | Collection the importer is told to create posts in |
-| status           | `"draft" \| "published"`  | `"draft"`  | Status for posts Substack marked as published      |
-| importImages     | `boolean`                 | `true`     | Report body images as attachments to import        |
-| preserveSlugs    | `boolean`                 | `true`     | Keep Substack's URL slug instead of re-slugifying the title |
-| onWarn           | `(message: string) => void` | `console.warn` | Where per-post warnings go                    |
+| Option           | Type                        | Default        | Description                                                 |
+| ---------------- | --------------------------- | -------------- | ----------------------------------------------------------- |
+| targetCollection | `string`                    | `"posts"`      | Collection the importer is told to create posts in          |
+| status           | `"draft" \| "published"`    | `"draft"`      | Status for posts Substack marked as published               |
+| importImages     | `boolean`                   | `true`         | Report body images as attachments to import                 |
+| preserveSlugs    | `boolean`                   | `true`         | Keep Substack's URL slug instead of re-slugifying the title |
+| onWarn           | `(message: string) => void` | `console.warn` | Where per-post warnings go                                  |
 
 `status` only governs posts Substack itself marked published. A post still in draft on Substack always imports as a draft, regardless of this setting - the "safer default" from the export status is source of truth for its own unpublished posts.
 

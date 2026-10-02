@@ -24,18 +24,18 @@ import ReadingTime from "@plugdash/readtime/ReadingTime.astro";
 
 ## Props
 
-| Prop             | Type                                         | Default      | Description                                                         |
-| ---------------- | -------------------------------------------- | ------------ | ------------------------------------------------------------------- |
-| `post`           | EmDash entry                                 | required     | The entry from `getEmDashEntry()`                                   |
-| `wordsPerMinute` | `number`                                     | `238`        | Reading speed for space-separated scripts                           |
+| Prop             | Type                                         | Default      | Description                                                                                          |
+| ---------------- | -------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------- |
+| `post`           | EmDash entry                                 | required     | The entry from `getEmDashEntry()`                                                                    |
+| `wordsPerMinute` | `number`                                     | `238`        | Reading speed for space-separated scripts                                                            |
 | `field`          | `string`                                     | auto         | Portable Text field name. Auto: `content`, then `body`, then the first Portable Text array in `data` |
-| `label`          | `string`                                     | `"min read"` | Text after the number                                               |
-| `variant`        | `"badge" \| "pill" \| "inline" \| "minimal"` | `"inline"`   | Look of the label                                                   |
-| `size`           | `"sm" \| "md" \| "lg"`                       | `"md"`       | Font size                                                           |
-| `theme`          | `"auto" \| "dark" \| "light"`                | `"auto"`     | Colour scheme                                                       |
-| `showWords`      | `boolean`                                    | `false`      | Also show the word count                                            |
-| `attribution`    | `boolean`                                    | `false`      | Show a small "plugdash" link                                        |
-| `class`          | `string`                                     | -            | Extra CSS class                                                     |
+| `label`          | `string`                                     | `"min read"` | Text after the number                                                                                |
+| `variant`        | `"badge" \| "pill" \| "inline" \| "minimal"` | `"inline"`   | Look of the label                                                                                    |
+| `size`           | `"sm" \| "md" \| "lg"`                       | `"md"`       | Font size                                                                                            |
+| `theme`          | `"auto" \| "dark" \| "light"`                | `"auto"`     | Colour scheme                                                                                        |
+| `showWords`      | `boolean`                                    | `false`      | Also show the word count                                                                             |
+| `attribution`    | `boolean`                                    | `false`      | Show a small "plugdash" link                                                                         |
+| `class`          | `string`                                     | -            | Extra CSS class                                                                                      |
 
 Style it with `--plugdash-rt-color`, `--plugdash-rt-size`, `--plugdash-rt-font`, `--plugdash-rt-bg`, `--plugdash-rt-border`, `--plugdash-rt-radius` and `--plugdash-rt-padding`.
 

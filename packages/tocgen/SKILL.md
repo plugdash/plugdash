@@ -74,6 +74,7 @@ Props only.
 After installing @plugdash/tocgen (no registration needed):
 
 1. Import both components in the post layout:
+
    ```
    import TableOfContents from "@plugdash/tocgen/TableOfContents.astro"
    import HeadingAnchors from "@plugdash/tocgen/HeadingAnchors.astro"

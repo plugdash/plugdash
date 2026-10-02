@@ -5,16 +5,11 @@ import { zipSync, strToU8 } from "fflate";
 import { createSubstackSource, type SubstackAnalysis } from "../src/source.ts";
 import { parseCsv, parseCsvRows } from "../src/csv.ts";
 import type { ImportContext, NormalizedItem, SourceInput } from "emdash";
-import type {
-	PortableTextTextBlock,
-	PortableTextImageBlock,
-	PortableTextCodeBlock,
-} from "emdash";
+import type { PortableTextTextBlock, PortableTextImageBlock, PortableTextCodeBlock } from "emdash";
 
 // ── Fixture ──
 
-const CSV_HEADER =
-	"post_id,post_date,is_published,email_sent_at,type,audience,title,subtitle,url";
+const CSV_HEADER = "post_id,post_date,is_published,email_sent_at,type,audience,title,subtitle,url";
 
 const CSV_ROWS = [
 	`101,2024-01-05T10:00:00Z,true,2024-01-05T10:05:00Z,newsletter,everyone,"Hello, World",The very first one,https://acme.substack.com/p/hello-world-jan`,
@@ -65,9 +60,7 @@ function makeInput(files: Record<string, string> = FIXTURE_FILES): SourceInput {
 
 const EMPTY_CONTEXT: ImportContext = {};
 
-async function collect(
-	generator: AsyncGenerator<NormalizedItem>,
-): Promise<NormalizedItem[]> {
+async function collect(generator: AsyncGenerator<NormalizedItem>): Promise<NormalizedItem[]> {
 	const items: NormalizedItem[] = [];
 	for await (const item of generator) items.push(item);
 	return items;
@@ -150,16 +143,14 @@ describe("export reading", () => {
 			type: "file",
 			file: new File(["definitely not a zip"], "nope.zip"),
 		};
-		await expect(source.analyze(input, EMPTY_CONTEXT)).rejects.toThrow(
-			/not a valid ZIP archive/i,
-		);
+		await expect(source.analyze(input, EMPTY_CONTEXT)).rejects.toThrow(/not a valid ZIP archive/i);
 	});
 
 	it("rejects a ZIP with no posts.csv", async () => {
 		const { source } = makeSource();
-		await expect(
-			source.analyze(makeInput({ "readme.txt": "hi" }), EMPTY_CONTEXT),
-		).rejects.toThrow(/posts\.csv/i);
+		await expect(source.analyze(makeInput({ "readme.txt": "hi" }), EMPTY_CONTEXT)).rejects.toThrow(
+			/posts\.csv/i,
+		);
 	});
 
 	it("finds posts.csv even when the export nests it in a folder", async () => {
@@ -305,7 +296,9 @@ describe("fetchContent", () => {
 		// Paid posts stay drafts unless paidPostsAs says otherwise.
 		const free = published.filter((i) => !i.meta?.substackPaid);
 		expect(free.every((i) => i.status === "publish")).toBe(true);
-		expect(published.filter((i) => i.meta?.substackPaid).every((i) => i.status === "draft")).toBe(true);
+		expect(published.filter((i) => i.meta?.substackPaid).every((i) => i.status === "draft")).toBe(
+			true,
+		);
 	});
 
 	it("keeps an unpublished post as a draft even when status is published", async () => {
@@ -370,18 +363,17 @@ describe("fetchContent", () => {
 		expect(paragraph.children.find((s) => s.text === "bold")?.marks).toEqual(["strong"]);
 		expect(paragraph.children.find((s) => s.text === "italic")?.marks).toEqual(["em"]);
 		const linked = paragraph.children.find((s) => s.text === "a link")!;
-		expect(
-			paragraph.markDefs?.find((m) => m._key === linked.marks?.[0]),
-		).toMatchObject({ _type: "link", href: "https://example.com" });
+		expect(paragraph.markDefs?.find((m) => m._key === linked.marks?.[0])).toMatchObject({
+			_type: "link",
+			href: "https://example.com",
+		});
 
 		const image = blocks.find((b) => b._type === "image") as PortableTextImageBlock;
 		expect(image.asset.url).toBe("https://substackcdn.com/image/one.png");
 		expect(image.alt).toBe("One");
 
 		// Unknown tags lose the tag but keep their text.
-		const texts = blocks.flatMap((b) =>
-			b._type === "block" ? b.children.map((s) => s.text) : [],
-		);
+		const texts = blocks.flatMap((b) => (b._type === "block" ? b.children.map((s) => s.text) : []));
 		expect(texts.join(" ")).toContain("survives as text");
 	});
 
@@ -478,7 +470,10 @@ describe("real Substack export", () => {
 
 	it("returns warnings in the analysis", async () => {
 		const { source } = makeSource();
-		const analysis = (await source.analyze(makeInput(REAL_FIXTURE_FILES), EMPTY_CONTEXT)) as SubstackAnalysis;
+		const analysis = (await source.analyze(
+			makeInput(REAL_FIXTURE_FILES),
+			EMPTY_CONTEXT,
+		)) as SubstackAnalysis;
 		expect(analysis.warnings.join(" ")).toMatch(/podcast/);
 	});
 });
@@ -508,16 +503,11 @@ describe("fetchMedia", () => {
 	});
 
 	it("downloads remote images over HTTP", async () => {
-		const fetchSpy = vi
-			.fn()
-			.mockResolvedValue(new Response("remote-bytes", { status: 200 }));
+		const fetchSpy = vi.fn().mockResolvedValue(new Response("remote-bytes", { status: 200 }));
 		vi.stubGlobal("fetch", fetchSpy);
 		try {
 			const { source } = makeSource();
-			const blob = await source.fetchMedia!(
-				"https://substackcdn.com/image/one.png",
-				makeInput(),
-			);
+			const blob = await source.fetchMedia!("https://substackcdn.com/image/one.png", makeInput());
 			expect(await blob.text()).toBe("remote-bytes");
 			expect(fetchSpy).toHaveBeenCalledWith("https://substackcdn.com/image/one.png");
 		} finally {

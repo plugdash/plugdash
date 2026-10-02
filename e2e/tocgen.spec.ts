@@ -43,7 +43,10 @@ test.describe("TableOfContents on the blog template", () => {
 		});
 		const body = (await created.json()) as { data: { item?: { id: string }; id?: string } };
 		const id = (body.data.item ?? body.data).id as string;
-		await request.post(`${BASE}/_emdash/api/content/posts/${id}/publish`, { headers: HEADERS, data: {} });
+		await request.post(`${BASE}/_emdash/api/content/posts/${id}/publish`, {
+			headers: HEADERS,
+			data: {},
+		});
 	});
 
 	test("every TOC link has a target, including Hindi headings", async ({ page }) => {

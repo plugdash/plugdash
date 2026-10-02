@@ -2,24 +2,6 @@
 	"name": "@plugdash/fromghost",
 	"version": "0.1.2",
 	"description": "Import a Ghost JSON export into EmDash",
-	"type": "module",
-	"main": "./dist/index.mjs",
-	"types": "./dist/index.d.mts",
-	"exports": {
-		".": {
-			"import": "./dist/index.mjs",
-			"types": "./dist/index.d.mts"
-		}
-	},
-	"files": [
-		"dist"
-	],
-	"scripts": {
-		"build": "tsdown src/index.ts --dts.eager",
-		"test": "vitest run",
-		"typecheck": "tsc --noEmit",
-		"lint": "oxlint ."
-	},
 	"keywords": [
 		"emdash",
 		"emdash-plugin",
@@ -33,8 +15,23 @@
 		"url": "git+https://github.com/plugdash/plugdash.git",
 		"directory": "packages/fromghost"
 	},
-	"peerDependencies": {
-		"emdash": ">=0.13.0"
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"main": "./dist/index.mjs",
+	"types": "./dist/index.d.mts",
+	"exports": {
+		".": {
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.mts"
+		}
+	},
+	"scripts": {
+		"build": "tsdown src/index.ts --dts.eager",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit",
+		"lint": "oxlint ."
 	},
 	"dependencies": {
 		"linkedom": "^0.18.0"
@@ -43,5 +40,8 @@
 		"@plugdash/html-to-portable-text": "workspace:*",
 		"@plugdash/types": "workspace:*",
 		"vitest": "^2.0.0"
+	},
+	"peerDependencies": {
+		"emdash": ">=0.13.0"
 	}
 }

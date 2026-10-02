@@ -101,7 +101,9 @@ describe("descriptor and definition consistency", () => {
 	});
 
 	it("share the same capabilities", () => {
-		expect(createPlugin().capabilities).toEqual(expect.arrayContaining(codeblockPlugin().capabilities ?? []));
+		expect(createPlugin().capabilities).toEqual(
+			expect.arrayContaining(codeblockPlugin().capabilities ?? []),
+		);
 	});
 
 	it("share the same version", () => {

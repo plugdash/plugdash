@@ -39,17 +39,16 @@ import ShareButtons from "@plugdash/sharepost/ShareButtons.astro";
 <ShareButtons post={post} />
 ```
 
-| Token                      | Default                                | Description        |
-| -------------------------- | -------------------------------------- | ------------------ |
-| `--plugdash-engage-size`   | `2rem`                                 | Circle button size |
+| Token                      | Default                               | Description        |
+| -------------------------- | ------------------------------------- | ------------------ |
+| `--plugdash-engage-size`   | `2rem`                                | Circle button size |
 | `--plugdash-engage-border` | `rgb(from currentColor r g b / 0.15)` | Border color       |
 | `--plugdash-engage-bg`     | `rgb(from currentColor r g b / 0.04)` | Background         |
-| `--plugdash-accent`        | `#6366f1`                              | Filled variant bg  |
+| `--plugdash-accent`        | `#6366f1`                             | Filled variant bg  |
 
 Variants: `circle` (default) / `pill` / `ghost` / `filled`
 Sizes: `sm` / `md` (default) / `lg`
 Theme: `auto` (default) / `dark` / `light`
-
 
 ## Platform hover colours
 
@@ -59,11 +58,11 @@ LinkedIn `#0a66c2`, Bluesky `#0085ff`, WhatsApp `#25d366`, Email uses
 
 ```css
 :root {
-  --plugdash-share-twitter-color: #000000;
-  --plugdash-share-linkedin-color: #004182;
-  --plugdash-share-bluesky-color: #0085ff;
-  --plugdash-share-whatsapp-color: #25d366;
-  --plugdash-share-email-color: #6366f1;
+	--plugdash-share-twitter-color: #000000;
+	--plugdash-share-linkedin-color: #004182;
+	--plugdash-share-bluesky-color: #0085ff;
+	--plugdash-share-whatsapp-color: #25d366;
+	--plugdash-share-email-color: #6366f1;
 }
 ```
 
@@ -71,13 +70,13 @@ LinkedIn `#0a66c2`, Bluesky `#0085ff`, WhatsApp `#25d366`, Email uses
 
 Props on `<ShareButtons>`:
 
-| Prop      | Type       | Default                    | Description                          |
-| --------- | ---------- | -------------------------- | ------------------------------------ |
-| url       | `string`   | current page, absolute     | URL to share                         |
-| title     | `string`   | `post.data.title`          | Share text                           |
-| platforms | `string[]` | twitter, linkedin, bluesky | Which buttons to show                |
-| via       | `string`   | none                       | X handle without @ (X link only)     |
-| hashtags  | `string[]` | none                       | X hashtags without # (X link only)   |
+| Prop      | Type       | Default                    | Description                        |
+| --------- | ---------- | -------------------------- | ---------------------------------- |
+| url       | `string`   | current page, absolute     | URL to share                       |
+| title     | `string`   | `post.data.title`          | Share text                         |
+| platforms | `string[]` | twitter, linkedin, bluesky | Which buttons to show              |
+| via       | `string`   | none                       | X handle without @ (X link only)   |
+| hashtags  | `string[]` | none                       | X hashtags without # (X link only) |
 
 ## What it does not do
 
@@ -92,11 +91,13 @@ Props on `<ShareButtons>`:
 After installing @plugdash/sharepost (no registration needed):
 
 1. Import the companion component in the post layout:
+
    ```
    import ShareButtons from "@plugdash/sharepost/ShareButtons.astro"
    ```
 
 2. Add it on the post page:
+
    ```
    <ShareButtons post={post} via="yourhandle" platforms={["twitter", "linkedin", "whatsapp", "bluesky", "email"]} />
    ```

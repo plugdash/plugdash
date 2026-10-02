@@ -21,11 +21,11 @@ import emdash from "emdash/astro";
 import { fromsubstackPlugin } from "@plugdash/fromsubstack";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [fromsubstackPlugin()],
-    }),
-  ],
+	integrations: [
+		emdash({
+			plugins: [fromsubstackPlugin()],
+		}),
+	],
 });
 ```
 
@@ -40,20 +40,20 @@ Pass options to `fromsubstackPlugin()`:
 
 ```js
 fromsubstackPlugin({
-  targetCollection: "newsletter",
-  status: "published",
-  importImages: true,
-  preserveSlugs: true,
-  paidPostsAs: "draft",
+	targetCollection: "newsletter",
+	status: "published",
+	importImages: true,
+	preserveSlugs: true,
+	paidPostsAs: "draft",
 });
 ```
 
-| Option           | Type                      | Default   | Description                                          |
-| ---------------- | ------------------------- | --------- | ----------------------------------------------------- |
-| targetCollection | `string`                  | `"posts"` | Collection posts import into                          |
-| status           | `"draft" \| "published"`  | `"draft"` | Status for posts Substack had marked published        |
-| importImages     | `boolean`                 | `true`    | Report body images so EmDash imports them              |
-| preserveSlugs    | `boolean`                 | `true`    | Keep the slug from the Substack post URL                |
+| Option           | Type                             | Default   | Description                                                                                       |
+| ---------------- | -------------------------------- | --------- | ------------------------------------------------------------------------------------------------- |
+| targetCollection | `string`                         | `"posts"` | Collection posts import into                                                                      |
+| status           | `"draft" \| "published"`         | `"draft"` | Status for posts Substack had marked published                                                    |
+| importImages     | `boolean`                        | `true`    | Report body images so EmDash imports them                                                         |
+| preserveSlugs    | `boolean`                        | `true`    | Keep the slug from the Substack post URL                                                          |
 | paidPostsAs      | `"draft" \| "publish" \| "skip"` | `"draft"` | What to do with paid posts (`only_paid`, `founding`). Applied even when `status` is `"published"` |
 
 Warnings (skipped rows, empty bodies) are returned as `warnings` on the

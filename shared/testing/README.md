@@ -6,16 +6,16 @@ Private test helpers. Mocks that accept anything hide bugs that only show up on 
 
 Returns a plugin context. Plain `Partial<PluginContext>` overrides still work. Extra options:
 
-| option               | what it does                                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------------------------ |
+| option               | what it does                                                                                                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `schema`             | `{ posts: ["title", "content"] }`. `content.update()`/`create()` throw `EmDashValidationError: Unknown field 'x' in collection 'posts'` for other fields. Turns on in-memory content. |
-| `revisions`          | `update()` writes a draft copy, `get()` reads live. Promote with `ctx.publishDraft(collection, id)`. Read it with `ctx.getDraft()`. |
-| `items`              | Pre-loaded content: `{ posts: [{ id: "p1", slug: "a", status: "published", data: { title: "x" } }] }`.       |
-| `settingsSchema`     | `{ token: { type: "secret" } }`. Secret settings only accept strings.                                         |
-| `options`            | Native descriptor options, exposed as `ctx.options`.                                                          |
-| `allowedHosts`       | Turns on `ctx.http`. Hosts outside the list reject with EmDash's error text. `[]` rejects everything.          |
-| `fetch`              | What `ctx.http.fetch` returns once the host check passes. Default: 200 `{}`.                                  |
-| `storageCollections` | `["clicks"]` adds in-memory `ctx.storage.clicks` with `put/get/query/delete/count/getMany/putMany/...`.        |
+| `revisions`          | `update()` writes a draft copy, `get()` reads live. Promote with `ctx.publishDraft(collection, id)`. Read it with `ctx.getDraft()`.                                                   |
+| `items`              | Pre-loaded content: `{ posts: [{ id: "p1", slug: "a", status: "published", data: { title: "x" } }] }`.                                                                                |
+| `settingsSchema`     | `{ token: { type: "secret" } }`. Secret settings only accept strings.                                                                                                                 |
+| `options`            | Native descriptor options, exposed as `ctx.options`.                                                                                                                                  |
+| `allowedHosts`       | Turns on `ctx.http`. Hosts outside the list reject with EmDash's error text. `[]` rejects everything.                                                                                 |
+| `fetch`              | What `ctx.http.fetch` returns once the host check passes. Default: 200 `{}`.                                                                                                          |
+| `storageCollections` | `["clicks"]` adds in-memory `ctx.storage.clicks` with `put/get/query/delete/count/getMany/putMany/...`.                                                                               |
 
 Always present: `ctx.kv` (`get/set/delete/list(prefix)/getVersioned/compareAndSet/compareAndDelete`, in memory, `null` for missing keys, `settings:` keys alias `ctx.settings` like EmDash), `ctx.settings` (same API, `get()` returns `null` when unset, the schema default is not applied), `ctx.redirects` (`create/get/list/update/delete`, writes need the `_rev` from the previous result), `ctx.logs` (every `ctx.log.*` call as `{ level, message, data }`), `ctx.fetchCalls`.
 

@@ -107,9 +107,7 @@ async function readZip(input: SourceInput): Promise<ZipEntries> {
 		const { unzipSync } = await import("fflate");
 		entries = unzipSync(new Uint8Array(await input.file.arrayBuffer()));
 	} catch {
-		throw new Error(
-			"Could not read the Substack export: the file is not a valid ZIP archive.",
-		);
+		throw new Error("Could not read the Substack export: the file is not a valid ZIP archive.");
 	}
 	zipCache.set(input.file, entries);
 	return entries;
@@ -207,10 +205,7 @@ function parseDate(value: string): Date {
  * Reads posts.csv and pairs every row with its HTML body. Rows that cannot be
  * paired, or that are podcast/thread entries, are dropped with a warning.
  */
-async function readExport(
-	input: SourceInput,
-	config: ResolvedConfig,
-): Promise<SubstackExport> {
+async function readExport(input: SourceInput, config: ResolvedConfig): Promise<SubstackExport> {
 	const warnings: string[] = [];
 	const warn = (message: string) => warnings.push(message);
 	const entries = await readZip(input);
@@ -386,7 +381,11 @@ async function checkSchema(
 			blockers.push(`"${field.slug}" is ${found.type}, needs ${field.type}`);
 			continue;
 		}
-		fieldStatus[field.slug] = { status: "compatible", existingType: found.type, requiredType: field.type };
+		fieldStatus[field.slug] = {
+			status: "compatible",
+			existingType: found.type,
+			requiredType: field.type,
+		};
 	}
 
 	return {
@@ -439,10 +438,7 @@ export function createSubstackSource(config: FromsubstackConfig = {}): ImportSou
 		icon: "upload",
 		requiresFile: true,
 
-		async analyze(
-			input: SourceInput,
-			context: ImportContext,
-		): Promise<SubstackAnalysis> {
+		async analyze(input: SourceInput, context: ImportContext): Promise<SubstackAnalysis> {
 			const exported = await readExport(input, resolved);
 			const posts = exported.posts.filter((post) => !isSkippedPaid(post, resolved));
 			const converted = await Promise.all(posts.map((post) => convert(post, resolved)));

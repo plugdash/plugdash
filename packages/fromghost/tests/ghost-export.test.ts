@@ -140,9 +140,7 @@ describe("Lexical fallback", () => {
 				],
 			},
 		});
-		expect(lexicalToHtml(lexical)).toBe(
-			"<p>Hello world</p><p>Second paragraph</p>",
-		);
+		expect(lexicalToHtml(lexical)).toBe("<p>Hello world</p><p>Second paragraph</p>");
 	});
 
 	it("escapes HTML-significant characters recovered from Lexical text", () => {

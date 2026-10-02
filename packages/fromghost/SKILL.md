@@ -48,11 +48,11 @@ import emdash from "emdash/astro";
 import { fromghostPlugin } from "@plugdash/fromghost";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [fromghostPlugin({ siteUrl: "https://blog.example.com" })],
-    }),
-  ],
+	integrations: [
+		emdash({
+			plugins: [fromghostPlugin({ siteUrl: "https://blog.example.com" })],
+		}),
+	],
 });
 ```
 
@@ -62,14 +62,14 @@ config works in production. Remove the plugin after the import.
 
 ## configuration
 
-| Option              | Type       | Default   | Description                                     |
-| -------------------- | ---------- | --------- | ------------------------------------------------ |
-| `targetCollection`  | `string`   | `"posts"` | Collection suggested for Ghost posts             |
-| `preserveSlugs`     | `boolean`  | `true`    | Keep Ghost's slugs instead of regenerating        |
-| `importImages`      | `boolean`  | `true`    | Carry feature and inline images over              |
-| `importTags`        | `boolean`  | `true`    | Carry Ghost tags over as taxonomy terms           |
-| `siteUrl`           | `string`   | `""`      | Ghost site URL, to resolve `__GHOST_URL__` paths |
-| `paidPostsAs`       | `"draft" \| "publish" \| "skip"` | `"draft"` | Posts with visibility members/paid/tiers |
+| Option             | Type                             | Default   | Description                                      |
+| ------------------ | -------------------------------- | --------- | ------------------------------------------------ |
+| `targetCollection` | `string`                         | `"posts"` | Collection suggested for Ghost posts             |
+| `preserveSlugs`    | `boolean`                        | `true`    | Keep Ghost's slugs instead of regenerating       |
+| `importImages`     | `boolean`                        | `true`    | Carry feature and inline images over             |
+| `importTags`       | `boolean`                        | `true`    | Carry Ghost tags over as taxonomy terms          |
+| `siteUrl`          | `string`                         | `""`      | Ghost site URL, to resolve `__GHOST_URL__` paths |
+| `paidPostsAs`      | `"draft" \| "publish" \| "skip"` | `"draft"` | Posts with visibility members/paid/tiers         |
 
 Warnings come back as `warnings: string[]` on the analysis.
 

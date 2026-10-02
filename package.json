@@ -1,37 +1,38 @@
 {
-  "name": "plugdash",
-  "private": true,
-  "scripts": {
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r --no-bail typecheck",
-    "smoke": "node --import tsx scripts/smoke.ts",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "oxlint --ignore-pattern '*.astro' .",
-    "format": "oxfmt .",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "publish-packages": "changeset publish",
-    "e2e:setup": "bash scripts/real-emdash/setup.sh",
-    "e2e": "pnpm e2e:setup && playwright test",
-    "e2e:prod": "pnpm e2e:setup && E2E_MODE=prod playwright test"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@rolldown/binding-darwin-arm64",
-      "@rolldown/binding-darwin-universal",
-      "esbuild",
-      "better-sqlite3",
-      "sharp"
-    ]
-  },
-  "devDependencies": {
-    "@changesets/cli": "^2.27.0",
-    "@playwright/test": "^1.63.0",
-    "oxlint": "^0.13.0",
-    "tsdown": "^0.21.7",
-    "tsx": "^4.21.0",
-    "typescript": "^5.4.0",
-    "vitest": "^2.0.0"
-  }
+	"name": "plugdash",
+	"private": true,
+	"scripts": {
+		"build": "pnpm -r build",
+		"typecheck": "pnpm -r --no-bail typecheck",
+		"smoke": "node --import tsx scripts/smoke.ts",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"lint": "oxlint --ignore-pattern '*.astro' .",
+		"format": "oxfmt .",
+		"changeset": "changeset",
+		"version-packages": "changeset version",
+		"publish-packages": "changeset publish",
+		"e2e:setup": "bash scripts/real-emdash/setup.sh",
+		"e2e": "pnpm e2e:setup && playwright test",
+		"e2e:prod": "pnpm e2e:setup && E2E_MODE=prod playwright test"
+	},
+	"devDependencies": {
+		"@changesets/cli": "^2.27.0",
+		"@playwright/test": "^1.63.0",
+		"oxfmt": "0.71.0",
+		"oxlint": "^0.13.0",
+		"tsdown": "^0.21.7",
+		"tsx": "^4.21.0",
+		"typescript": "^5.4.0",
+		"vitest": "^2.0.0"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"@rolldown/binding-darwin-arm64",
+			"@rolldown/binding-darwin-universal",
+			"esbuild",
+			"better-sqlite3",
+			"sharp"
+		]
+	}
 }

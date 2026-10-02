@@ -47,40 +47,56 @@ describe("rendering the code blocks EmDash stores", () => {
 		resetHighlighter();
 	});
 
-	it("highlights a block with a known language", async () => {
-		const block = makeCodeBlock({
-			code: "export const x: number = 1;",
-			language: "typescript",
-		});
-		const html = await highlightCode(block.code, block.language);
-		expect(html).toContain("<pre");
-		expect(html).toContain("x");
-		expect(html).toContain("color:");
-	}, SLOW);
+	it(
+		"highlights a block with a known language",
+		async () => {
+			const block = makeCodeBlock({
+				code: "export const x: number = 1;",
+				language: "typescript",
+			});
+			const html = await highlightCode(block.code, block.language);
+			expect(html).toContain("<pre");
+			expect(html).toContain("x");
+			expect(html).toContain("color:");
+		},
+		SLOW,
+	);
 
-	it("renders a block saved without a language", async () => {
-		const block = makeCodeBlock({ code: "just some text" });
-		const html = await highlightCode(block.code, block.language);
-		expect(html).toContain("just some text");
-	}, SLOW);
+	it(
+		"renders a block saved without a language",
+		async () => {
+			const block = makeCodeBlock({ code: "just some text" });
+			const html = await highlightCode(block.code, block.language);
+			expect(html).toContain("just some text");
+		},
+		SLOW,
+	);
 
-	it("renders a block whose language EmDash does not know", async () => {
-		const block = makeCodeBlock({ code: "10 PRINT", language: "basic-ish" });
-		await expect(highlightCode(block.code, block.language)).resolves.toContain("10 PRINT");
-	}, SLOW);
+	it(
+		"renders a block whose language EmDash does not know",
+		async () => {
+			const block = makeCodeBlock({ code: "10 PRINT", language: "basic-ish" });
+			await expect(highlightCode(block.code, block.language)).resolves.toContain("10 PRINT");
+		},
+		SLOW,
+	);
 
 	it("renders an empty block without throwing", async () => {
 		const block = makeCodeBlock({ code: "", language: "typescript" });
 		await expect(highlightCode(block.code, block.language)).resolves.toContain("<pre");
 	});
 
-	it("preserves indentation and blank lines", async () => {
-		const code = "def a():\n\n    return 1";
-		const html = await highlightCode(code, "python");
-		expect(html).toContain("    return");
-		// Shiki wraps each source line, blank ones included.
-		expect(html.match(/class="line"/g) ?? []).toHaveLength(3);
-	}, SLOW);
+	it(
+		"preserves indentation and blank lines",
+		async () => {
+			const code = "def a():\n\n    return 1";
+			const html = await highlightCode(code, "python");
+			expect(html).toContain("    return");
+			// Shiki wraps each source line, blank ones included.
+			expect(html.match(/class="line"/g) ?? []).toHaveLength(3);
+		},
+		SLOW,
+	);
 
 	it("hands the descriptor options to the auto-wired component", () => {
 		// EmDash calls createPlugin(descriptor.options) in the server runtime.

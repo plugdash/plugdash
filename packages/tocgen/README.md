@@ -49,20 +49,20 @@ digits becomes `section`.
 
 ### Props: TableOfContents
 
-| Prop        | Type       | Default | Description                                   |
-| ----------- | ---------- | ------- | --------------------------------------------- |
-| post        | `object`   | -       | The post (required)                           |
-| maxDepth    | `2\|3\|4`  | `3`     | Deepest heading level to include              |
-| minHeadings | `number`   | `3`     | Headings needed before a TOC shows            |
-| field       | `string`   | -       | Portable Text field. Default: `content`, then `body`, then the first Portable Text array |
-| sticky      | `boolean`  | `false` | Stick to the top while scrolling              |
-| class       | `string`   | `""`    | Additional CSS class                          |
+| Prop        | Type      | Default | Description                                                                              |
+| ----------- | --------- | ------- | ---------------------------------------------------------------------------------------- |
+| post        | `object`  | -       | The post (required)                                                                      |
+| maxDepth    | `2\|3\|4` | `3`     | Deepest heading level to include                                                         |
+| minHeadings | `number`  | `3`     | Headings needed before a TOC shows                                                       |
+| field       | `string`  | -       | Portable Text field. Default: `content`, then `body`, then the first Portable Text array |
+| sticky      | `boolean` | `false` | Stick to the top while scrolling                                                         |
+| class       | `string`  | `""`    | Additional CSS class                                                                     |
 
 ### Props: HeadingAnchors
 
-| Prop     | Type     | Default     | Description                       |
-| -------- | -------- | ----------- | --------------------------------- |
-| selector | `string` | `"article"` | CSS selector of the body element  |
+| Prop     | Type     | Default     | Description                      |
+| -------- | -------- | ----------- | -------------------------------- |
+| selector | `string` | `"article"` | CSS selector of the body element |
 
 ### CSS custom properties
 

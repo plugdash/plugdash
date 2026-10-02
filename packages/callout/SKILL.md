@@ -38,11 +38,11 @@ import emdash from "emdash";
 import { calloutPlugin } from "@plugdash/callout";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [calloutPlugin()], // must be plugins, not sandboxed
-    }),
-  ],
+	integrations: [
+		emdash({
+			plugins: [calloutPlugin()], // must be plugins, not sandboxed
+		}),
+	],
 });
 ```
 
@@ -59,16 +59,16 @@ import Callout from "@plugdash/callout/Callout.astro"
 <Callout variant="warning" title="Heads up" body="This feature is experimental." />
 ```
 
-| Token                               | Default       | Description          |
-| ----------------------------------- | ------------- | -------------------- |
-| `--plugdash-callout-info-accent`    | `#3b82f6`     | Info accent color    |
-| `--plugdash-callout-warning-accent` | `#f59e0b`     | Warning accent color |
-| `--plugdash-callout-tip-accent`     | `#22c55e`     | Tip accent color     |
-| `--plugdash-callout-danger-accent`  | `#ef4444`     | Danger accent color  |
-| `--plugdash-callout-border-width`   | `3px`         | Left border width    |
-| `--plugdash-callout-radius`         | `6px`         | Border radius        |
-| `--plugdash-callout-padding`        | `1rem 1.25rem`| Inner padding        |
-| `--plugdash-callout-icon-size`      | `20px`        | Icon dimensions      |
+| Token                               | Default        | Description          |
+| ----------------------------------- | -------------- | -------------------- |
+| `--plugdash-callout-info-accent`    | `#3b82f6`      | Info accent color    |
+| `--plugdash-callout-warning-accent` | `#f59e0b`      | Warning accent color |
+| `--plugdash-callout-tip-accent`     | `#22c55e`      | Tip accent color     |
+| `--plugdash-callout-danger-accent`  | `#ef4444`      | Danger accent color  |
+| `--plugdash-callout-border-width`   | `3px`          | Left border width    |
+| `--plugdash-callout-radius`         | `6px`          | Border radius        |
+| `--plugdash-callout-padding`        | `1rem 1.25rem` | Inner padding        |
+| `--plugdash-callout-icon-size`      | `20px`         | Icon dimensions      |
 
 ## configuration
 
@@ -90,10 +90,13 @@ After installing @plugdash/callout and registering it in astro.config.mjs:
    into `<PortableText>`. Callout blocks will render automatically on the site.
 
 2. For direct usage outside Portable Text, import the component:
+
    ```
    import Callout from "@plugdash/callout/Callout.astro"
    ```
+
    Usage:
+
    ```
    <Callout variant="info" body="This is informational." />
    <Callout variant="warning" title="Caution" body="Check your config." />

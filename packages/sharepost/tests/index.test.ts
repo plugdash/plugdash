@@ -126,12 +126,19 @@ describe("resolveShareUrl", () => {
 
 	it("uses Astro.site when set", () => {
 		expect(
-			resolveShareUrl(undefined, "/posts/a", new URL("https://example.com"), "http://internal:4321"),
+			resolveShareUrl(
+				undefined,
+				"/posts/a",
+				new URL("https://example.com"),
+				"http://internal:4321",
+			),
 		).toBe("https://example.com/posts/a");
 	});
 
 	it("prefers an explicit url", () => {
-		expect(resolveShareUrl("https://x.dev/p", "/posts/a", undefined, "http://h")).toBe("https://x.dev/p");
+		expect(resolveShareUrl("https://x.dev/p", "/posts/a", undefined, "http://h")).toBe(
+			"https://x.dev/p",
+		);
 	});
 });
 
@@ -165,7 +172,11 @@ describe("via and hashtags", () => {
 describe("no-op native descriptor", () => {
 	it("is native with no capabilities and ignores config", () => {
 		const d = sharepostPlugin({ via: "abhinavs" });
-		expect(d).toMatchObject({ id: "sharepost", format: "native", entrypoint: "@plugdash/sharepost" });
+		expect(d).toMatchObject({
+			id: "sharepost",
+			format: "native",
+			entrypoint: "@plugdash/sharepost",
+		});
 		expect(d.capabilities).toEqual([]);
 	});
 

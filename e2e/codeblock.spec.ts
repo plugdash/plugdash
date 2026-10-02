@@ -43,7 +43,13 @@ const astro = (...args: string[]) =>
 async function startServer() {
 	astro("--background", "--host", "127.0.0.1", "--port", PORT);
 	for (let i = 0; i < 120; i++) {
-		if (await fetch(BASE).then(() => true, () => false)) return;
+		if (
+			await fetch(BASE).then(
+				() => true,
+				() => false,
+			)
+		)
+			return;
 		await new Promise((r) => setTimeout(r, 500));
 	}
 	throw new Error(`astro dev did not come up on ${BASE}:\n${astro("logs")}`);
@@ -60,7 +66,12 @@ function stopServer() {
 const logs = () => astro("logs");
 const builds = () => logs().split(BUILD_LINE).length - 1;
 
-async function api(request: APIRequestContext, method: "post" | "get", path: string, data?: unknown) {
+async function api(
+	request: APIRequestContext,
+	method: "post" | "get",
+	path: string,
+	data?: unknown,
+) {
 	const res = await request[method](`${BASE}/_emdash/api${path}`, {
 		headers: { "X-EmDash-Request": "1" },
 		data,

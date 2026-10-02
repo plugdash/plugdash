@@ -24,11 +24,11 @@ import emdash from "emdash/astro";
 import { fromghostPlugin } from "@plugdash/fromghost";
 
 export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [fromghostPlugin({ siteUrl: "https://blog.example.com" })],
-    }),
-  ],
+	integrations: [
+		emdash({
+			plugins: [fromghostPlugin({ siteUrl: "https://blog.example.com" })],
+		}),
+	],
 });
 ```
 
@@ -39,14 +39,14 @@ are active in a production build.
 
 Passed to `fromghostPlugin({ ... })`:
 
-| Option           | Type      | Default   | Description                                          |
-| ---------------- | --------- | --------- | ----------------------------------------------------- |
-| targetCollection | `string`  | `"posts"` | Collection suggested for Ghost posts                  |
-| status           | n/a       | -         | Not configurable - status comes from each post's own Ghost status (see below) |
-| preserveSlugs    | `boolean` | `true`    | Keep Ghost's slugs instead of regenerating from title  |
-| importImages     | `boolean` | `true`    | Carry feature and inline images over                   |
-| importTags       | `boolean` | `true`    | Carry Ghost tags over as taxonomy terms                |
-| siteUrl          | `string`  | `""`      | The Ghost site's URL, to resolve `__GHOST_URL__` image paths |
+| Option           | Type                             | Default   | Description                                                                                                                                                                         |
+| ---------------- | -------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| targetCollection | `string`                         | `"posts"` | Collection suggested for Ghost posts                                                                                                                                                |
+| status           | n/a                              | -         | Not configurable - status comes from each post's own Ghost status (see below)                                                                                                       |
+| preserveSlugs    | `boolean`                        | `true`    | Keep Ghost's slugs instead of regenerating from title                                                                                                                               |
+| importImages     | `boolean`                        | `true`    | Carry feature and inline images over                                                                                                                                                |
+| importTags       | `boolean`                        | `true`    | Carry Ghost tags over as taxonomy terms                                                                                                                                             |
+| siteUrl          | `string`                         | `""`      | The Ghost site's URL, to resolve `__GHOST_URL__` image paths                                                                                                                        |
 | paidPostsAs      | `"draft" \| "publish" \| "skip"` | `"draft"` | Posts with Ghost visibility `members`, `paid` or `tiers`. The export holds their full body, so the default keeps them off the public site. `meta.visibility` is recorded either way |
 
 `siteUrl` matters: Ghost writes images and links as `__GHOST_URL__/...`
@@ -65,19 +65,19 @@ straight from each post's own Ghost status via `fetchContent`'s
 
 ## Field mapping
 
-| Ghost field                          | EmDash field                          |
-| ------------------------------------- | -------------------------------------- |
-| `title`                                | `title`                                 |
-| `slug`                                 | `slug` (or regenerated, see `preserveSlugs`) |
-| `html`                                 | `content`, via `htmlToPortableText`     |
-| `custom_excerpt` (falls back to `excerpt`) | `excerpt`                          |
-| `feature_image`                        | `featuredImage` (after `__GHOST_URL__` resolution) |
-| `published_at` (falls back to `created_at`) | `date`                             |
-| `updated_at`                           | `modified`                              |
-| `meta_title`                           | `meta.seoTitle`                         |
-| `meta_description`                     | `meta.seoDescription`                   |
-| tags via `posts_tags`                  | `tags` (public tags only)               |
-| author via `posts_authors`             | `author` (first author's slug)          |
+| Ghost field                                 | EmDash field                                       |
+| ------------------------------------------- | -------------------------------------------------- |
+| `title`                                     | `title`                                            |
+| `slug`                                      | `slug` (or regenerated, see `preserveSlugs`)       |
+| `html`                                      | `content`, via `htmlToPortableText`                |
+| `custom_excerpt` (falls back to `excerpt`)  | `excerpt`                                          |
+| `feature_image`                             | `featuredImage` (after `__GHOST_URL__` resolution) |
+| `published_at` (falls back to `created_at`) | `date`                                             |
+| `updated_at`                                | `modified`                                         |
+| `meta_title`                                | `meta.seoTitle`                                    |
+| `meta_description`                          | `meta.seoDescription`                              |
+| tags via `posts_tags`                       | `tags` (public tags only)                          |
+| author via `posts_authors`                  | `author` (first author's slug)                     |
 
 ## What it does
 
