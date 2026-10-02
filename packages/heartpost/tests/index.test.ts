@@ -262,3 +262,12 @@ describe("component helpers", () => {
 		expect(f).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe("package.json", () => {
+	it("is tagged astro-component so Astro bundles it with the host's emdash copy", async () => {
+		// Without this, the site loads a second emdash for the plugin, the host's
+		// `instanceof PluginRouteError` fails and every 400/404/429 becomes a 500.
+		const { default: pkg } = await import("../package.json");
+		expect(pkg.keywords).toContain("astro-component");
+	});
+});

@@ -106,6 +106,18 @@ package's `peerDependencies.emdash` must allow `>=0.13.0` (not `^0.1.0`) for
 `emdash/plugin` to resolve - the npm-published `emdash` package didn't gain
 the `./plugin` export until well after 0.1.0.
 
+// confirmed 2026-10-02 while fixing heartpost route errors (emdash 1.0.1)
+A plugin that throws `PluginRouteError` must have `"astro-component"` in
+its package.json `keywords`. emdash's Vite config sets
+`ssr.noExternal: ["emdash", ...]` (src/astro/integration/vite-config.ts:635),
+so the site runs a Vite-bundled emdash while an external plugin's
+`import { PluginRouteError } from "emdash"` loads node_modules/emdash - a
+second copy. The host's `instanceof PluginRouteError`
+(src/plugins/routes.ts:296) then fails and every 400/404/429 reaches the
+client as 500 "Plugin route error". Astro adds any direct dependency
+tagged `astro-component` to `ssr.noExternal`, which puts the plugin on
+the same emdash copy. Same root cause as the codeblock globalThis note.
+
 // confirmed 2026-04-05 during plugdash.dev integration fixes
 Native plugins must include `hooks: {}` in the object returned by
 createPlugin(). HookPipeline iterates plugin.hooks without a presence
