@@ -10,7 +10,7 @@
  *   <HeartButton post={post} />
  *
  * Props:
- *   post    - EmDash content item (required, must have an id)
+ *   post    - EmDash content item (required). Heart id is post.data.id ?? post.id
  *   variant - "circle" | "pill" | "ghost", default "circle"
  *   size    - "sm" | "md" | "lg", default "md"
  *   theme   - "auto" | "dark" | "light", default "auto"
@@ -26,6 +26,8 @@
  *   --plugdash-engage-bg-hover      hover background colour
  *   --plugdash-engage-transition    transition timing
  */
+
+import { heartId } from "./client"
 
 interface Props {
 	post: Record<string, unknown>
@@ -44,11 +46,9 @@ const {
 } = Astro.props
 
 const postRecord = post as Record<string, unknown>
-const id =
-	(postRecord?.id as string | undefined) ??
-	((postRecord?.data as Record<string, unknown> | undefined)?.id as
-		| string
-		| undefined)
+// rule G: data.id is the ULID, post.id is the slug
+const id = heartId(postRecord)
+const slug = typeof postRecord?.id === "string" && postRecord.id !== id ? postRecord.id : undefined
 ---
 
 {id && (
@@ -61,6 +61,7 @@ const id =
 			className,
 		]}
 		data-post-id={id}
+		data-legacy-id={slug}
 		data-theme={theme}
 		data-label-idle="Heart this post"
 		data-label-active="Remove heart"
@@ -80,81 +81,91 @@ const id =
 )}
 
 <script>
-	import { parseHeartResponse } from "./client";
+	import { fetchCount, parseHeartResponse } from "./client";
 
-	document.querySelectorAll(".plugdash-heart").forEach(async (btn) => {
+	const buttons = new Map<string, Set<Element>>();
+
+	function paint(btn: Element, count: number | null, hearted: boolean | null) {
+		const countEl = btn.querySelector(".plugdash-heart-count");
+		if (countEl && count !== null) countEl.textContent = String(count);
+		if (hearted === null) return;
+		const label = btn.getAttribute(hearted ? "data-label-active" : "data-label-idle") ?? "";
+		if (hearted) btn.setAttribute("data-hearted", "true");
+		else btn.removeAttribute("data-hearted");
+		btn.setAttribute("aria-label", label);
+		btn.setAttribute("title", label);
+	}
+
+	function localHearted(id: string): boolean {
+		try {
+			return localStorage.getItem(`plugdash-heart-${id}`) === "1";
+		} catch {
+			return false;
+		}
+	}
+
+	// every button for the same post follows the one that was clicked
+	document.addEventListener("plugdash:heart", (e) => {
+		const { id, count, hearted } = (e as CustomEvent).detail;
+		buttons.get(id)?.forEach((b) => paint(b, count, hearted));
+	});
+
+	// fetch the count only when a button is within 200px of the viewport
+	const observer = new IntersectionObserver(
+		(entries) => {
+			for (const entry of entries) {
+				if (!entry.isIntersecting) continue;
+				observer.unobserve(entry.target);
+				const id = entry.target.getAttribute("data-post-id") as string;
+				fetchCount(id, entry.target.getAttribute("data-legacy-id")).then((count) => {
+					// a click may already have set a fresher number
+					if (!entry.target.hasAttribute("data-touched")) paint(entry.target, count, null);
+				});
+			}
+		},
+		{ rootMargin: "200px" },
+	);
+
+	document.querySelectorAll(".plugdash-heart").forEach((btn) => {
 		const id = btn.getAttribute("data-post-id");
 		if (!id) return;
-
-		const countEl = btn.querySelector(".plugdash-heart-count");
-		if (!countEl) return;
-
-		const storageKey = `plugdash-heart-${id}`;
-
-		const labelIdle = btn.getAttribute("data-label-idle") || "Heart this post";
-		const labelActive = btn.getAttribute("data-label-active") || "Remove heart";
-		const setLabel = (active) => {
-			const label = active ? labelActive : labelIdle;
-			btn.setAttribute("aria-label", label);
-			btn.setAttribute("title", label);
-		};
-
-		// Fetch current state
-		try {
-			const res = await fetch(`/_emdash/api/plugins/heartpost/heart-status?id=${encodeURIComponent(id)}`);
-			if (res.ok) {
-				const data = parseHeartResponse(await res.json());
-				if (data && data.count !== undefined) countEl.textContent = String(data.count);
-				if (data?.hearted) {
-					btn.setAttribute("data-hearted", "true");
-					setLabel(true);
-				} else {
-					// Fallback: localStorage (covers IP changes, fingerprint mismatch)
-					try {
-						if (localStorage.getItem(storageKey) === "1") {
-							btn.setAttribute("data-hearted", "true");
-							setLabel(true);
-						}
-					} catch {
-						// localStorage unavailable
-					}
-				}
-			}
-		} catch {
-			// Silent fail - button still renders, just shows 0
-		}
+		if (!buttons.has(id)) buttons.set(id, new Set());
+		buttons.get(id)?.add(btn);
+		paint(btn, null, localHearted(id));
+		observer.observe(btn);
 
 		btn.addEventListener("click", async () => {
-			const isHearted = btn.getAttribute("data-hearted") === "true";
+			const hearted = btn.getAttribute("data-hearted") === "true";
+			const countEl = btn.querySelector(".plugdash-heart-count");
+			const current = parseInt(countEl?.textContent || "0", 10);
+			buttons.get(id)?.forEach((b) => b.setAttribute("data-touched", ""));
+			const announce = (count: number, state: boolean) =>
+				document.dispatchEvent(
+					new CustomEvent("plugdash:heart", { detail: { id, count, hearted: state } }),
+				);
 
-			// Optimistic update
-			const current = parseInt(countEl.textContent || "0", 10);
-			if (isHearted) {
-				countEl.textContent = String(Math.max(0, current - 1));
-				btn.removeAttribute("data-hearted");
-				setLabel(false);
-				try { localStorage.removeItem(storageKey); } catch {}
-			} else {
-				countEl.textContent = String(current + 1);
-				btn.setAttribute("data-hearted", "true");
-				setLabel(true);
-				try { localStorage.setItem(storageKey, "1"); } catch {}
-			}
-
-			// Confirm with server
-			const endpoint = isHearted ? "heart-remove" : "heart";
+			// optimistic: update every button for this post now
+			announce(hearted ? Math.max(0, current - 1) : current + 1, !hearted);
 			try {
-				const res = await fetch(`/_emdash/api/plugins/heartpost/${endpoint}`, {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ id }),
-				});
+				if (hearted) localStorage.removeItem(`plugdash-heart-${id}`);
+				else localStorage.setItem(`plugdash-heart-${id}`, "1");
+			} catch {}
+
+			try {
+				const res = await fetch(
+					`/_emdash/api/plugins/heartpost/${hearted ? "heart-remove" : "heart"}`,
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json", "X-EmDash-Request": "1" },
+						body: JSON.stringify({ id, legacyId: btn.getAttribute("data-legacy-id") || undefined }),
+					},
+				);
 				if (res.ok) {
 					const data = parseHeartResponse(await res.json());
-					if (data && data.count !== undefined) countEl.textContent = String(data.count);
+					if (data?.count !== undefined) announce(data.count, !hearted);
 				}
 			} catch {
-				// Keep optimistic state - better UX than reverting
+				// keep the optimistic state
 			}
 		});
 	});
