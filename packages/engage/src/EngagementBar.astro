@@ -5,6 +5,16 @@ import CopyLink from "@plugdash/shortlink/CopyLink.astro"
 
 interface Props {
 	post: Record<string, unknown>
+	/** Absolute URL to share. Default: the current page. */
+	url?: string
+	/** Share text. Default: post.data.title. */
+	title?: string
+	/** Twitter/X handle without the @. */
+	via?: string
+	/** Twitter/X hashtags without the #. */
+	hashtags?: string[]
+	/** Must match the shortlink plugin's `prefix` option. Default "/s/". */
+	prefix?: string
 	platforms?: Array<"twitter" | "linkedin" | "whatsapp" | "bluesky" | "email">
 	variant?: "circle" | "pill" | "ghost"
 	size?: "sm" | "md" | "lg"
@@ -17,6 +27,11 @@ interface Props {
 }
 const {
 	post,
+	url,
+	title,
+	via,
+	hashtags,
+	prefix,
 	platforms = ["twitter", "linkedin", "bluesky"],
 	variant = "circle",
 	size = "md",
@@ -30,8 +45,8 @@ const {
 ---
 <div class={`plugdash-engage-bar ${className}`} data-theme={theme}>
 	{showHeart && <HeartButton {post} {variant} {size} {theme} />}
-	{showShare && <ShareButtons {post} {platforms} {variant} {size} {theme} {attribution} />}
-	{showCopy && <CopyLink {post} {variant} {size} {theme} />}
+	{showShare && <ShareButtons {post} {url} {title} {via} {hashtags} {platforms} {variant} {size} {theme} {attribution} />}
+	{showCopy && <CopyLink {post} {prefix} {variant} {size} {theme} />}
 </div>
 <style>
 	.plugdash-engage-bar {
