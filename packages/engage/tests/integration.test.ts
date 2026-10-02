@@ -8,33 +8,21 @@ import { resolve } from "node:path";
 // engage and its three sub-plugin dependencies.
 
 const pkgRoot = resolve(import.meta.dirname, "..");
-const component = readFileSync(
-	resolve(pkgRoot, "src/EngagementBar.astro"),
-	"utf-8",
-);
+const component = readFileSync(resolve(pkgRoot, "src/EngagementBar.astro"), "utf-8");
 
 describe("engage dependency wiring", () => {
 	it("heartpost package exists in workspace", () => {
-		const heartpostPkg = resolve(
-			pkgRoot,
-			"../heartpost/src/HeartButton.astro",
-		);
+		const heartpostPkg = resolve(pkgRoot, "../heartpost/src/HeartButton.astro");
 		expect(existsSync(heartpostPkg)).toBe(true);
 	});
 
 	it("sharepost package exists in workspace", () => {
-		const sharepostPkg = resolve(
-			pkgRoot,
-			"../sharepost/src/ShareButtons.astro",
-		);
+		const sharepostPkg = resolve(pkgRoot, "../sharepost/src/ShareButtons.astro");
 		expect(existsSync(sharepostPkg)).toBe(true);
 	});
 
 	it("shortlink package exists in workspace", () => {
-		const shortlinkPkg = resolve(
-			pkgRoot,
-			"../shortlink/src/CopyLink.astro",
-		);
+		const shortlinkPkg = resolve(pkgRoot, "../shortlink/src/CopyLink.astro");
 		expect(existsSync(shortlinkPkg)).toBe(true);
 	});
 });
@@ -112,10 +100,42 @@ describe("engage package has no plugin artifacts", () => {
 	});
 
 	it("has no-op build script in package.json", () => {
-		const pkg = JSON.parse(
-			readFileSync(resolve(pkgRoot, "package.json"), "utf-8"),
-		);
+		const pkg = JSON.parse(readFileSync(resolve(pkgRoot, "package.json"), "utf-8"));
 		expect(pkg.scripts?.build).toBeDefined();
 		expect(pkg.scripts.build).not.toContain("tsdown");
+	});
+});
+
+describe("engage forwards the share and copy props", () => {
+	it("passes url, title, via and hashtags to ShareButtons only", () => {
+		for (const p of ["url", "title", "via", "hashtags"]) {
+			expect(component).toMatch(new RegExp(`ShareButtons\\s[^>]*\\{${p}\\}`, "s"));
+			expect(component).not.toMatch(new RegExp(`HeartButton\\s[^>]*\\{${p}\\}`, "s"));
+			expect(component).not.toMatch(new RegExp(`CopyLink\\s[^>]*\\{${p}\\}`, "s"));
+		}
+	});
+
+	it("passes prefix to CopyLink only", () => {
+		expect(component).toMatch(/CopyLink\s[^>]*\{prefix\}/s);
+		expect(component).not.toMatch(/ShareButtons\s[^>]*\{prefix\}/s);
+	});
+
+	it("does not default prefix, so CopyLink keeps its own default", () => {
+		expect(component).not.toMatch(/prefix\s*=\s*"/);
+	});
+});
+
+describe("engage package.json", () => {
+	const pkg = JSON.parse(readFileSync(resolve(pkgRoot, "package.json"), "utf-8"));
+
+	it("ships only the component, README and LICENSE", () => {
+		expect(pkg.files).toEqual(["src/*.astro", "README.md", "LICENSE"]);
+		expect(existsSync(resolve(pkgRoot, "LICENSE"))).toBe(true);
+	});
+
+	it("needs the reworked sub-packages", () => {
+		for (const n of ["heartpost", "sharepost", "shortlink"]) {
+			expect(pkg.peerDependencies[`@plugdash/${n}`]).toBe(">=0.3.0");
+		}
 	});
 });

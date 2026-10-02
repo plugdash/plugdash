@@ -1,10 +1,11 @@
 # @plugdash/tocgen
 
-Long posts need navigation. Readers scroll past the fold and lose track of
-where they are. `@plugdash/tocgen` parses headings from Portable Text content
-on publish and writes a nested table of contents structure to metadata. Ships
-`TableOfContents.astro` - a sticky sidebar nav that works with zero config.
-The EmDash equivalent of [Table of Contents Plus](https://wordpress.org/plugins/table-of-contents-plus/).
+Long posts need navigation, and EmDash's `PortableText` renders headings
+without ids, so a TOC has nothing to link to. `@plugdash/tocgen` builds the
+table of contents from the post body at render time and gives the headings
+matching ids. Ships `TableOfContents.astro` and `HeadingAnchors.astro`. No
+hooks, no stored data, no registration. The EmDash equivalent of
+[Table of Contents Plus](https://wordpress.org/plugins/table-of-contents-plus/).
 
 ## Install
 
@@ -12,110 +13,102 @@ The EmDash equivalent of [Table of Contents Plus](https://wordpress.org/plugins/
 pnpm add @plugdash/tocgen
 ```
 
-## Register
+No entry in `astro.config.mjs` is needed. If you registered `tocgenPlugin()`
+in an older version it still loads, does nothing, and can be removed:
 
 ```js
-// astro.config.mjs
-import { defineConfig } from "astro/config";
-import emdash from "emdash";
+// astro.config.mjs - optional, deprecated
+import emdash from "emdash/astro";
 import { tocgenPlugin } from "@plugdash/tocgen";
-
-export default defineConfig({
-  integrations: [
-    emdash({
-      plugins: [tocgenPlugin()],
-      // or sandboxed: [tocgenPlugin()]
-    }),
-  ],
-});
 ```
 
-## Configuration
-
-### Admin dashboard
-
-After installing, open the EmDash admin and go to Plugins - Table of
-Contents - Settings. All options are available there. Changes take
-effect on the next publish - no code changes required.
-
-### Config options
-
-Configuration is stored in the plugin's KV store and can be changed via the
-admin UI or programmatically. Defaults are seeded on install.
-
-| Option       | Type       | Default | Description                                           |
-| ------------ | ---------- | ------- | ----------------------------------------------------- |
-| minHeadings  | `number`   | `3`     | Minimum headings required to generate a TOC            |
-| maxDepth     | `2\|3\|4`  | `3`     | Deepest heading level to include (2=h2, 3=h2+h3, etc) |
-| collections  | `string[]` | all     | Limit processing to specific collection slugs          |
-
-## Companion component
+## Use
 
 ```astro
 ---
+import { PortableText } from "emdash/ui";
 import TableOfContents from "@plugdash/tocgen/TableOfContents.astro";
-const post = await emdash.content.get("posts", Astro.params.id);
+import HeadingAnchors from "@plugdash/tocgen/HeadingAnchors.astro";
 ---
 
 <TableOfContents post={post} />
+<article>
+  <PortableText value={post.data.content} />
+  <HeadingAnchors />
+</article>
 ```
 
-### Props
+`HeadingAnchors` must come after the post body. It runs a tiny inline script
+(under 1 KB, no dependencies) that sets an `id` on every `h2`, `h3` and `h4`
+that has none, using the same slugs and the same `-2`, `-3` duplicate suffixes
+as the TOC. Pass `selector` if your body is not inside an `<article>`.
 
-| Prop     | Type        | Default | Description                    |
-| -------- | ----------- | ------- | ------------------------------ |
-| post     | `object`    | -       | The post object (required)     |
-| maxDepth | `2\|3\|4`   | `3`     | How deep to render the tree    |
-| sticky   | `boolean`   | `false` | Enable sticky positioning      |
-| class    | `string`    | `""`    | Additional CSS class           |
+Slugs keep letters, vowel signs and digits from any script, so Hindi headings get
+real ids (`हिंदी शीर्षक` becomes `हिंदी-शीर्षक`). Latin accents are stripped (`Émojis` becomes `emojis`). A heading with no letters or
+digits becomes `section`.
+
+### Props: TableOfContents
+
+| Prop        | Type       | Default | Description                                   |
+| ----------- | ---------- | ------- | --------------------------------------------- |
+| post        | `object`   | -       | The post (required)                           |
+| maxDepth    | `2\|3\|4`  | `3`     | Deepest heading level to include              |
+| minHeadings | `number`   | `3`     | Headings needed before a TOC shows            |
+| field       | `string`   | -       | Portable Text field. Default: `content`, then `body`, then the first Portable Text array |
+| sticky      | `boolean`  | `false` | Stick to the top while scrolling              |
+| class       | `string`   | `""`    | Additional CSS class                          |
+
+### Props: HeadingAnchors
+
+| Prop     | Type     | Default     | Description                       |
+| -------- | -------- | ----------- | --------------------------------- |
+| selector | `string` | `"article"` | CSS selector of the body element  |
 
 ### CSS custom properties
 
-| Property                     | Default                | Description              |
-| ---------------------------- | ---------------------- | ------------------------ |
-| `--plugdash-toc-size`        | `0.875rem`             | Font size                |
-| `--plugdash-toc-line-height` | `1.6`                  | Line height              |
-| `--plugdash-toc-indent`      | `1rem`                 | Nested list padding      |
-| `--plugdash-toc-color`       | `inherit`              | Link color               |
-| `--plugdash-toc-hover`       | `#6366f1`              | Link hover color         |
-| `--plugdash-toc-top`         | `2rem`                 | Sticky offset from top   |
-| `--plugdash-toc-max-height`  | `calc(100vh - 4rem)`   | Sticky container max-height |
+| Property                     | Default              | Description                 |
+| ---------------------------- | -------------------- | --------------------------- |
+| `--plugdash-toc-size`        | `0.875rem`           | Font size                   |
+| `--plugdash-toc-line-height` | `1.6`                | Line height                 |
+| `--plugdash-toc-indent`      | `1rem`               | Nested list padding         |
+| `--plugdash-toc-color`       | `inherit`            | Link color                  |
+| `--plugdash-toc-hover`       | `#6366f1`            | Link hover color            |
+| `--plugdash-toc-top`         | `2rem`               | Sticky offset from top      |
+| `--plugdash-toc-max-height`  | `calc(100vh - 4rem)` | Sticky container max-height |
 
-### Sticky sidebar example
+## Blog template
 
-```astro
-<div class="post-layout">
-  <aside>
-    <TableOfContents post={post} sticky />
-  </aside>
-  <article set:html={renderedBody} />
-</div>
+The official blog template already builds an "On this page" TOC with a client
+script, and sets its own `heading-0`, `heading-1` ids. To use tocgen instead,
+in `src/pages/posts/[slug].astro`:
 
-<style>
-  .post-layout {
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    gap: 2rem;
-  }
-</style>
+1. Replace the `<nav class="toc">` block (the one containing `id="toc-content"`) with `<TableOfContents post={post} />`.
+2. Put `<HeadingAnchors />` right after `<PortableText value={post.data.content} />`.
+3. Delete the `<script>` that fills `toc-content`.
+
+Keep the template's TOC and add tocgen and you will show two TOCs.
+
+## Utilities
+
+```ts
+import { getToc, toAnchor } from "@plugdash/tocgen/utils";
+
+getToc(post, { maxDepth: 3, minHeadings: 3 }); // nested entries, [] below minHeadings
 ```
 
-## What it does
+`extractHeadings`, `deduplicateAnchors`, `nestHeadings` and `getBodyBlocks` are
+exported from the same path.
 
-- Fires on `content:afterSave` when status is `published`
-- Extracts h2, h3, and h4 headings from Portable Text body
-- Generates collision-safe anchor slugs (duplicates get `-2`, `-3` suffixes)
-- Builds a nested tree structure (h3s nest under h2s, h4s under h3s)
-- Skips posts with fewer than `minHeadings` headings (no TOC for short posts)
-- Writes `tocgen` to content metadata with entries and generatedAt timestamp
-- Preserves existing metadata keys from other plugins
-- Cleans up stale `tocgen` metadata when headings drop below the threshold
+## Upgrading from 0.2
+
+- The `afterSave` hook, the `metadata.tocgen` write, the admin settings page and the `@plugdash/tocgen/sandbox` export are gone. Delete `tocgenPlugin({...})` options: they are ignored. Pass `minHeadings` and `maxDepth` to the component instead.
+- Existing `metadata.tocgen.entries` are used only when a post has no Portable Text body.
+- `@portabletext/types` is no longer a peer dependency.
 
 ## What it does not do
 
-- Does not inject anchor IDs into the rendered HTML - your theme's Portable Text renderer handles that
-- Does not process drafts, archived, or scheduled content
-- Does not extract headings from non-Portable-Text content
-- Does not render active/highlight state for the current section (add scroll-spy in your theme JS)
-- Does not include h1 headings (h1 is the post title, not a section heading)
-- Does not generate a flat list option - output is always a nested tree
+- No hooks, stored data or `metadata` writes
+- Does not render the current-section highlight (add scroll-spy in your theme)
+- Does not include `h1`
+- Does not number headings or render a flat list
+- Does not set ids on headings outside the `selector` element

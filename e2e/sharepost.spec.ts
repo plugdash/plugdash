@@ -1,109 +1,67 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type APIRequestContext } from "@playwright/test";
 
-// Functional tests for @plugdash/sharepost
-// Requires testbed running on localhost:4321 with the sharepost plugin registered.
+// Functional tests for @plugdash/sharepost on the EmDash blog template.
+// The post page renders <ShareButtons post={post} via="abhinavs" /> with all five platforms.
+// Env: BASE_URL (default http://127.0.0.1:4321), COOKIE (astro-session value, for the title-change test).
 // Run: pnpm playwright test e2e/sharepost.spec.ts
 
-const BASE_URL = "http://localhost:4321";
+const BASE_URL = process.env.BASE_URL ?? "http://127.0.0.1:4321";
+const SLUG = "sharepost-e2e";
+const api = { "X-EmDash-Request": "1", "Content-Type": "application/json" };
 
-test.describe("ShareButtons component rendering", () => {
-	test("ShareButtons render when shareUrls metadata exists", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test`);
-		const container = page.locator(".plugdash-share").first();
-		await expect(container).toBeVisible();
-	});
+function textBlock(text: string) {
+	return [
+		{ _type: "block", _key: "a", style: "normal", children: [{ _type: "span", _key: "b", text }] },
+	];
+}
 
-	test("ShareButtons renders correct number of platform buttons", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test`);
-		// Default platforms: twitter, linkedin, bluesky
+async function xHref(page: import("@playwright/test").Page) {
+	return (await page.locator(".plugdash-share-btn--twitter").first().getAttribute("href")) ?? "";
+}
+
+test.describe("ShareButtons at render time", () => {
+	test("all five links carry the absolute post URL, via only on X", async ({ page }) => {
+		await page.goto(`${BASE_URL}/posts/${SLUG}`);
+		const abs = encodeURIComponent(`${BASE_URL}/posts/${SLUG}`);
 		const buttons = page.locator(".plugdash-share-btn");
-		await expect(buttons).toHaveCount(3);
-	});
-
-	test("each share button has correct aria-label", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test`);
-		await expect(page.locator('[aria-label="Share on twitter"]')).toBeVisible();
-		await expect(page.locator('[aria-label="Share on linkedin"]')).toBeVisible();
-		await expect(page.locator('[aria-label="Share on bluesky"]')).toBeVisible();
-	});
-
-	test("share buttons open in new tab", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test`);
-		const btn = page.locator(".plugdash-share-btn").first();
-		await expect(btn).toHaveAttribute("target", "_blank");
-		await expect(btn).toHaveAttribute("rel", "noopener noreferrer");
-	});
-
-	test("Twitter button links to intent URL", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test`);
-		const btn = page.locator(".plugdash-share-btn--twitter").first();
-		const href = await btn.getAttribute("href");
-		expect(href).toContain("twitter.com/intent/tweet");
-	});
-
-	test("circle variant has correct border-radius", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test`);
-		const btn = page.locator(".plugdash-share--circle .plugdash-share-btn").first();
-		await expect(btn).toBeVisible();
-		const radius = await btn.evaluate((el) => {
-			return getComputedStyle(el).borderRadius;
-		});
-		expect(radius).toMatch(/9999px|50%/);
-	});
-
-	test("pill variant renders with label text", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test-pill`);
-		const btn = page.locator(".plugdash-share--pill .plugdash-share-btn").first();
-		await expect(btn).toBeVisible();
-		// Pill variant includes a span with platform name
-		const span = btn.locator("span");
-		await expect(span).toBeVisible();
-	});
-
-	test("ghost variant renders platform names as text", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test-ghost`);
-		const btn = page.locator(".plugdash-share--ghost .plugdash-share-btn").first();
-		await expect(btn).toBeVisible();
-	});
-
-	test("ShareButtons do not render when shareUrls metadata is missing", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test-empty`);
-		const container = page.locator(".plugdash-share");
-		await expect(container).toHaveCount(0);
-	});
-
-	test("attribution link renders when enabled", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test-attribution`);
-		const attribution = page.locator(".plugdash-attribution").first();
-		await expect(attribution).toBeVisible();
-		await expect(attribution).toHaveText("by plugdash");
-		await expect(attribution).toHaveAttribute("href", "https://plugdash.dev");
-	});
-});
-
-test.describe("ShareButtons link targets", () => {
-	test("LinkedIn button links to sharing URL", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test`);
-		const btn = page.locator(".plugdash-share-btn--linkedin").first();
-		const href = await btn.getAttribute("href");
-		expect(href).toContain("linkedin.com/sharing/share-offsite");
-	});
-
-	test("Bluesky button links to compose URL", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test`);
-		const btn = page.locator(".plugdash-share-btn--bluesky").first();
-		const href = await btn.getAttribute("href");
-		expect(href).toContain("bsky.app/intent/compose");
-	});
-
-	test("all platform URLs contain the post URL", async ({ page }) => {
-		await page.goto(`${BASE_URL}/sharepost-test-all`);
-		const buttons = page.locator(".plugdash-share-btn");
-		const count = await buttons.count();
-		for (let i = 0; i < count; i++) {
-			const href = await buttons.nth(i).getAttribute("href");
-			// Every share URL should reference the post (either in url param or body)
-			expect(href).toBeTruthy();
+		await expect(buttons).toHaveCount(5);
+		for (const href of await buttons.evaluateAll((els) => els.map((e) => e.getAttribute("href")))) {
+			expect(href).toContain(abs);
 		}
+		const x = await xHref(page);
+		expect(x).toContain(`url=${encodeURIComponent(BASE_URL + "/posts/" + SLUG)}`);
+		expect(x).toContain("via=abhinavs");
+		expect(await page.locator(".plugdash-share-btn--linkedin").getAttribute("href")).not.toContain(
+			"abhinavs",
+		);
+	});
+
+	test("a title change shows in the links at once", async ({ page, request }) => {
+		test.skip(!process.env.COOKIE, "needs COOKIE to edit content");
+		const headers = { ...api, Cookie: `astro-session=${process.env.COOKIE}` };
+		await changeTitle(request, headers, "Brand New Title");
+		await page.goto(`${BASE_URL}/posts/${SLUG}`);
+		expect(await xHref(page)).toContain("text=Brand+New+Title");
 	});
 });
+
+async function changeTitle(
+	request: APIRequestContext,
+	headers: Record<string, string>,
+	title: string,
+) {
+	const list = await request.get(`${BASE_URL}/_emdash/api/content/posts?limit=100`, { headers });
+	const items = (await list.json()).data.items as Array<{ id: string; slug: string }>;
+	const id = items.find((i) => i.slug === SLUG)?.id;
+	if (!id) throw new Error(`seed post ${SLUG} missing`);
+	const put = await request.put(`${BASE_URL}/_emdash/api/content/posts/${id}`, {
+		headers,
+		data: { data: { title, content: textBlock("hi") } },
+	});
+	expect(put.ok()).toBeTruthy();
+	const pub = await request.post(`${BASE_URL}/_emdash/api/content/posts/${id}/publish`, {
+		headers,
+		data: {},
+	});
+	expect(pub.ok()).toBeTruthy();
+}

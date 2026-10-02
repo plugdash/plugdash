@@ -1,7 +1,24 @@
 {
 	"name": "@plugdash/shortlink",
 	"version": "0.2.4",
-	"description": "Short URLs for EmDash posts - shareable links created on publish",
+	"description": "Short URLs for EmDash posts - one native EmDash redirect per published entry",
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"pretty-links",
+		"shortlink"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/plugdash/plugdash.git",
+		"directory": "packages/shortlink"
+	},
+	"files": [
+		"dist",
+		"src/*.astro",
+		"src/code.ts"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
@@ -10,44 +27,19 @@
 			"import": "./dist/index.mjs",
 			"types": "./dist/index.d.mts"
 		},
-		"./sandbox": {
-			"import": "./dist/sandbox-entry.mjs"
-		},
-		"./redirect-logic": {
-			"import": "./dist/redirect-logic.mjs",
-			"types": "./dist/redirect-logic.d.mts"
-		},
-		"./CopyLink.astro": "./src/CopyLink.astro",
-		"./RedirectPage.astro": "./src/RedirectPage.astro"
+		"./CopyLink.astro": "./src/CopyLink.astro"
 	},
-	"files": [
-		"dist",
-		"src/*.astro"
-	],
 	"scripts": {
-		"build": "tsdown src/index.ts --dts.eager && tsdown src/sandbox-entry.ts --dts.eager --no-clean && tsdown src/redirect-logic.ts --dts.eager --no-clean",
+		"build": "tsdown src/index.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit",
 		"lint": "oxlint --ignore-pattern '*.astro' ."
 	},
-	"keywords": [
-		"emdash",
-		"emdash-plugin",
-		"shortlink",
-		"pretty-links"
-	],
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/plugdash/plugdash.git",
-		"directory": "packages/shortlink"
+	"devDependencies": {
+		"emdash": "^1.0.1",
+		"vitest": "^2.0.0"
 	},
 	"peerDependencies": {
-		"emdash": ">=0.13.0"
-	},
-	"devDependencies": {
-		"@plugdash/testing": "workspace:*",
-		"@plugdash/types": "workspace:*",
-		"vitest": "^2.0.0"
+		"emdash": ">=1.0.0"
 	}
 }

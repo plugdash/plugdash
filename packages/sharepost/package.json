@@ -1,7 +1,7 @@
 {
 	"name": "@plugdash/sharepost",
 	"version": "0.2.4",
-	"description": "Share buttons without 200KB of JavaScript - generates sharing URLs for Twitter/X, LinkedIn, WhatsApp, Bluesky, and email on publish",
+	"description": "Share buttons without 200KB of JavaScript - builds sharing links for Twitter/X, LinkedIn, WhatsApp, Bluesky, and email at render time",
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
@@ -9,9 +9,6 @@
 		".": {
 			"import": "./dist/index.mjs",
 			"types": "./dist/index.d.mts"
-		},
-		"./sandbox": {
-			"import": "./dist/sandbox-entry.mjs"
 		},
 		"./utils": {
 			"import": "./dist/utils.mjs",
@@ -24,7 +21,7 @@
 		"src/*.astro"
 	],
 	"scripts": {
-		"build": "tsdown src/index.ts --dts.eager && tsdown src/sandbox-entry.ts --dts.eager --no-clean && tsdown src/utils.ts --dts.eager --no-clean",
+		"build": "tsdown src/index.ts src/utils.ts --dts.eager",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
